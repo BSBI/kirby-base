@@ -146,10 +146,17 @@ trait PostProperties
     }
 
     /**
-     * Get the date in 'jS F Y' format
+     * Get the date in 'j F Y' format, or an empty string when no publication
+     * date has been set (e.g. a content-index row with an empty publication_date),
+     * so callers can render the value directly without a fatal on the uninitialised
+     * typed property.
+     *
      * @return string
      */
     public function getFormattedPublicationDate(): string {
+        if (!isset($this->publicationDate)) {
+            return '';
+        }
         return $this->publicationDate->format('j F Y');
     }
 

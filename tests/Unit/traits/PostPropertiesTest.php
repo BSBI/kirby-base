@@ -145,4 +145,17 @@ final class PostPropertiesTest extends TestCase
 
         $this->assertSame('15 March 2024', $model->getFormattedPublicationDate());
     }
+
+    /**
+     * Verify getFormattedPublicationDate() returns an empty string (rather than
+     * fatally accessing an uninitialised typed property) when no publication date
+     * has been set — e.g. a content-index row with an empty publication_date.
+     */
+    public function testFormattedPublicationDateEmptyWhenNotSet(): void
+    {
+        $model = $this->createModel();
+
+        $this->assertFalse($model->hasPublicationDate());
+        $this->assertSame('', $model->getFormattedPublicationDate());
+    }
 }

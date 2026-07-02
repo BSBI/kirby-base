@@ -2931,6 +2931,11 @@ abstract class KirbyBaseHelper
 
         if ($modelList->usePagination() && !$filter->doStopPagination()) {
 
+            // A paginated list reached via POST can only be a filter submission
+            // (pagination links are GET), so canonicalise to a fresh GET on page 1
+            // via Post/Redirect/Get (issue #559). No-op on GET.
+            $this->redirectAfterFilterSubmission();
+
             $collectionPages = $collectionPages->paginate($modelList->getPaginatePerPage());
             $paginationFromKirby = $collectionPages->pagination();
 
@@ -2985,6 +2990,11 @@ abstract class KirbyBaseHelper
 
         // Handle pagination if the list supports it
         if ($modelList->usePagination() && ($filter === null || !$filter->doStopPagination())) {
+            // A paginated list reached via POST can only be a filter submission
+            // (pagination links are GET), so canonicalise to a fresh GET on page 1
+            // via Post/Redirect/Get (issue #559). No-op on GET.
+            $this->redirectAfterFilterSubmission();
+
             $totalCount = $query->count();
             $perPage = $modelList->getPaginatePerPage();
             $currentPage = max(1, (int)($this->kirby->request()->get('page', 1)));
@@ -3424,6 +3434,40 @@ abstract class KirbyBaseHelper
     protected function hasGetRequest(): bool
     {
         return ($this->kirby->request()->is('GET'));
+    }
+
+    /**
+     * Post/Redirect/Get for filter forms.
+     *
+     * Filter forms are submitted with POST to the current URL, which may still
+     * carry a ?page=N (or /page:N) from the pagination page the user was viewing.
+     * Once the POSTed filter values have been persisted (e.g. to cookies) this
+     * redirects to the same page with the pagination position dropped, so the
+     * filtered results are rendered from page 1 via a fresh GET (issue #559).
+     * Following the Post/Redirect/Get pattern also means a browser refresh does
+     * not re-submit the filter.
+     *
+     * Only the pagination position is stripped (the `page` query param and any
+     * `page:N` route param); other query params such as sort_by/sort_dir are
+     * preserved so re-filtering does not reset an active sort.
+     *
+     * This is called from the shared pagination code paths, so every filtered
+     * list inherits the behaviour without per-page wiring. It is a no-op on a
+     * non-POST request.
+     *
+     * @return void
+     */
+    protected function redirectAfterFilterSubmission(): void
+    {
+        if (!$this->hasPostRequest()) {
+            return;
+        }
+
+        $query = $this->kirby->request()->query()->toArray();
+        unset($query['page']);
+
+        $url = $this->kirby->request()->url()->clone(['query' => $query, 'params' => []])->toString();
+        go($url);
     }
 
     /**
