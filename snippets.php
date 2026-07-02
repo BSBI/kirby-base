@@ -31,6 +31,7 @@ return [
     'base/full-width-block-ends' => __DIR__ . '/snippets/full-width-block-ends.php',
     'base/pagination' => __DIR__ . '/snippets/pagination.php',
     'base/sortable-columns' => __DIR__ . '/snippets/sortable-columns.php',
+    'base/filter-warning' => __DIR__ . '/snippets/filter-warning.php',
 
     //colour mode
     'colour-mode/selector' => __DIR__ . '/snippets/colour-mode/selector.php',
