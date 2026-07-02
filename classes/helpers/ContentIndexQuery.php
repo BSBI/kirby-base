@@ -148,6 +148,83 @@ class ContentIndexQuery
     }
 
     /**
+     * Filter rows where any of the given columns starts with the given prefix.
+     *
+     * Case-insensitive prefix match (SQL LIKE 'prefix%') across one or more columns,
+     * combined with OR. Suitable for typeahead/autocomplete lookups. Any LIKE
+     * wildcards (%, _) or the escape character (\) in the prefix are escaped so they
+     * are matched literally rather than acting as wildcards.
+     *
+     * Returns $this unchanged if $columns is empty or the trimmed prefix is empty,
+     * so an empty search box simply returns all rows (no filter applied).
+     *
+     * @param string[] $columns Column names to test (OR logic between them)
+     * @param string $prefix The prefix to match at the start of each column
+     * @return $this
+     */
+    public function whereAnyStartsWith(array $columns, string $prefix): static
+    {
+        $prefix = trim($prefix);
+        if (empty($columns) || $prefix === '') {
+            return $this;
+        }
+
+        // Escape the escape char first, then the LIKE wildcards, so a literal % or _
+        // in the prefix matches that character rather than acting as a wildcard.
+        $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $prefix);
+        $like = $escaped . '%';
+
+        $clauses = [];
+        foreach ($columns as $column) {
+            $param = $this->nextParam($column . '_prefix');
+            $clauses[] = "$column LIKE $param ESCAPE '\\'";
+            $this->params[$param] = $like;
+        }
+
+        $this->whereClauses[] = '(' . implode(' OR ', $clauses) . ')';
+        return $this;
+    }
+
+    /**
+     * Filter rows where any of the given columns contains a word starting with the prefix.
+     *
+     * Like whereAnyStartsWith, but matches the prefix at the start of any word within
+     * the value, not just the very start of the field — so "Ivy" matches "Common Ivy".
+     * A word boundary is the start of the field or a preceding space. Case-insensitive
+     * (SQL LIKE); LIKE wildcards (%, _) and the escape character (\) in the prefix are
+     * escaped so they match literally. Ideal for common/vernacular-name typeahead.
+     *
+     * Returns $this unchanged if $columns is empty or the trimmed prefix is empty.
+     *
+     * @param string[] $columns Column names to test (OR logic between them)
+     * @param string $prefix The prefix to match at the start of any word
+     * @return $this
+     */
+    public function whereAnyWordStartsWith(array $columns, string $prefix): static
+    {
+        $prefix = trim($prefix);
+        if (empty($columns) || $prefix === '') {
+            return $this;
+        }
+
+        $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $prefix);
+        $atStart = $escaped . '%';        // field begins with the prefix
+        $afterSpace = '% ' . $escaped . '%'; // a later word begins with the prefix
+
+        $clauses = [];
+        foreach ($columns as $column) {
+            $pStart = $this->nextParam($column . '_wordstart');
+            $pWord = $this->nextParam($column . '_word');
+            $clauses[] = "($column LIKE $pStart ESCAPE '\\' OR $column LIKE $pWord ESCAPE '\\')";
+            $this->params[$pStart] = $atStart;
+            $this->params[$pWord] = $afterSpace;
+        }
+
+        $this->whereClauses[] = '(' . implode(' OR ', $clauses) . ')';
+        return $this;
+    }
+
+    /**
      * Filter rows where a column value matches any value in the given list (SQL IN).
      *
      * Returns $this unchanged if $values is empty, so callers do not need to guard

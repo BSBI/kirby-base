@@ -218,6 +218,157 @@ final class ContentIndexQueryTest extends TestCase
         $this->assertCount(1, $results);
     }
 
+    // --- whereAnyStartsWith ---
+
+    public function testWhereAnyStartsWithMatchesPrefixOnSingleColumn(): void
+    {
+        // "Spring Walk" and "Summer Walk" both start with "S".
+        $results = $this->query()
+            ->whereAnyStartsWith(['title'], 'S')
+            ->get();
+
+        $this->assertCount(2, $results);
+    }
+
+    public function testWhereAnyStartsWithIsCaseInsensitive(): void
+    {
+        $results = $this->query()
+            ->whereAnyStartsWith(['title'], 's')
+            ->get();
+
+        $this->assertCount(2, $results);
+    }
+
+    public function testWhereAnyStartsWithMatchesAcrossMultipleColumns(): void
+    {
+        // "ID Workshop" does not start with "Wo", but its event_type "Workshop" does.
+        $results = $this->query()
+            ->whereAnyStartsWith(['title', 'event_type'], 'Wo')
+            ->get();
+
+        $this->assertCount(1, $results);
+        $this->assertSame('events/workshop-1', $results[0]['page_id']);
+    }
+
+    public function testWhereAnyStartsWithMatchesPrefixOnly(): void
+    {
+        // "Walk" appears in three titles but never at the start, so prefix search finds none.
+        $results = $this->query()
+            ->whereAnyStartsWith(['title'], 'Walk')
+            ->get();
+
+        $this->assertCount(0, $results);
+    }
+
+    public function testWhereAnyStartsWithEscapesLikeWildcards(): void
+    {
+        // A literal "%" must not behave as a LIKE wildcard matching every row.
+        $results = $this->query()
+            ->whereAnyStartsWith(['title'], '%')
+            ->get();
+
+        $this->assertCount(0, $results);
+    }
+
+    public function testWhereAnyStartsWithWithEmptyPrefixReturnsAll(): void
+    {
+        $results = $this->query()
+            ->whereAnyStartsWith(['title'], '  ')
+            ->get();
+
+        $this->assertCount(5, $results);
+    }
+
+    public function testWhereAnyStartsWithWithEmptyColumnsReturnsAll(): void
+    {
+        $results = $this->query()
+            ->whereAnyStartsWith([], 'S')
+            ->get();
+
+        $this->assertCount(5, $results);
+    }
+
+    public function testWhereAnyStartsWithCombinesWithOrderAndLimit(): void
+    {
+        $results = $this->query()
+            ->whereAnyStartsWith(['title'], 'S')
+            ->orderBy('title', 'asc')
+            ->limit(1)
+            ->get();
+
+        $this->assertCount(1, $results);
+        $this->assertSame('events/walk-1', $results[0]['page_id']); // "Spring Walk"
+    }
+
+    // --- whereAnyWordStartsWith ---
+
+    public function testWhereAnyWordStartsWithMatchesWordAtStart(): void
+    {
+        // "Spring Walk" and "Summer Walk" both begin with a word starting "S".
+        $results = $this->query()
+            ->whereAnyWordStartsWith(['title'], 'S')
+            ->get();
+
+        $this->assertCount(2, $results);
+    }
+
+    public function testWhereAnyWordStartsWithMatchesLaterWord(): void
+    {
+        // "Walk" is the second word of three titles; prefix search would miss these.
+        $results = $this->query()
+            ->whereAnyWordStartsWith(['title'], 'Walk')
+            ->get();
+
+        $this->assertCount(3, $results);
+    }
+
+    public function testWhereAnyWordStartsWithDoesNotMatchMidWord(): void
+    {
+        // "alk" is inside "Walk" but never at a word boundary.
+        $results = $this->query()
+            ->whereAnyWordStartsWith(['title'], 'alk')
+            ->get();
+
+        $this->assertCount(0, $results);
+    }
+
+    public function testWhereAnyWordStartsWithMatchesAcrossColumns(): void
+    {
+        $results = $this->query()
+            ->whereAnyWordStartsWith(['title', 'event_type'], 'Conf')
+            ->get();
+
+        $this->assertCount(1, $results);
+        $this->assertSame('events/conf-1', $results[0]['page_id']);
+    }
+
+    public function testWhereAnyWordStartsWithIsCaseInsensitive(): void
+    {
+        $results = $this->query()
+            ->whereAnyWordStartsWith(['title'], 'walk')
+            ->get();
+
+        $this->assertCount(3, $results);
+    }
+
+    public function testWhereAnyWordStartsWithEscapesLikeWildcards(): void
+    {
+        $results = $this->query()
+            ->whereAnyWordStartsWith(['title'], '%')
+            ->get();
+
+        $this->assertCount(0, $results);
+    }
+
+    public function testWhereAnyWordStartsWithWithEmptyPrefixReturnsAll(): void
+    {
+        $results = $this->query()
+            ->whereAnyWordStartsWith(['title'], '  ')
+            ->get();
+
+        $this->assertCount(5, $results);
+    }
+
     // --- whereDateBetween ---
 
     public function testWhereDateBetween(): void
