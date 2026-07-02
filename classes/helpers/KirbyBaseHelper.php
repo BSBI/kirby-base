@@ -77,6 +77,7 @@ abstract class KirbyBaseHelper
     protected CollectionFilterService $collectionFilterService;
     protected UserService $userService;
     protected FileDeliveryService $fileDeliveryService;
+    private FilterResetService $filterResetService;
 
     #region CONSTRUCTOR
     /**
@@ -3465,6 +3466,9 @@ abstract class KirbyBaseHelper
 
         $query = $this->kirby->request()->query()->toArray();
         unset($query['page']);
+        // A fresh filter submission supersedes any pending reset request;
+        // otherwise the redirected GET would immediately clear the new filters.
+        unset($query[FilterResetService::RESET_PARAM]);
 
         $url = $this->kirby->request()->url()->clone(['query' => $query, 'params' => []])->toString();
         go($url);
@@ -3664,6 +3668,48 @@ abstract class KirbyBaseHelper
     protected function getCookieAsString(string $key, string $fallback = ''): string
     {
         return $this->asString($_COOKIE[$key] ?? $fallback);
+    }
+
+    /**
+     * True when the current request asks for all user-driven filters to be
+     * reset (the "Remove all filters" link on the filter warning).
+     *
+     * @return bool
+     */
+    protected function isFilterResetRequested(): bool
+    {
+        return $this->getFilterResetService()->isResetRequested();
+    }
+
+    /**
+     * Reads a persisted filter cookie, honouring a filter reset request:
+     * when the current request carries the clearFilters parameter the cookie
+     * is deleted and the fallback returned, so the filter reverts to the same
+     * default a fresh visitor (with no cookies) sees.
+     *
+     * @param string $key The cookie name
+     * @param string $fallback Default value the filter reverts to
+     * @return string The persisted value, or the fallback on reset/missing cookie
+     */
+    protected function getFilterCookieAsString(string $key, string $fallback = ''): string
+    {
+        return $this->getFilterResetService()->resolve(
+            $this->getCookieAsString($key, $fallback),
+            $fallback,
+            fn () => $this->deleteCookie($key)
+        );
+    }
+
+    /**
+     * Lazily builds the filter reset service from the current request.
+     *
+     * @return FilterResetService
+     */
+    private function getFilterResetService(): FilterResetService
+    {
+        return $this->filterResetService ??= FilterResetService::fromRequestValue(
+            $this->getRequestAsString(FilterResetService::RESET_PARAM)
+        );
     }
 
     /**
