@@ -3,7 +3,7 @@
 namespace BSBI\WebBase\models;
 
 /**
- *
+ * @extends BaseList<WebPageLink, BaseFilter>
  */
 class OnThisPageLinks extends BaseList
 {
@@ -63,15 +63,6 @@ class OnThisPageLinks extends BaseList
 
         return $this;
     }
-
-    /**
-     * @return OnThisPageLink[]
-     */
-    public function getListItems(): array
-    {
-        return $this->list;
-    }
-
 
     /**
      * @return string

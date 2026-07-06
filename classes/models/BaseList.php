@@ -19,6 +19,7 @@ use BSBI\WebBase\traits\ErrorHandling;
  * - Item search functionality
  *
  * @template T of BaseModel
+ * @template TFilter of BaseFilter
  */
 
 
@@ -30,7 +31,10 @@ abstract class BaseList
      * @return T[]
      * @noinspection PhpUnused
      */
-    abstract function getListItems(): array;
+    public function getListItems(): array
+    {
+        return $this->list;
+    }
 
     /**
      * @return string
@@ -47,6 +51,7 @@ abstract class BaseList
     /** @var T[] $list */
     protected array $list = [];
 
+    /** @var TFilter $filter */
     protected BaseFilter $filter;
 
     /**
@@ -418,19 +423,15 @@ abstract class BaseList
 
     /**
      * @param int $paginatePerPage
-     * @return BaseList
+     * @return static
      * @noinspection PhpUnused
      */
-    public function setPaginatePerPage(int $paginatePerPage): BaseList
+    public function setPaginatePerPage(int $paginatePerPage): static
     {
         $this->paginatePerPage = $paginatePerPage;
         return $this;
     }
 
-    /**
-     * @return BaseFilter
-     * @noinspection PhpUnused
-     */
     /**
      * Returns true if filters have been set on this list.
      *
@@ -441,13 +442,16 @@ abstract class BaseList
         return isset($this->filter);
     }
 
+    /**
+     * @return TFilter
+     */
     public function getFilters(): BaseFilter
     {
         return $this->filter;
     }
 
     /**
-     * @param BaseFilter $filter
+     * @param TFilter $filter
      * @return $this
      */
     public function setFilters(BaseFilter $filter): static

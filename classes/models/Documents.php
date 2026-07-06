@@ -5,6 +5,7 @@ namespace BSBI\WebBase\models;
 
 /**
  * @package BSBI\Web
+ * @extends BaseList<Document, BaseFilter>
  */
 class Documents extends BaseList
 {
@@ -18,13 +19,6 @@ class Documents extends BaseList
         $this->add($link);
     }
 
-
-    /**
-     * @return Document[]
-     */
-    public function getListItems(): array {
-        return $this->list;
-    }
 
     /**
      * @return string

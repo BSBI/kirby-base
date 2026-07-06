@@ -9,7 +9,7 @@ namespace BSBI\WebBase\models;
 
 
 /**
- *
+ * @extends BaseList<WebPageLink, BaseFilter>
  */
 class WebPageLinks extends BaseList
 {
@@ -25,14 +25,6 @@ class WebPageLinks extends BaseList
             $this->add($link);
         }
         return $this;
-    }
-
-    /**
-     * @return WebPageLink[]
-     */
-    public function getListItems(): array
-    {
-        return $this->list;
     }
 
     /**

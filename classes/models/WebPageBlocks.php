@@ -4,7 +4,7 @@ namespace BSBI\WebBase\models;
 
 
 /**
- *
+ * @extends BaseList<WebPageBlock, BaseFilter>
  */
 class WebPageBlocks extends BaseList
 {
@@ -16,13 +16,6 @@ class WebPageBlocks extends BaseList
     public function addListItem(WebPageBlock $block): void
     {
         $this->add($block);
-    }
-
-    /**
-     * @return WebPageBlock[]
-     */
-    public function getListItems(): array {
-        return $this->list;
     }
 
     /**

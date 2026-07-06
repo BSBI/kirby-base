@@ -5,17 +5,10 @@ namespace BSBI\WebBase\models;
 /**
  * Represents a list of User objects, extending the BaseList functionality.
  * Provides methods to retrieve, add, and manage Users within the list.
+ * @extends BaseList<User, BaseFilter>
  */
 class UserList extends BaseList
 {
-
-    /**
-     * @return User[]
-     */
-    public function getListItems(): array
-    {
-        return $this->list;
-    }
 
     /**
      * @param User $user

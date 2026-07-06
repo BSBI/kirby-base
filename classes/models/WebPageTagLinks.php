@@ -3,6 +3,7 @@
 namespace BSBI\WebBase\models;
 
 /**
+ * @extends BaseList<WebPageTagLinkSet, BaseFilter>
  */
 class WebPageTagLinks extends BaseList
 {
@@ -15,14 +16,6 @@ class WebPageTagLinks extends BaseList
     public function addListItem(WebPageTagLinkSet $item): self {
         $this->add($item);
         return $this;
-    }
-
-    /**
-     * @return WebPageTagLinkSet[]
-     */
-    public function getListItems(): array
-    {
-        return $this->list;
     }
 
     /**

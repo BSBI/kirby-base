@@ -9,6 +9,7 @@ namespace BSBI\WebBase\models;
  * Represents a list of related content. This class provides functionalities
  * to add related content items to the list, retrieve the list of items,
  * and specify the types of items and filters used in the list.
+ * @extends BaseList<RelatedContent, BaseFilter>
  */
 class RelatedContentList extends BaseList
 {
@@ -19,13 +20,6 @@ class RelatedContentList extends BaseList
     public function addListItem(RelatedContent $relatedContent): void
     {
         $this->add($relatedContent);
-    }
-
-    /**
-     * @return RelatedContent[]
-     */
-    public function getListItems(): array {
-        return $this->list;
     }
 
     /**

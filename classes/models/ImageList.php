@@ -3,17 +3,10 @@
 namespace BSBI\WebBase\models;
 
 /**
+ * @extends BaseList<Image, BaseFilter>
  */
 class ImageList extends BaseList
 {
-
-    /**
-     * @return Image[]
-     */
-    public function getListItems(): array
-    {
-        return $this->list;
-    }
 
     /**
      * @param Image $image
