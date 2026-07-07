@@ -1,0 +1,2755 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Cannot call method toBlocks\(\) on array\|Kirby\\Content\\Field\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: classes/Testing/KirbyContentBuilder.php
+
+		-
+			message: '#^Cannot call method toStructure\(\) on array\|Kirby\\Content\\Field\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: classes/Testing/KirbyContentBuilder.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\cms\\UserNamePicker\:\:search\(\) has parameter \$items with generic class Kirby\\Cms\\Collection but does not specify its types\: TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/cms/UserNamePicker.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\cms\\UserNamePicker\:\:search\(\) return type with generic class Kirby\\Cms\\Collection does not specify its types\: TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/cms/UserNamePicker.php
+
+		-
+			message: '#^Cannot call method value\(\) on array\|Kirby\\Content\\Field\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: classes/forms/BaseFormDefinition.php
+
+		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 1
+			path: classes/forms/BaseFormDefinition.php
+
+		-
+			message: '#^Cannot call method toBlocks\(\) on array\|Kirby\\Content\\Field\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: classes/forms/FormFieldSpec.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\forms\\FormFieldSpec\:\:resolveOptions\(\) should return array\<string\> but returns array\<mixed, mixed\>\.$#'
+			identifier: return.type
+			count: 1
+			path: classes/forms/FormFieldSpec.php
+
+		-
+			message: '#^Parameter \$label of class BSBI\\WebBase\\forms\\ResolvedFormField constructor expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 5
+			path: classes/forms/FormFieldSpec.php
+
+		-
+			message: '#^Parameter \$leftLabel of class BSBI\\WebBase\\forms\\ResolvedFormField constructor expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: classes/forms/FormFieldSpec.php
+
+		-
+			message: '#^Parameter \$middleLabel of class BSBI\\WebBase\\forms\\ResolvedFormField constructor expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: classes/forms/FormFieldSpec.php
+
+		-
+			message: '#^Parameter \$rightLabel of class BSBI\\WebBase\\forms\\ResolvedFormField constructor expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: classes/forms/FormFieldSpec.php
+
+		-
+			message: '#^Unsafe usage of new static\(\)\.$#'
+			identifier: new.static
+			count: 9
+			path: classes/forms/FormFieldSpec.php
+
+		-
+			message: '#^Unsafe usage of new static\(\)\.$#'
+			identifier: new.static
+			count: 1
+			path: classes/forms/FormSection.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\forms\\FormSubmissionHandler\:\:handle\(\) has parameter \$postData with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: classes/forms/FormSubmissionHandler.php
+
+		-
+			message: '#^Unsafe usage of new static\(\)\.$#'
+			identifier: new.static
+			count: 3
+			path: classes/forms/FormSubmissionResult.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\CollectionFilterService\:\:applyLimit\(\) has parameter \$pages with generic class Kirby\\Toolkit\\Collection but does not specify its types\: TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/helpers/CollectionFilterService.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\CollectionFilterService\:\:applyLimit\(\) return type with generic class Kirby\\Toolkit\\Collection does not specify its types\: TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/helpers/CollectionFilterService.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\CollectionFilterService\:\:filterByContainsPageTitle\(\) has parameter \$pages with generic class Kirby\\Toolkit\\Collection but does not specify its types\: TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/helpers/CollectionFilterService.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\CollectionFilterService\:\:filterByContainsPageTitle\(\) return type with generic class Kirby\\Toolkit\\Collection does not specify its types\: TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/helpers/CollectionFilterService.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\CollectionFilterService\:\:filterByContainsPageTitleAny\(\) has parameter \$pages with generic class Kirby\\Toolkit\\Collection but does not specify its types\: TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/helpers/CollectionFilterService.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\CollectionFilterService\:\:filterByContainsPageTitleAny\(\) return type with generic class Kirby\\Toolkit\\Collection does not specify its types\: TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/helpers/CollectionFilterService.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\CollectionFilterService\:\:filterByContainsValue\(\) has parameter \$pages with generic class Kirby\\Toolkit\\Collection but does not specify its types\: TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/helpers/CollectionFilterService.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\CollectionFilterService\:\:filterByContainsValue\(\) return type with generic class Kirby\\Toolkit\\Collection does not specify its types\: TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/helpers/CollectionFilterService.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\CollectionFilterService\:\:filterByContainsValues\(\) has parameter \$pages with generic class Kirby\\Toolkit\\Collection but does not specify its types\: TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/helpers/CollectionFilterService.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\CollectionFilterService\:\:filterByContainsValues\(\) has parameter \$values with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: classes/helpers/CollectionFilterService.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\CollectionFilterService\:\:filterByContainsValues\(\) return type with generic class Kirby\\Toolkit\\Collection does not specify its types\: TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/helpers/CollectionFilterService.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\CollectionFilterService\:\:filterByEqualsValue\(\) has parameter \$pages with generic class Kirby\\Toolkit\\Collection but does not specify its types\: TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/helpers/CollectionFilterService.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\CollectionFilterService\:\:filterByEqualsValue\(\) return type with generic class Kirby\\Toolkit\\Collection does not specify its types\: TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/helpers/CollectionFilterService.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\CollectionFilterService\:\:filterByLinkedPageTitleAny\(\) has parameter \$pages with generic class Kirby\\Toolkit\\Collection but does not specify its types\: TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/helpers/CollectionFilterService.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\CollectionFilterService\:\:filterByLinkedPageTitleAny\(\) return type with generic class Kirby\\Toolkit\\Collection does not specify its types\: TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/helpers/CollectionFilterService.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\CollectionFilterService\:\:filterByPagesTag\(\) has parameter \$pages with generic class Kirby\\Toolkit\\Collection but does not specify its types\: TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/helpers/CollectionFilterService.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\CollectionFilterService\:\:filterByPagesTag\(\) return type with generic class Kirby\\Toolkit\\Collection does not specify its types\: TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/helpers/CollectionFilterService.php
+
+		-
+			message: '#^Cannot access offset ''total'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: classes/helpers/ContentIndexManager.php
+
+		-
+			message: '#^Cannot access offset ''value'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: classes/helpers/ContentIndexManager.php
+
+		-
+			message: '#^Cannot call method fetch\(\) on PDOStatement\|false\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: classes/helpers/ContentIndexManager.php
+
+		-
+			message: '#^Cannot call method fetchAll\(\) on PDOStatement\|false\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: classes/helpers/ContentIndexManager.php
+
+		-
+			message: '#^Cannot cast mixed to int\.$#'
+			identifier: cast.int
+			count: 1
+			path: classes/helpers/ContentIndexManager.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\ContentIndexManager\:\:getDatabasePath\(\) should return string but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: classes/helpers/ContentIndexManager.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\ContentIndexManager\:\:getStats\(\) should return array\{name\: string, total_rows\: int, last_rebuild\: string\|null\} but returns array\{name\: string, total_rows\: int, last_rebuild\: mixed\}\.$#'
+			identifier: return.type
+			count: 1
+			path: classes/helpers/ContentIndexManager.php
+
+		-
+			message: '#^Cannot access offset ''cnt'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: classes/helpers/ContentIndexQuery.php
+
+		-
+			message: '#^Cannot cast mixed to int\.$#'
+			identifier: cast.int
+			count: 1
+			path: classes/helpers/ContentIndexQuery.php
+
+		-
+			message: '#^Cannot call method fetchColumn\(\) on PDOStatement\|false\.$#'
+			identifier: method.nonObject
+			count: 3
+			path: classes/helpers/FileLinkIndexHelper.php
+
+		-
+			message: '#^Cannot call method value\(\) on array\|Kirby\\Content\\Field\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: classes/helpers/FileLinkIndexHelper.php
+
+		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 1
+			path: classes/helpers/FileLinkIndexHelper.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between string and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: classes/helpers/FileLinkIndexHelper.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type Kirby\\Uuid\\FileUuid\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: classes/helpers/FileLinkIndexHelper.php
+
+		-
+			message: '#^Cannot access offset string on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 3
+			path: classes/helpers/FilteredFilesHelper.php
+
+		-
+			message: '#^Cannot call method id\(\) on mixed\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: classes/helpers/FilteredFilesHelper.php
+
+		-
+			message: '#^Cannot call method title\(\) on mixed\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: classes/helpers/FilteredFilesHelper.php
+
+		-
+			message: '#^Cannot call method value\(\) on array\|Kirby\\Content\\Field\.$#'
+			identifier: method.nonObject
+			count: 7
+			path: classes/helpers/FilteredFilesHelper.php
+
+		-
+			message: '#^Cannot cast mixed to int\.$#'
+			identifier: cast.int
+			count: 2
+			path: classes/helpers/FilteredFilesHelper.php
+
+		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 7
+			path: classes/helpers/FilteredFilesHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\FilteredFilesHelper\:\:parseOptionsParams\(\) should return array\{filterDefs\: array\<string, array\<string, mixed\>\>, modelId\: string\} but returns array\{filterDefs\: mixed, modelId\: string\}\.$#'
+			identifier: return.type
+			count: 1
+			path: classes/helpers/FilteredFilesHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\FilteredFilesHelper\:\:parseResultsParams\(\) should return array\{modelId\: string, filterDefs\: array\<string, array\<string, mixed\>\>, columnDefs\: array\<int, array\<string, mixed\>\>, active\: array\<string, string\>, search\: string, sortField\: string, sortDir\: string, page\: int, \.\.\.\} but returns array\{modelId\: string, filterDefs\: mixed, columnDefs\: mixed, active\: mixed, search\: string, sortField\: string, sortDir\: ''asc''\|''desc'', page\: int\<1, max\>, \.\.\.\}\.$#'
+			identifier: return.type
+			count: 1
+			path: classes/helpers/FilteredFilesHelper.php
+
+		-
+			message: '#^Offset 0 on non\-empty\-list\<string\> on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: classes/helpers/FilteredFilesHelper.php
+
+		-
+			message: '#^Parameter \#1 \$array \(list\<array\<string, mixed\>\>\) of array_values is already a list, call has no effect\.$#'
+			identifier: arrayValues.list
+			count: 1
+			path: classes/helpers/FilteredFilesHelper.php
+
+		-
+			message: '#^Parameter \#1 \$json of function json_decode expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 4
+			path: classes/helpers/FilteredFilesHelper.php
+
+		-
+			message: '#^Parameter \#1 \$key of method Kirby\\Content\\Content\:\:get\(\) expects string\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 6
+			path: classes/helpers/FilteredFilesHelper.php
+
+		-
+			message: '#^Parameter \#1 \$string of function strtolower expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: classes/helpers/FilteredFilesHelper.php
+
+		-
+			message: '#^Parameter \#1 \$string of function trim expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 3
+			path: classes/helpers/FilteredFilesHelper.php
+
+		-
+			message: '#^Parameter \#2 \$string of function explode expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 2
+			path: classes/helpers/FilteredFilesHelper.php
+
+		-
+			message: '#^Possibly invalid array key type mixed\.$#'
+			identifier: offsetAccess.invalidOffset
+			count: 3
+			path: classes/helpers/FilteredFilesHelper.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between non\-empty\-string and null will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: classes/helpers/FilteredFilesHelper.php
+
+		-
+			message: '#^Cannot access offset string on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 3
+			path: classes/helpers/FilteredPagesHelper.php
+
+		-
+			message: '#^Cannot call method id\(\) on mixed\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: classes/helpers/FilteredPagesHelper.php
+
+		-
+			message: '#^Cannot call method title\(\) on mixed\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: classes/helpers/FilteredPagesHelper.php
+
+		-
+			message: '#^Cannot call method value\(\) on array\|Kirby\\Content\\Field\.$#'
+			identifier: method.nonObject
+			count: 3
+			path: classes/helpers/FilteredPagesHelper.php
+
+		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 7
+			path: classes/helpers/FilteredPagesHelper.php
+
+		-
+			message: '#^Parameter \#1 \$array \(list\<array\<string, mixed\>\>\) of array_values is already a list, call has no effect\.$#'
+			identifier: arrayValues.list
+			count: 1
+			path: classes/helpers/FilteredPagesHelper.php
+
+		-
+			message: '#^Parameter \#1 \$datetime of function strtotime expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 2
+			path: classes/helpers/FilteredPagesHelper.php
+
+		-
+			message: '#^Parameter \#1 \$key of method Kirby\\Content\\Content\:\:get\(\) expects string\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: classes/helpers/FilteredPagesHelper.php
+
+		-
+			message: '#^Parameter \#1 \$string of function strtolower expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: classes/helpers/FilteredPagesHelper.php
+
+		-
+			message: '#^Parameter \#2 \$haystack of function in_array expects array, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: classes/helpers/FilteredPagesHelper.php
+
+		-
+			message: '#^Parameter \#2 \$string of function explode expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: classes/helpers/FilteredPagesHelper.php
+
+		-
+			message: '#^Possibly invalid array key type mixed\.$#'
+			identifier: offsetAccess.invalidOffset
+			count: 3
+			path: classes/helpers/FilteredPagesHelper.php
+
+		-
+			message: '#^Strict comparison using \=\=\= between non\-empty\-string and null will always evaluate to false\.$#'
+			identifier: identical.alwaysFalse
+			count: 1
+			path: classes/helpers/FilteredPagesHelper.php
+
+		-
+			message: '#^Argument of an invalid type Kirby\\Toolkit\\Collection\|null supplied for foreach, only iterables are supported\.$#'
+			identifier: foreach.nonIterable
+			count: 1
+			path: classes/helpers/ImageBankIndexHelper.php
+
+		-
+			message: '#^Call to function is_array\(\) with array will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: classes/helpers/ImageBankIndexHelper.php
+
+		-
+			message: '#^Cannot access offset ''total'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: classes/helpers/ImageBankIndexHelper.php
+
+		-
+			message: '#^Cannot access offset ''value'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: classes/helpers/ImageBankIndexHelper.php
+
+		-
+			message: '#^Cannot call method fetch\(\) on PDOStatement\|false\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: classes/helpers/ImageBankIndexHelper.php
+
+		-
+			message: '#^Cannot call method fetchAll\(\) on PDOStatement\|false\.$#'
+			identifier: method.nonObject
+			count: 5
+			path: classes/helpers/ImageBankIndexHelper.php
+
+		-
+			message: '#^Cannot call method fetchColumn\(\) on PDOStatement\|false\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: classes/helpers/ImageBankIndexHelper.php
+
+		-
+			message: '#^Cannot call method toPages\(\) on array\|Kirby\\Content\\Field\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: classes/helpers/ImageBankIndexHelper.php
+
+		-
+			message: '#^Cannot call method value\(\) on array\|Kirby\\Content\\Field\.$#'
+			identifier: method.nonObject
+			count: 3
+			path: classes/helpers/ImageBankIndexHelper.php
+
+		-
+			message: '#^Cannot cast mixed to int\.$#'
+			identifier: cast.int
+			count: 2
+			path: classes/helpers/ImageBankIndexHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\ImageBankIndexHelper\:\:getFilenamesForTaxa\(\) should return array\<string\> but returns array\<mixed, mixed\>\.$#'
+			identifier: return.type
+			count: 1
+			path: classes/helpers/ImageBankIndexHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\ImageBankIndexHelper\:\:getStats\(\) should return array\{total_files\: int, total_taxa\: int, last_rebuild\: string\|null\} but returns array\{total_files\: int, total_taxa\: int, last_rebuild\: mixed\}\.$#'
+			identifier: return.type
+			count: 1
+			path: classes/helpers/ImageBankIndexHelper.php
+
+		-
+			message: '#^Parameter \#1 \$string of function trim expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 2
+			path: classes/helpers/ImageBankIndexHelper.php
+
+		-
+			message: '#^Parameter \#2 \$string of function explode expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: classes/helpers/ImageBankIndexHelper.php
+
+		-
+			message: '#^Possibly invalid array key type mixed\.$#'
+			identifier: offsetAccess.invalidOffset
+			count: 1
+			path: classes/helpers/ImageBankIndexHelper.php
+
+		-
+			message: '#^Argument of an invalid type Kirby\\Cms\\Files\|null supplied for foreach, only iterables are supported\.$#'
+			identifier: foreach.nonIterable
+			count: 1
+			path: classes/helpers/ImageService.php
+
+		-
+			message: '#^PHPDoc tag @param references unknown parameter\: \$pages$#'
+			identifier: parameter.notFound
+			count: 1
+			path: classes/helpers/ImageService.php
+
+		-
+			message: '#^Parameter \#1 \$image of method BSBI\\WebBase\\helpers\\ImageService\:\:getImageFromFile\(\) expects Kirby\\Cms\\File, Kirby\\Cms\\File\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: classes/helpers/ImageService.php
+
+		-
+			message: '#^Parameter \#1 \$webpSrc of method BSBI\\WebBase\\models\\Image\:\:setWebpSrc\(\) expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: classes/helpers/ImageService.php
+
+		-
+			message: '#^Argument of an invalid type Kirby\\Cms\\Pages\|null supplied for foreach, only iterables are supported\.$#'
+			identifier: foreach.nonIterable
+			count: 2
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Binary operation "\." between ''\<b\>IP Address\: \</b\>'' and mixed results in an error\.$#'
+			identifier: binaryOp.invalid
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Binary operation "\." between ''\<b\>Method\: \</b\>'' and mixed results in an error\.$#'
+			identifier: binaryOp.invalid
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Binary operation "\." between ''\<b\>URL\: \</b\>'' and mixed results in an error\.$#'
+			identifier: binaryOp.invalid
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Binary operation "\." between ''\<b\>User Agent\: \</b\>'' and mixed results in an error\.$#'
+			identifier: binaryOp.invalid
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Binary operation "\." between ''@'' and mixed results in an error\.$#'
+			identifier: binaryOp.invalid
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Binary operation "\." between ''Tag field '' and mixed results in an error\.$#'
+			identifier: binaryOp.invalid
+			count: 2
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Binary operation "\." between mixed and '','' results in an error\.$#'
+			identifier: binaryOp.invalid
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Binary operation "\." between non\-falsy\-string and mixed results in an error\.$#'
+			identifier: binaryOp.invalid
+			count: 2
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Call to an undefined method BSBI\\WebBase\\forms\\FormPageInterface\:\:setCustomFormBlocks\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Call to an undefined method BSBI\\WebBase\\forms\\FormPageInterface\:\:setFormFieldGroups\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Call to an undefined method BSBI\\WebBase\\forms\\FormPageInterface\:\:setFormFields\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Call to an undefined method BSBI\\WebBase\\models\\BaseList\:\:addListItem\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Call to an undefined method Kirby\\Cms\\StructureObject\:\:page\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Call to an undefined method Kirby\\Cms\\StructureObject\:\:scheduledPublishDate\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Call to an undefined method Kirby\\Cms\\StructureObject\:\:scheduledPublishTime\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Call to an undefined method Kirby\\Session\\Session\:\:get\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Call to an undefined method Kirby\\Session\\Session\:\:pull\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Call to an undefined method Kirby\\Session\\Session\:\:remove\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Call to an undefined method Kirby\\Session\\Session\:\:set\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Call to an undefined method Kirby\\Toolkit\\Pagination\:\:nextPageURL\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Call to an undefined method Kirby\\Toolkit\\Pagination\:\:pageUrl\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Call to an undefined method Kirby\\Toolkit\\Pagination\:\:prevPageURL\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Call to an undefined method object\:\:addListItem\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Call to an undefined method object\:\:getItemType\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Call to an undefined method object\:\:setCurrentUser\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Call to an undefined method object\:\:setFilters\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Call to an undefined method object\:\:setPageId\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Call to function is_a\(\) with arguments class\-string\<T of BSBI\\WebBase\\models\\BaseModel\>, ''BSBI\\\\WebBase\\\\models\\\\BaseModel'' and true will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Call to function method_exists\(\) with \$this\(BSBI\\WebBase\\helpers\\KirbyBaseHelper\) and ''setBasicPage'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Cannot access offset ''cookieName'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Cannot access offset string on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Cannot call method code\(\) on Kirby\\Cms\\Language\|null\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Cannot call method go\(\) on Kirby\\Cms\\Page\|null\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Cannot call method id\(\) on Kirby\\Cms\\Page\|null\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Cannot call method name\(\) on Kirby\\Cms\\Language\|null\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Cannot call method next\(\) on Kirby\\Cms\\Page\|null\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Cannot call method prev\(\) on Kirby\\Cms\\Page\|null\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Cannot call method title\(\) on Kirby\\Cms\\Page\|null\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Cannot call method toString\(\) on array\|Kirby\\Content\\Field\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Cannot call method translation\(\) on Kirby\\Cms\\Page\|null\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Cannot call method update\(\) on Kirby\\Cms\\Page\|null\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Cannot call method url\(\) on Kirby\\Cms\\File\|null\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Cannot call method url\(\) on Kirby\\Cms\\Page\|null\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Cannot cast mixed to int\.$#'
+			identifier: cast.int
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 7
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Constant BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:STOP_WORDS is unused\.$#'
+			identifier: classConstant.unused
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^If condition is always true\.$#'
+			identifier: if.alwaysTrue
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Instanceof between Kirby\\Cms\\Block and Kirby\\Cms\\Block will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Instanceof between Kirby\\Cms\\Page and Kirby\\Cms\\Page will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 2
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Instanceof between Kirby\\Cms\\Pages and Kirby\\Toolkit\\Collection will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:addGroupedCategoryOnPageLinks\(\) has parameter \$list with generic class BSBI\\WebBase\\models\\BaseList but does not specify its types\: T, TFilter$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:applyLimit\(\) has parameter \$pages with generic class Kirby\\Toolkit\\Collection but does not specify its types\: TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:applyLimit\(\) return type with generic class Kirby\\Toolkit\\Collection does not specify its types\: TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:createPage\(\) has parameter \$pageData with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:createPage\(\) should return Kirby\\Cms\\Page but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:createPageInSiteRoot\(\) has parameter \$pageData with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:createPageInSiteRoot\(\) should return Kirby\\Cms\\Page but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:createUser\(\) has parameter \$userData with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:deletePage\(\) should return bool but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:filterByContainsPageTitle\(\) has parameter \$pages with generic class Kirby\\Toolkit\\Collection but does not specify its types\: TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:filterByContainsPageTitle\(\) return type with generic class Kirby\\Toolkit\\Collection does not specify its types\: TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:filterByContainsPageTitleAny\(\) has parameter \$pages with generic class Kirby\\Toolkit\\Collection but does not specify its types\: TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:filterByContainsPageTitleAny\(\) return type with generic class Kirby\\Toolkit\\Collection does not specify its types\: TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:filterByContainsValue\(\) has parameter \$pages with generic class Kirby\\Toolkit\\Collection but does not specify its types\: TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:filterByContainsValue\(\) return type with generic class Kirby\\Toolkit\\Collection does not specify its types\: TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:filterByContainsValues\(\) has parameter \$pages with generic class Kirby\\Toolkit\\Collection but does not specify its types\: TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:filterByContainsValues\(\) has parameter \$values with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:filterByContainsValues\(\) return type with generic class Kirby\\Toolkit\\Collection does not specify its types\: TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:filterByEqualsValue\(\) has parameter \$pages with generic class Kirby\\Toolkit\\Collection but does not specify its types\: TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:filterByEqualsValue\(\) return type with generic class Kirby\\Toolkit\\Collection does not specify its types\: TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:filterByLinkedPageTitleAny\(\) has parameter \$pages with generic class Kirby\\Toolkit\\Collection but does not specify its types\: TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:filterByLinkedPageTitleAny\(\) return type with generic class Kirby\\Toolkit\\Collection does not specify its types\: TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:filterByPagesTag\(\) has parameter \$pages with generic class Kirby\\Toolkit\\Collection but does not specify its types\: TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:filterByPagesTag\(\) return type with generic class Kirby\\Toolkit\\Collection does not specify its types\: TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:getBlockFieldAsYaml\(\) has parameter \$default with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:getBlockFieldAsYaml\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:getBreadcrumbAsCollection\(\) return type with generic class Kirby\\Toolkit\\Collection does not specify its types\: TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:getCSFRToken\(\) should return string but returns bool\|string\.$#'
+			identifier: return.type
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:getCustomTagList\(\) return type with generic class BSBI\\WebBase\\models\\BaseList does not specify its types\: T, TFilter$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:getCustomTagList\(\) should return BSBI\\WebBase\\models\\BaseList but returns object\.$#'
+			identifier: return.type
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:getEmptyWebPage\(\) should return BSBI\\WebBase\\models\\BaseWebPage but returns object\.$#'
+			identifier: return.type
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:getErrorPage\(\) should return BSBI\\WebBase\\models\\BaseWebPage but returns object\.$#'
+			identifier: return.type
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:getExcludedTemplates\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:getFieldsInSection\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:getFirstSubPageUsingTemplates\(\) has parameter \$templates with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:getPageFieldAsPageTitles\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:getPageTitlesFromCollection\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:getPagesFromCollection\(\) return type with generic class Kirby\\Toolkit\\Collection does not specify its types\: TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:getRequestOrCookie\(\) should return string but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:getSearchCollection\(\) has parameter \$collection with generic class Kirby\\Toolkit\\Collection but does not specify its types\: TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:getSearchCollection\(\) return type with generic class Kirby\\Toolkit\\Collection does not specify its types\: TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:getSearchCollectionSqlite\(\) return type with generic class Kirby\\Toolkit\\Collection does not specify its types\: TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:getSearchContentTypeOptions\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:getSearchResults\(\) has parameter \$collection with generic class Kirby\\Toolkit\\Collection but does not specify its types\: TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:getSelectOptions\(\) has parameter \$options with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:getSelectOptions\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:getSiblingsUsingTemplates\(\) has parameter \$templates with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:getSimpleSelectOptions\(\) has parameter \$options with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:getSimpleSelectOptions\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:getSiteChildrenAsSubPages\(\) has parameter \$templates with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:getSiteFieldAsArray\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:getSiteStructureFieldAsArray\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:getSpecificModelList\(\) has parameter \$templates with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:getSpecificModelList\(\) return type with generic class BSBI\\WebBase\\models\\BaseList does not specify its types\: T, TFilter$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:getSpecificModelListFromIndex\(\) return type with generic class BSBI\\WebBase\\models\\BaseList does not specify its types\: T, TFilter$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:getSpecificModelListFromPageField\(\) return type with generic class BSBI\\WebBase\\models\\BaseList does not specify its types\: T, TFilter$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:getStructureAsArray\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:getSubPages\(\) has parameter \$templates with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:getSubPagesAsCollection\(\) return type with generic class Kirby\\Toolkit\\Collection does not specify its types\: TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:getWebPageLinks\(\) has parameter \$collection with generic class Kirby\\Toolkit\\Collection but does not specify its types\: TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:isCurrentUserAdminOrEditorOrHasRoles\(\) has parameter \$roles with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:publishPage\(\) should return Kirby\\Cms\\Page but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:requiresCookieConstent\(\) should return bool but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:sendEmail\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:sendNotificationEmail\(\) has parameter \$content with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:setCacheHeaders\(\) should return Kirby\\Cms\\Responder but returns Kirby\\Cms\\Responder\|string\.$#'
+			identifier: return.type
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:setCacheHeaders\(\) should return Kirby\\Cms\\Responder but returns array\|Kirby\\Cms\\Responder\.$#'
+			identifier: return.type
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:syncTags\(\) has parameter \$template with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:unpublishPage\(\) should return Kirby\\Cms\\Page but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:updatePage\(\) has parameter \$pageData with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:updatePage\(\) should return Kirby\\Cms\\Page but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:updateUser\(\) has parameter \$updateData with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:writeToErrorLog\(\) has parameter \$message with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^PHPDoc tag @param references unknown parameter\: \$default$#'
+			identifier: parameter.notFound
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^PHPDoc tag @return with type Kirby\\Cms\\File\|null is not subtype of native type Kirby\\Cms\\Files\|null\.$#'
+			identifier: return.phpDocType
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^PHPDoc tag @var for variable \$menuPagesCollection contains generic class Kirby\\Toolkit\\Collection but does not specify its types\: TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^PHPDoc tag @var for variable \$modelList contains generic class BSBI\\WebBase\\models\\BaseList but does not specify its types\: T, TFilter$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Parameter \#1 \$check of function csrf expects string\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 4
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Parameter \#1 \$collection of method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:getWebPageLinks\(\) expects Kirby\\Toolkit\\Collection, Kirby\\Toolkit\\Collection\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Parameter \#1 \$directory of function mkdir expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Parameter \#1 \$filename of function is_dir expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Parameter \#1 \$friendlyMessage of method BSBI\\WebBase\\models\\BaseModel\:\:addFriendlyMessage\(\) expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Parameter \#1 \$key of method Kirby\\Cms\\App\:\:cache\(\) expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Parameter \#1 \$nextPageTitle of method BSBI\\WebBase\\models\\PrevNextPageNavigation\:\:setNextPageTitle\(\) expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Parameter \#1 \$page of method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:getSubPagesUsingTemplates\(\) expects Kirby\\Cms\\Page, Kirby\\Cms\\Page\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Parameter \#1 \$previousPageTitle of method BSBI\\WebBase\\models\\PrevNextPageNavigation\:\:setPreviousPageTitle\(\) expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Parameter \#1 \$redirectPage of method BSBI\\WebBase\\models\\LoginDetails\:\:setRedirectPage\(\) expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Parameter \#1 \$root of method BSBI\\WebBase\\helpers\\FileDeliveryService\:\:buildResponse\(\) expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Parameter \#1 \$status of method BSBI\\WebBase\\models\\BaseModel\:\:setStatus\(\) expects bool, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Parameter \#1 \$string of static method Kirby\\Toolkit\\Str\:\:split\(\) expects array\|string\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 2
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Parameter \#1 \$urlWithQueryString of method BSBI\\WebBase\\models\\BaseWebPage\:\:setUrlWithQueryString\(\) expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Parameter \#1 \$user of method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:getUserFieldAsPages\(\) expects Kirby\\Cms\\User, Kirby\\Cms\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Parameter \#1 \$user of method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:getUserFieldAsWebPageLinks\(\) expects Kirby\\Cms\\User, Kirby\\Cms\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Parameter \#1 \.\.\.\$arrays of function array_merge expects array, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Parameter \#1 \.\.\.\$keys of method Kirby\\Cms\\Collection\<Kirby\\Cms\\Page\>\:\:not\(\) expects array\|object\|string, Kirby\\Cms\\Page\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Parameter \#2 \$array of function array_key_exists expects array, mixed given\.$#'
+			identifier: argument.type
+			count: 2
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Parameter \#2 \$from of method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:sendEmail\(\) expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 4
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Parameter \#3 \$linkTitle of method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:getWebPageLink\(\) expects string\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 2
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Parameter \#3 \$replyTo of method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:sendEmail\(\) expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 3
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Parameter \#4 \$to of method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:sendEmail\(\) expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 2
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Part \$taggedByField \(mixed\) of encapsed string cannot be cast to string\.$#'
+			identifier: encapsedStringPart.nonString
+			count: 4
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Possibly invalid array key type mixed\.$#'
+			identifier: array.invalidKey
+			count: 2
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Possibly invalid array key type mixed\.$#'
+			identifier: offsetAccess.invalidOffset
+			count: 4
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Strict comparison using \!\=\= between Kirby\\Cms\\Page\|Kirby\\Cms\\Pages and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Unable to resolve the template type T in call to method BSBI\\WebBase\\helpers\\KirbyBaseHelper\:\:getSpecificModel\(\)$#'
+			identifier: argument.templateType
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 2
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Variable \$webPage in PHPDoc tag @var does not match assigned variable \$pageName\.$#'
+			identifier: varTag.differentVariable
+			count: 1
+			path: classes/helpers/KirbyBaseHelper.php
+
+		-
+			message: '#^Call to an undefined method Kirby\\Cms\\StructureObject\:\:email\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: classes/helpers/KirbyFieldReader.php
+
+		-
+			message: '#^Call to an undefined method Kirby\\Cms\\StructureObject\:\:jobRole\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: classes/helpers/KirbyFieldReader.php
+
+		-
+			message: '#^Call to an undefined method Kirby\\Cms\\StructureObject\:\:name\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: classes/helpers/KirbyFieldReader.php
+
+		-
+			message: '#^Cannot call method isNotEmpty\(\) on array\|Kirby\\Content\\Field\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: classes/helpers/KirbyFieldReader.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyFieldReader\:\:getBlockFieldAsYaml\(\) has parameter \$default with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: classes/helpers/KirbyFieldReader.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyFieldReader\:\:getBlockFieldAsYaml\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: classes/helpers/KirbyFieldReader.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\KirbyFieldReader\:\:getStructureFieldAsPageTitle\(\) should return string but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: classes/helpers/KirbyFieldReader.php
+
+		-
+			message: '#^Parameter \#1 \$timestamp of method DateTime\:\:setTimestamp\(\) expects int, int\|string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: classes/helpers/KirbyFieldReader.php
+
+		-
+			message: '#^Parameter \#1 \$user of method BSBI\\WebBase\\helpers\\KirbyFieldReader\:\:getUserFieldAsBool\(\) expects Kirby\\Cms\\User, Kirby\\Cms\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: classes/helpers/KirbyFieldReader.php
+
+		-
+			message: '#^Parameter \#1 \$user of method BSBI\\WebBase\\helpers\\KirbyFieldReader\:\:getUserFieldAsSlug\(\) expects Kirby\\Cms\\User, Kirby\\Cms\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: classes/helpers/KirbyFieldReader.php
+
+		-
+			message: '#^Parameter \#1 \$user of method BSBI\\WebBase\\helpers\\KirbyFieldReader\:\:getUserFieldAsString\(\) expects Kirby\\Cms\\User, Kirby\\Cms\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: classes/helpers/KirbyFieldReader.php
+
+		-
+			message: '#^The overwriting return is on this line\.$#'
+			identifier: finally.exitPoint
+			count: 1
+			path: classes/helpers/KirbyFieldReader.php
+
+		-
+			message: '#^This return is overwritten by a different one in the finally block below\.$#'
+			identifier: finally.exitPoint
+			count: 1
+			path: classes/helpers/KirbyFieldReader.php
+
+		-
+			message: '#^Cannot call method first\(\) on Kirby\\Cms\\Pages\|null\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: classes/helpers/NavigationService.php
+
+		-
+			message: '#^If condition is always true\.$#'
+			identifier: if.alwaysTrue
+			count: 1
+			path: classes/helpers/NavigationService.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\NavigationService\:\:getWebPageLinks\(\) has parameter \$collection with generic class Kirby\\Toolkit\\Collection but does not specify its types\: TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/helpers/NavigationService.php
+
+		-
+			message: '#^Parameter \#1 \$file of method BSBI\\WebBase\\helpers\\ImageService\:\:getFileURL\(\) expects Kirby\\Cms\\File, Kirby\\Cms\\File\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: classes/helpers/NavigationService.php
+
+		-
+			message: '#^Argument of an invalid type Kirby\\Toolkit\\Collection\|null supplied for foreach, only iterables are supported\.$#'
+			identifier: foreach.nonIterable
+			count: 1
+			path: classes/helpers/SearchIndexHelper.php
+
+		-
+			message: '#^Binary operation "\." between string\|null and mixed results in an error\.$#'
+			identifier: binaryOp.invalid
+			count: 2
+			path: classes/helpers/SearchIndexHelper.php
+
+		-
+			message: '#^Call to an undefined method Kirby\\Content\\Content\:\:ddbId\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: classes/helpers/SearchIndexHelper.php
+
+		-
+			message: '#^Call to an undefined method Kirby\\Content\\Content\:\:description\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: classes/helpers/SearchIndexHelper.php
+
+		-
+			message: '#^Call to an undefined method Kirby\\Content\\Content\:\:keywords\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: classes/helpers/SearchIndexHelper.php
+
+		-
+			message: '#^Call to an undefined method Kirby\\Content\\Content\:\:mainContent\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: classes/helpers/SearchIndexHelper.php
+
+		-
+			message: '#^Call to an undefined method Kirby\\Content\\Content\:\:title\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: classes/helpers/SearchIndexHelper.php
+
+		-
+			message: '#^Call to an undefined method Kirby\\Content\\Content\:\:vernacularName\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: classes/helpers/SearchIndexHelper.php
+
+		-
+			message: '#^Cannot access offset ''page_id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 3
+			path: classes/helpers/SearchIndexHelper.php
+
+		-
+			message: '#^Cannot access offset ''total'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 3
+			path: classes/helpers/SearchIndexHelper.php
+
+		-
+			message: '#^Cannot access offset ''value'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: classes/helpers/SearchIndexHelper.php
+
+		-
+			message: '#^Cannot access offset string on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: classes/helpers/SearchIndexHelper.php
+
+		-
+			message: '#^Cannot call method content\(\) on mixed\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: classes/helpers/SearchIndexHelper.php
+
+		-
+			message: '#^Cannot call method fetch\(\) on PDOStatement\|false\.$#'
+			identifier: method.nonObject
+			count: 3
+			path: classes/helpers/SearchIndexHelper.php
+
+		-
+			message: '#^Cannot call method fetchAll\(\) on PDOStatement\|false\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: classes/helpers/SearchIndexHelper.php
+
+		-
+			message: '#^Cannot call method fetchColumn\(\) on PDOStatement\|false\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: classes/helpers/SearchIndexHelper.php
+
+		-
+			message: '#^Cannot call method id\(\) on mixed\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: classes/helpers/SearchIndexHelper.php
+
+		-
+			message: '#^Cannot call method value\(\) on array\|Kirby\\Content\\Field\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: classes/helpers/SearchIndexHelper.php
+
+		-
+			message: '#^Cannot cast mixed to int\.$#'
+			identifier: cast.int
+			count: 4
+			path: classes/helpers/SearchIndexHelper.php
+
+		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 2
+			path: classes/helpers/SearchIndexHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\SearchIndexHelper\:\:findPageIdByDdbId\(\) should return string\|null but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: classes/helpers/SearchIndexHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\SearchIndexHelper\:\:findPageIdByTitle\(\) should return string\|null but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: classes/helpers/SearchIndexHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\SearchIndexHelper\:\:getDatabasePath\(\) should return string but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: classes/helpers/SearchIndexHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\SearchIndexHelper\:\:getExactMatchBoost\(\) should return int but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: classes/helpers/SearchIndexHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\SearchIndexHelper\:\:getExactMatchFields\(\) should return array\<string\> but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: classes/helpers/SearchIndexHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\SearchIndexHelper\:\:getExcludedPaths\(\) should return array\<string\> but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: classes/helpers/SearchIndexHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\SearchIndexHelper\:\:getExcludedTemplates\(\) should return array\<string\> but returns array\<mixed\>\.$#'
+			identifier: return.type
+			count: 1
+			path: classes/helpers/SearchIndexHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\SearchIndexHelper\:\:getFieldWeights\(\) should return array\<string, float\> but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: classes/helpers/SearchIndexHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\SearchIndexHelper\:\:getKeyPhraseBoost\(\) should return int but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: classes/helpers/SearchIndexHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\SearchIndexHelper\:\:getMembersPathPrefix\(\) should return string but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: classes/helpers/SearchIndexHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\SearchIndexHelper\:\:getStats\(\) should return array\{total_pages\: int, last_rebuild\: string\|null\} but returns array\{total_pages\: int, last_rebuild\: mixed\}\.$#'
+			identifier: return.type
+			count: 1
+			path: classes/helpers/SearchIndexHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\SearchIndexHelper\:\:getStopWords\(\) should return array\<string\> but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: classes/helpers/SearchIndexHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\SearchIndexHelper\:\:lookupPageIdByDdbId\(\) should return string\|null but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: classes/helpers/SearchIndexHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\SearchIndexHelper\:\:search\(\) has parameter \$templates with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: classes/helpers/SearchIndexHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\SearchIndexHelper\:\:search\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: classes/helpers/SearchIndexHelper.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\SearchIndexHelper\:\:searchAllIds\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: classes/helpers/SearchIndexHelper.php
+
+		-
+			message: '#^Offset 0 on array\{list\<string\>, list\<non\-empty\-string\>\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: classes/helpers/SearchIndexHelper.php
+
+		-
+			message: '#^Parameter \#1 \$page of method BSBI\\WebBase\\helpers\\SearchIndexHelper\:\:getPageIndexData\(\) expects Kirby\\Cms\\Page, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: classes/helpers/SearchIndexHelper.php
+
+		-
+			message: '#^Parameter \#1 \$page of method BSBI\\WebBase\\helpers\\SearchIndexHelper\:\:shouldIndex\(\) expects Kirby\\Cms\\Page, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: classes/helpers/SearchIndexHelper.php
+
+		-
+			message: '#^Parameter \#2 \.\.\.\$arrays of function array_merge expects array, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: classes/helpers/SearchIndexHelper.php
+
+		-
+			message: '#^Argument of an invalid type mixed supplied for foreach, only iterables are supported\.$#'
+			identifier: foreach.nonIterable
+			count: 1
+			path: classes/helpers/SearchService.php
+
+		-
+			message: '#^Cannot call method paginate\(\) on Kirby\\Cms\\Pages\|null\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: classes/helpers/SearchService.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\SearchService\:\:getSearchCollection\(\) has parameter \$collection with generic class Kirby\\Toolkit\\Collection but does not specify its types\: TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/helpers/SearchService.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\SearchService\:\:getSearchCollection\(\) return type with generic class Kirby\\Toolkit\\Collection does not specify its types\: TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/helpers/SearchService.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\SearchService\:\:getSearchCollectionSqlite\(\) return type with generic class Kirby\\Toolkit\\Collection does not specify its types\: TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: classes/helpers/SearchService.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\SearchService\:\:getSearchContentTypeOptions\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: classes/helpers/SearchService.php
+
+		-
+			message: '#^Negated boolean expression is always false\.$#'
+			identifier: booleanNot.alwaysFalse
+			count: 3
+			path: classes/helpers/SearchService.php
+
+		-
+			message: '#^Parameter \#1 \$fields of static method BSBI\\WebBase\\helpers\\SearchTextHelper\:\:scoreFields\(\) expects array\<string, string\>, array\<int\|string, string\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: classes/helpers/SearchService.php
+
+		-
+			message: '#^Parameter \#1 \$query of method BSBI\\WebBase\\helpers\\SearchIndexHelper\:\:searchAllIds\(\) expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: classes/helpers/SearchService.php
+
+		-
+			message: '#^Parameter \#2 \$query of static method BSBI\\WebBase\\helpers\\SearchTextHelper\:\:scoreFields\(\) expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: classes/helpers/SearchService.php
+
+		-
+			message: '#^Argument of an invalid type list\<string\>\|false supplied for foreach, only iterables are supported\.$#'
+			identifier: foreach.nonIterable
+			count: 1
+			path: classes/helpers/SearchTextHelper.php
+
+		-
+			message: '#^Offset 1 on array\{list\<string\>, list\<non\-empty\-string\>\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: classes/helpers/SearchTextHelper.php
+
+		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 6
+			path: classes/helpers/StyleGuideService.php
+
+		-
+			message: '#^Cannot call method value\(\) on array\|Kirby\\Content\\Field\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: classes/helpers/UserService.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\UserService\:\:changeUserEmail\(\) should return Kirby\\Cms\\User but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: classes/helpers/UserService.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\UserService\:\:changeUserName\(\) should return Kirby\\Cms\\User but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: classes/helpers/UserService.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\UserService\:\:changeUserRole\(\) should return Kirby\\Cms\\User but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: classes/helpers/UserService.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\UserService\:\:createUser\(\) has parameter \$userData with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: classes/helpers/UserService.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\UserService\:\:createUser\(\) should return Kirby\\Cms\\User but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: classes/helpers/UserService.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\UserService\:\:getCurrentKirbyUser\(\) should return Kirby\\Cms\\User but returns Kirby\\Cms\\User\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: classes/helpers/UserService.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\UserService\:\:getCurrentUserName\(\) should return string but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: classes/helpers/UserService.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\UserService\:\:getUserName\(\) should return string but returns string\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: classes/helpers/UserService.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\UserService\:\:isCurrentUserAdminOrEditorOrHasRoles\(\) has parameter \$roles with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: classes/helpers/UserService.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\UserService\:\:updateUser\(\) has parameter \$updateData with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: classes/helpers/UserService.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\helpers\\UserService\:\:updateUser\(\) should return Kirby\\Cms\\User but returns mixed\.$#'
+			identifier: return.type
+			count: 1
+			path: classes/helpers/UserService.php
+
+		-
+			message: '#^Parameter \#1 \$email of method BSBI\\WebBase\\models\\User\:\:setEmail\(\) expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: classes/helpers/UserService.php
+
+		-
+			message: '#^Parameter \#1 \$jobTitle of method BSBI\\WebBase\\models\\User\:\:setJobTitle\(\) expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: classes/helpers/UserService.php
+
+		-
+			message: '#^Parameter \#1 \$userName of method BSBI\\WebBase\\models\\User\:\:setUserName\(\) expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 2
+			path: classes/helpers/UserService.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\models\\ActionStatus\:\:addErrorMessage\(\) has invalid return type BSBI\\WebBase\\traits\\ErrorHandling\.$#'
+			identifier: return.trait
+			count: 1
+			path: classes/models/ActionStatus.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\models\\ActionStatus\:\:getException\(\) should return BSBI\\WebBase\\helpers\\KirbyRetrievalException but returns BSBI\\WebBase\\helpers\\KirbyRetrievalException\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: classes/models/ActionStatus.php
+
+		-
+			message: '#^PHPDoc tag @return with type BSBI\\WebBase\\traits\\ErrorHandling is incompatible with native type static\(BSBI\\WebBase\\models\\ActionStatus\)\.$#'
+			identifier: return.phpDocType
+			count: 1
+			path: classes/models/ActionStatus.php
+
+		-
+			message: '#^Property BSBI\\WebBase\\models\\ActionStatus\:\:\$exception \(BSBI\\WebBase\\helpers\\KirbyRetrievalException\|null\) is never assigned null so it can be removed from the property type\.$#'
+			identifier: property.unusedType
+			count: 1
+			path: classes/models/ActionStatus.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\models\\BaseFilter\:\:addErrorMessage\(\) has invalid return type BSBI\\WebBase\\traits\\ErrorHandling\.$#'
+			identifier: return.trait
+			count: 1
+			path: classes/models/BaseFilter.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\models\\BaseFilter\:\:getSelectOptions\(\) has parameter \$options with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: classes/models/BaseFilter.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\models\\BaseFilter\:\:getSelectOptions\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: classes/models/BaseFilter.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\models\\BaseFilter\:\:getSimpleSelectOptions\(\) has parameter \$options with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: classes/models/BaseFilter.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\models\\BaseFilter\:\:getSimpleSelectOptions\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: classes/models/BaseFilter.php
+
+		-
+			message: '#^PHPDoc tag @return with type BSBI\\WebBase\\traits\\ErrorHandling is incompatible with native type static\(BSBI\\WebBase\\models\\BaseFilter\)\.$#'
+			identifier: return.phpDocType
+			count: 1
+			path: classes/models/BaseFilter.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\models\\BaseList\:\:addErrorMessage\(\) has invalid return type BSBI\\WebBase\\traits\\ErrorHandling\.$#'
+			identifier: return.trait
+			count: 1
+			path: classes/models/BaseList.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\models\\BaseList\:\:getFirstXItems\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: classes/models/BaseList.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\models\\BaseList\:\:getItemsFromIndex\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: classes/models/BaseList.php
+
+		-
+			message: '#^PHPDoc tag @return with type BSBI\\WebBase\\traits\\ErrorHandling is incompatible with native type static\(BSBI\\WebBase\\models\\BaseList\<T of BSBI\\WebBase\\models\\BaseModel, TFilter of BSBI\\WebBase\\models\\BaseFilter\>\)\.$#'
+			identifier: return.phpDocType
+			count: 1
+			path: classes/models/BaseList.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\models\\BaseModel\:\:addErrorMessage\(\) has invalid return type BSBI\\WebBase\\traits\\ErrorHandling\.$#'
+			identifier: return.trait
+			count: 1
+			path: classes/models/BaseModel.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\models\\BaseModel\:\:getSelectOptions\(\) has parameter \$options with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: classes/models/BaseModel.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\models\\BaseModel\:\:getSelectOptions\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: classes/models/BaseModel.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\models\\BaseModel\:\:getSimpleSelectOptions\(\) has parameter \$options with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: classes/models/BaseModel.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\models\\BaseModel\:\:getSimpleSelectOptions\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: classes/models/BaseModel.php
+
+		-
+			message: '#^PHPDoc tag @return with type BSBI\\WebBase\\traits\\ErrorHandling is incompatible with native type static\(BSBI\\WebBase\\models\\BaseModel\)\.$#'
+			identifier: return.phpDocType
+			count: 1
+			path: classes/models/BaseModel.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\models\\BaseWebPage\:\:addScript\(\) has parameter \$fileType with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: classes/models/BaseWebPage.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\models\\BaseWebPage\:\:hasRolesOrIsAdminEditor\(\) has parameter \$roles with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: classes/models/BaseWebPage.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\models\\BaseWebPage\:\:setDescription\(\) has invalid return type BSBI\\WebBase\\traits\\CoreWebPageProperties\.$#'
+			identifier: return.trait
+			count: 1
+			path: classes/models/BaseWebPage.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\models\\BaseWebPage\:\:setPageId\(\) has invalid return type BSBI\\WebBase\\traits\\CoreWebPageProperties\.$#'
+			identifier: return.trait
+			count: 1
+			path: classes/models/BaseWebPage.php
+
+		-
+			message: '#^PHPDoc tag @param references unknown parameter\: \$role$#'
+			identifier: parameter.notFound
+			count: 1
+			path: classes/models/BaseWebPage.php
+
+		-
+			message: '#^PHPDoc tag @return with type BSBI\\WebBase\\models\\BaseWebPage\|BSBI\\WebBase\\models\\WebPageLink\|BSBI\\WebBase\\traits\\CoreWebPageProperties is not subtype of native type BSBI\\WebBase\\models\\BaseWebPage\.$#'
+			identifier: return.phpDocType
+			count: 2
+			path: classes/models/BaseWebPage.php
+
+		-
+			message: '#^Property BSBI\\WebBase\\models\\BaseWebPage\:\:\$breadcrumb in isset\(\) is not nullable nor uninitialized\.$#'
+			identifier: isset.initializedProperty
+			count: 1
+			path: classes/models/BaseWebPage.php
+
+		-
+			message: '#^Property BSBI\\WebBase\\models\\BaseWebPage\:\:\$mainContentBlocks in isset\(\) is not nullable nor uninitialized\.$#'
+			identifier: isset.initializedProperty
+			count: 1
+			path: classes/models/BaseWebPage.php
+
+		-
+			message: '#^Property BSBI\\WebBase\\models\\BaseWebPage\:\:\$menuPages on left side of \?\? is not nullable nor uninitialized\.$#'
+			identifier: nullCoalesce.initializedProperty
+			count: 1
+			path: classes/models/BaseWebPage.php
+
+		-
+			message: '#^Instanceof between BSBI\\WebBase\\models\\CoreLink and BSBI\\WebBase\\models\\CoreLink will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 1
+			path: classes/models/CoreLinks.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 1
+			path: classes/models/CoreLinks.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\models\\FeedbackForm\:\:addErrorMessage\(\) has invalid return type BSBI\\WebBase\\traits\\ErrorHandling\.$#'
+			identifier: return.trait
+			count: 1
+			path: classes/models/FeedbackForm.php
+
+		-
+			message: '#^PHPDoc tag @return with type BSBI\\WebBase\\traits\\ErrorHandling is incompatible with native type static\(BSBI\\WebBase\\models\\FeedbackForm\)\.$#'
+			identifier: return.phpDocType
+			count: 1
+			path: classes/models/FeedbackForm.php
+
+		-
+			message: '#^Parameter \#1 \$item of method BSBI\\WebBase\\models\\BaseList\<BSBI\\WebBase\\models\\WebPageLink,BSBI\\WebBase\\models\\BaseFilter\>\:\:add\(\) expects BSBI\\WebBase\\models\\WebPageLink, BSBI\\WebBase\\models\\OnThisPageLink given\.$#'
+			identifier: argument.type
+			count: 1
+			path: classes/models/OnThisPageLinks.php
+
+		-
+			message: '#^Property BSBI\\WebBase\\models\\BaseList\<BSBI\\WebBase\\models\\WebPageLink,BSBI\\WebBase\\models\\BaseFilter\>\:\:\$list \(array\<BSBI\\WebBase\\models\\WebPageLink\>\) does not accept array\<BSBI\\WebBase\\models\\OnThisPageLink\|BSBI\\WebBase\\models\\WebPageLink\>\.$#'
+			identifier: assign.propertyType
+			count: 2
+			path: classes/models/OnThisPageLinks.php
+
+		-
+			message: '#^Property BSBI\\WebBase\\models\\Pagination\:\:\$pageUrls type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: classes/models/Pagination.php
+
+		-
+			message: '#^Instanceof between BSBI\\WebBase\\models\\WebPageBlock and BSBI\\WebBase\\models\\WebPageBlock will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 2
+			path: classes/models/WebPageBlocks.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 2
+			path: classes/models/WebPageBlocks.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\models\\WebPageLink\:\:setDescription\(\) has invalid return type BSBI\\WebBase\\traits\\CoreWebPageProperties\.$#'
+			identifier: return.trait
+			count: 1
+			path: classes/models/WebPageLink.php
+
+		-
+			message: '#^Method BSBI\\WebBase\\models\\WebPageLink\:\:setPageId\(\) has invalid return type BSBI\\WebBase\\traits\\CoreWebPageProperties\.$#'
+			identifier: return.trait
+			count: 1
+			path: classes/models/WebPageLink.php
+
+		-
+			message: '#^PHPDoc tag @return with type BSBI\\WebBase\\models\\BaseWebPage\|BSBI\\WebBase\\models\\WebPageLink\|BSBI\\WebBase\\traits\\CoreWebPageProperties is not subtype of native type BSBI\\WebBase\\models\\WebPageLink\.$#'
+			identifier: return.phpDocType
+			count: 2
+			path: classes/models/WebPageLink.php
+
+		-
+			message: '#^Instanceof between BSBI\\WebBase\\models\\WebPageLink and BSBI\\WebBase\\models\\WebPageLink will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 2
+			path: classes/models/WebPageLinks.php
+
+		-
+			message: '#^Unreachable statement \- code above always terminates\.$#'
+			identifier: deadCode.unreachable
+			count: 2
+			path: classes/models/WebPageLinks.php
+
+		-
+			message: '#^Trait BSBI\\WebBase\\traits\\ImageHandling is used zero times and is not analysed\.$#'
+			identifier: trait.unused
+			count: 1
+			path: classes/traits/ImageHandling.php
+
+		-
+			message: '#^Trait BSBI\\WebBase\\traits\\KeywordsProperties is used zero times and is not analysed\.$#'
+			identifier: trait.unused
+			count: 1
+			path: classes/traits/KeywordsProperties.php
+
+		-
+			message: '#^Trait BSBI\\WebBase\\traits\\LimitProperties is used zero times and is not analysed\.$#'
+			identifier: trait.unused
+			count: 1
+			path: classes/traits/LimitProperties.php
+
+		-
+			message: '#^Trait BSBI\\WebBase\\traits\\LoginProperties is used zero times and is not analysed\.$#'
+			identifier: trait.unused
+			count: 1
+			path: classes/traits/LoginProperties.php
+
+		-
+			message: '#^Trait BSBI\\WebBase\\traits\\PostProperties is used zero times and is not analysed\.$#'
+			identifier: trait.unused
+			count: 1
+			path: classes/traits/PostProperties.php
+
+		-
+			message: '#^Trait BSBI\\WebBase\\traits\\PrevNextPageProperties is used zero times and is not analysed\.$#'
+			identifier: trait.unused
+			count: 1
+			path: classes/traits/PrevNextPageProperties.php
+
+		-
+			message: '#^Trait BSBI\\WebBase\\traits\\SearchPageProperties is used zero times and is not analysed\.$#'
+			identifier: trait.unused
+			count: 1
+			path: classes/traits/SearchPageProperties.php
+
+		-
+			message: '#^Function handlePageChange\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: hooks.php
+
+		-
+			message: '#^Function handlePageChange\(\) has parameter \$newPage with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: hooks.php
+
+		-
+			message: '#^Function handlePageChange\(\) has parameter \$oldPage with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: hooks.php
+
+		-
+			message: '#^Parameter \#1 \$sourcePath of static method BSBI\\WebBase\\helpers\\ImageConversionHelper\:\:convertBmpToPng\(\) expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: hooks.php
+
+		-
+			message: '#^Parameter \#2 \$target of static method Kirby\\Filesystem\\F\:\:copy\(\) expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: hooks.php
+
+		-
+			message: '#^Argument of an invalid type mixed supplied for foreach, only iterables are supported\.$#'
+			identifier: foreach.nonIterable
+			count: 1
+			path: index.php
+
+		-
+			message: '#^Binary operation "\." between non\-falsy\-string and mixed results in an error\.$#'
+			identifier: binaryOp.invalid
+			count: 2
+			path: index.php
+
+		-
+			message: '#^Cannot call method filter\(\) on Kirby\\Cms\\Pages\|null\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: index.php
+
+		-
+			message: '#^Cannot cast mixed to int\.$#'
+			identifier: cast.int
+			count: 2
+			path: index.php
+
+		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 8
+			path: index.php
+
+		-
+			message: '#^Offset 0 on non\-empty\-list\<string\> on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: index.php
+
+		-
+			message: '#^Parameter \#1 \$filterDefs of static method BSBI\\WebBase\\helpers\\FilteredPagesHelper\:\:getOptions\(\) expects array\<string, array\<string, mixed\>\>, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: index.php
+
+		-
+			message: '#^Parameter \#1 \$json of function json_decode expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 4
+			path: index.php
+
+		-
+			message: '#^Parameter \#3 \$filterDefs of static method BSBI\\WebBase\\helpers\\FilteredPagesHelper\:\:getResults\(\) expects array\<string, array\<string, mixed\>\>, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: index.php
+
+		-
+			message: '#^Parameter \#4 \$columnDefs of static method BSBI\\WebBase\\helpers\\FilteredPagesHelper\:\:getResults\(\) expects array\<int, array\<string, mixed\>\>, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: index.php
+
+		-
+			message: '#^Parameter \#5 \$active of static method BSBI\\WebBase\\helpers\\FilteredPagesHelper\:\:getResults\(\) expects array\<string, string\>, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: index.php
+
+		-
+			message: '#^Undefined variable\: \$this$#'
+			identifier: variable.undefined
+			count: 1
+			path: index.php
+
+		-
+			message: '#^Call to an undefined method Kirby\\Session\\Session\:\:pull\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: routes.php
+
+		-
+			message: '#^Comparison operation "\>" between 20 and 0 is always true\.$#'
+			identifier: greater.alwaysTrue
+			count: 1
+			path: routes.php
+
+		-
+			message: '#^Parameter \#1 \$body of class Kirby\\Cms\\Response constructor expects array\|string, Kirby\\Template\\Snippet\|string\|null given\.$#'
+			identifier: argument.type
+			count: 2
+			path: routes.php
+
+		-
+			message: '#^Parameter \#1 \$body of class Kirby\\Http\\Response constructor expects array\|string, string\|false given\.$#'
+			identifier: argument.type
+			count: 20
+			path: routes.php
+
+		-
+			message: '#^Parameter \#1 \$stream of function fclose expects resource, resource\|false given\.$#'
+			identifier: argument.type
+			count: 2
+			path: routes.php
+
+		-
+			message: '#^Parameter \#1 \$stream of function fputcsv expects resource, resource\|false given\.$#'
+			identifier: argument.type
+			count: 5
+			path: routes.php
+
+		-
+			message: '#^Parameter \#2 \$fields of function fputcsv expects array\<int\|string, bool\|float\|int\|string\|null\>, array\<int, mixed\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: routes.php
+
+		-
+			message: '#^Undefined variable\: \$this$#'
+			identifier: variable.undefined
+			count: 1
+			path: sections/filearchivelinks.php
+
+		-
+			message: '#^Undefined variable\: \$this$#'
+			identifier: variable.undefined
+			count: 2
+			path: sections/filteredfiles.php
+
+		-
+			message: '#^Undefined variable\: \$this$#'
+			identifier: variable.undefined
+			count: 1
+			path: sections/filteredpages.php
+
+		-
+			message: '#^Undefined variable\: \$this$#'
+			identifier: variable.undefined
+			count: 2
+			path: sections/formsubmissionexport.php
+
+		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 1
+			path: sections/formsubmissionsindex.php
+
+		-
+			message: '#^Undefined variable\: \$this$#'
+			identifier: variable.undefined
+			count: 1
+			path: sections/quicklinks.php
+
+		-
+			message: '#^Argument of an invalid type list\<string\>\|false supplied for foreach, only iterables are supported\.$#'
+			identifier: foreach.nonIterable
+			count: 1
+			path: sections/searchanalytics.php
+
+		-
+			message: '#^Undefined variable\: \$this$#'
+			identifier: variable.undefined
+			count: 5
+			path: sections/searchanalytics.php
+
+		-
+			message: '#^Undefined variable\: \$this$#'
+			identifier: variable.undefined
+			count: 1
+			path: sections/styleguidecheck.php
+
+		-
+			message: '#^Undefined variable\: \$this$#'
+			identifier: variable.undefined
+			count: 2
+			path: sections/translatedpages.php
+
+		-
+			message: '#^Call to an undefined method Kirby\\Cms\\StructureObject\:\:image\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: snippets/blocks/cards.php
+
+		-
+			message: '#^Call to an undefined method Kirby\\Cms\\StructureObject\:\:text\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: snippets/blocks/cards.php
+
+		-
+			message: '#^Call to an undefined method Kirby\\Cms\\StructureObject\:\:title\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: snippets/blocks/cards.php
+
+		-
+			message: '#^Call to an undefined method Kirby\\Cms\\StructureObject\:\:url\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: snippets/blocks/cards.php
+
+		-
+			message: '#^Variable \$figureClass in empty\(\) always exists and is not falsy\.$#'
+			identifier: empty.variable
+			count: 1
+			path: snippets/blocks/quote.php
+
+		-
+			message: '#^Parameter \#1 \(array\|Closure\|string\|null\) of echo cannot be converted to string\.$#'
+			identifier: echo.nonString
+			count: 3
+			path: snippets/colour-mode/selector.php
+
+		-
+			message: '#^Cannot call method getFeedbackForm\(\) on class\-string\|object\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: snippets/feedback/form.php
+
+		-
+			message: '#^Parameter \#1 \(mixed\) of echo cannot be converted to string\.$#'
+			identifier: echo.nonString
+			count: 1
+			path: snippets/feedback/form.php
+
+		-
+			message: '#^Instanceof between BSBI\\WebBase\\models\\BaseFilter and BSBI\\WebBase\\models\\BaseFilter will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 1
+			path: snippets/filter-warning.php
+
+		-
+			message: '#^Result of \|\| is always false\.$#'
+			identifier: booleanOr.alwaysFalse
+			count: 1
+			path: snippets/filter-warning.php
+
+		-
+			message: '#^Variable \$filters in isset\(\) always exists and is not nullable\.$#'
+			identifier: isset.variable
+			count: 1
+			path: snippets/filter-warning.php
+
+		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 4
+			path: snippets/form/checkbox-multiselect.php
+
+		-
+			message: '#^Cannot call method getCSRFToken\(\) on class\-string\|object\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: snippets/form/csrf.php
+
+		-
+			message: '#^Argument of an invalid type mixed supplied for foreach, only iterables are supported\.$#'
+			identifier: foreach.nonIterable
+			count: 1
+			path: snippets/form/grouped-multiselect.php
+
+		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 3
+			path: snippets/form/grouped-multiselect.php
+
+		-
+			message: '#^Parameter \#1 \$array of function array_intersect expects array, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: snippets/form/grouped-multiselect.php
+
+		-
+			message: '#^Parameter \#1 \$value of function count expects array\|Countable, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: snippets/form/grouped-multiselect.php
+
+		-
+			message: '#^Variable \$label in isset\(\) always exists and is not nullable\.$#'
+			identifier: isset.variable
+			count: 1
+			path: snippets/form/likert.php
+
+		-
+			message: '#^Instanceof between BSBI\\WebBase\\forms\\ResolvedFormField and BSBI\\WebBase\\forms\\ResolvedFormField will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 1
+			path: snippets/form/section.php
+
+		-
+			message: '#^File ends with a trailing whitespace\. This may cause problems when running the code in the web browser\. Remove the closing \?\> mark or remove the whitespace\.$#'
+			identifier: whitespace.fileEnd
+			count: 1
+			path: snippets/header.php
+
+		-
+			message: '#^Instanceof between BSBI\\WebBase\\models\\Image and BSBI\\WebBase\\models\\Image will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 1
+			path: snippets/image.php
+
+		-
+			message: '#^Variable \$image in isset\(\) always exists and is not nullable\.$#'
+			identifier: isset.variable
+			count: 1
+			path: snippets/image.php
+
+		-
+			message: '#^Variable \$showDimensions in isset\(\) always exists and is not nullable\.$#'
+			identifier: isset.variable
+			count: 1
+			path: snippets/image.php
+
+		-
+			message: '#^Cannot call method getLoginDetails\(\) on class\-string\|object\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: snippets/login.php
+
+		-
+			message: '#^Parameter \#1 \(array\|Closure\|string\|null\) of echo cannot be converted to string\.$#'
+			identifier: echo.nonString
+			count: 3
+			path: snippets/login.php
+
+		-
+			message: '#^Call to an undefined method BSBI\\WebBase\\models\\WebPageLink\:\:openInNewTab\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: snippets/related-content.php
+
+		-
+			message: '#^Parameter \#1 \(array\|Closure\|string\|null\) of echo cannot be converted to string\.$#'
+			identifier: echo.nonString
+			count: 1
+			path: snippets/search/bar.php
+
+		-
+			message: '#^Call to an undefined method BSBI\\WebBase\\models\\BaseWebPage\:\:getSpecialSearchType\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: snippets/search/results.php
+
+		-
+			message: '#^Call to an undefined method BSBI\\WebBase\\models\\BaseWebPage\:\:hasSearchCompleted\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: snippets/search/results.php
+
+		-
+			message: '#^Call to an undefined method BSBI\\WebBase\\models\\BaseWebPage\:\:hasSpecialSearchType\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: snippets/search/results.php
+
+		-
+			message: '#^Parameter \#1 \(array\|Closure\|string\|null\) of echo cannot be converted to string\.$#'
+			identifier: echo.nonString
+			count: 1
+			path: snippets/show-user.php
+
+		-
+			message: '#^Variable \$currentPage in isset\(\) always exists and is not nullable\.$#'
+			identifier: isset.variable
+			count: 1
+			path: snippets/show-user.php
+
+		-
+			message: '#^Cannot call method getLoginDetails\(\) on class\-string\|object\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: snippets/simple-login.php
+
+		-
+			message: '#^Cannot call method getLoginMessage\(\) on class\-string\|object\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: snippets/simple-login.php
+
+		-
+			message: '#^File ends with a trailing whitespace\. This may cause problems when running the code in the web browser\. Remove the closing \?\> mark or remove the whitespace\.$#'
+			identifier: whitespace.fileEnd
+			count: 1
+			path: snippets/status.php
+
+		-
+			message: '#^Variable \$currentPage in isset\(\) always exists and is not nullable\.$#'
+			identifier: isset.variable
+			count: 1
+			path: snippets/styles.php

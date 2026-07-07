@@ -3,7 +3,7 @@
   "description": "A set of base classes and blueprint for web development in a plugin format using Kirby CMS",
   "type": "kirby-plugin",
   "license": "MIT",
-  "version": "3.6.0",
+  "version": "3.6.1",
   "autoload": {
     "psr-4": {
       "BSBI\\WebBase\\": "classes/"

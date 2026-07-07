@@ -1,0 +1,37 @@
+includes:
+    - phpstan-baseline.neon
+
+parameters:
+    level: 9
+    paths:
+        - classes
+        - controllers
+        - collections
+        - sections
+        - snippets
+        - templates
+        - blueprints.php
+        - hooks.php
+        - index.php
+        - routes.php
+        - snippets.php
+    # The bundled Kirby CMS copy and Composer dependencies are autoloaded but not analysed.
+    excludePaths:
+        - kirby/*
+        - vendor/*
+    universalObjectCratesClasses:
+        - Kirby\Cms\Block
+        - Kirby\Cms\Page
+        - Kirby\Http\Cookie
+    ignoreErrors:
+        - '#Call to an undefined method Kirby\\Cms\\Block::[a-zA-Z0-9_]+\(\)#'
+        - '#Call to an undefined method Kirby\\Cms\\Page::[a-zA-Z0-9_]+\(\)#'
+        - '#Call to an undefined method Kirby\\Content\\Field::[a-zA-Z0-9_]+\(\)#'
+        - '#Call to an undefined method Kirby\\Cms\\User::[a-zA-Z0-9_]+\(\)#'
+        - '#Call to an undefined method Kirby\\Cms\\Site::[a-zA-Z0-9_]+\(\)#'
+        - '#Call to an undefined method Kirby\\Cms\\Structure::[a-zA-Z0-9_]+\(\)#'
+        - '#Call to an undefined method Kirby\\Template\\Template::[a-zA-Z0-9_]+\(\)#'
+        - '#Call to an undefined method Kirby\\Template\\Slots::[a-zA-Z0-9_]+\(\)#'
+        - '#Call to an undefined method Kirby\\Cms\\File|Kirby\\Cms\\FileVersion|Kirby\\Filesystem\\Asset::[a-zA-Z0-9_]+\(\)#'
+        - '#Call to unknown method: Kirby\\Template\\Template::[a-zA-Z0-9_]+\(\)#'
+    reportUnmatchedIgnoredErrors: false
