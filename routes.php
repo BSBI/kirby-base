@@ -311,39 +311,59 @@ return [
         'method' => 'GET',
         'action' => function () {
             $helper = new KirbyInternalHelper();
-            if ($helper->isCurrentUserAdminOrEditor()) {
-                try {
-                    $name = kirby()->request()->get('name', '');
-                    $results = [];
+            if (!$helper->isCurrentUserAdminOrEditor()) {
+                return new Response('You must be an administrator to access this page.', 'text/plain', 403);
+            }
 
-                    if (!empty($name)) {
-                        $manager = ContentIndexRegistry::get($name);
-                        if ($manager === null) {
-                            return new Response("Content index '$name' not found.", 'text/plain', 404);
-                        }
-                        $count = $manager->rebuildIndex($helper);
-                        $results[$name] = $count;
-                    } else {
-                        foreach (ContentIndexRegistry::all() as $indexName => $manager) {
-                            $count = $manager->rebuildIndex($helper);
-                            $results[$indexName] = $count;
-                        }
-                    }
+            $name = kirby()->request()->get('name', '');
 
-                    $output = "Content index rebuild complete:\n";
-                    foreach ($results as $indexName => $count) {
-                        $output .= "  $indexName: $count pages indexed\n";
-                    }
-                    return new Response($output, 'text/plain', 200);
-                } catch (Exception $e) {
+            // Resolve the target managers up front so a bad ?name= returns a clean 404.
+            if (!empty($name)) {
+                $manager = ContentIndexRegistry::get($name);
+                if ($manager === null) {
+                    return new Response("Content index '$name' not found.", 'text/plain', 404);
+                }
+                $managers = [$name => $manager];
+            } else {
+                $managers = ContentIndexRegistry::all();
+            }
+
+            // A rebuild deletes-and-refills the whole index in one transaction, so for
+            // a large index (thousands of pages, first-time thumbnail generation) the
+            // web request can run well past PHP's default 30s max_execution_time and
+            // 256M memory_limit. Without lifting these the request is killed
+            // mid-transaction and SQLite rolls the rebuild back, silently leaving the
+            // index unchanged. This stays a normal blocking request (no streaming) so
+            // the panel's fetch resolves only once the rebuild has committed and the
+            // reloaded stats show the new "last rebuilt" time.
+            @set_time_limit(0);
+            @ini_set('memory_limit', '512M');
+
+            try {
+                $output = "Content index rebuild complete:\n";
+                foreach ($managers as $indexName => $manager) {
+                    $count = $manager->rebuildIndex($helper);
+                    $output .= "  $indexName: $count pages indexed\n";
+                }
+                return new Response($output, 'text/plain', 200);
+            } catch (Throwable $e) {
+                // A concurrent rebuild holds a write lock on the index; report it
+                // cleanly rather than surfacing a raw PDOException. The rebuild that
+                // holds the lock will still complete on its own request.
+                if (stripos($e->getMessage(), 'database is locked') !== false) {
                     return new Response(
-                        'Failed to rebuild content index: ' . $e->getMessage(),
+                        'A rebuild is already in progress for this index. '
+                        . 'Please wait for it to finish before starting another.',
                         'text/plain',
-                        500
+                        409
                     );
                 }
+                return new Response(
+                    'Failed to rebuild content index: ' . $e->getMessage(),
+                    'text/plain',
+                    500
+                );
             }
-            return new Response('You must be an administrator to access this page.', 'text/plain', 403);
         }
     ],
     [
