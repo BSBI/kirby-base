@@ -102,4 +102,34 @@ final class BaseListSortTest extends TestCase
 
         $this->assertSame($this->list, $result);
     }
+
+    public function testAriaSortIsEmptyForNonSortableColumn(): void
+    {
+        $this->list->setSortableColumns(['title']);
+        $this->assertSame('', $this->list->getAriaSortForColumn('author'));
+    }
+
+    public function testAriaSortIsNoneForSortableButInactiveColumn(): void
+    {
+        $this->list->setSortableColumns(['title', 'date'])
+            ->setSortBy('date')
+            ->setSortDirection('desc');
+        $this->assertSame('none', $this->list->getAriaSortForColumn('title'));
+    }
+
+    public function testAriaSortIsAscendingForActiveAscendingColumn(): void
+    {
+        $this->list->setSortableColumns(['title'])
+            ->setSortBy('title')
+            ->setSortDirection('asc');
+        $this->assertSame('ascending', $this->list->getAriaSortForColumn('title'));
+    }
+
+    public function testAriaSortIsDescendingForActiveDescendingColumn(): void
+    {
+        $this->list->setSortableColumns(['date'])
+            ->setSortBy('date')
+            ->setSortDirection('desc');
+        $this->assertSame('descending', $this->list->getAriaSortForColumn('date'));
+    }
 }

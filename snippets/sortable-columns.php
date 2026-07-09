@@ -23,8 +23,9 @@ if (!isset($label) || !isset($columnKey) || !isset($list)) {
 /** @var string $columnKey */
 
 $sortDirection = $list->getSortDirectionForColumn($columnKey);
+$ariaSort = $list->getAriaSortForColumn($columnKey);
 ?>
-<th>
+<th scope="col"<?= $ariaSort !== '' ? ' aria-sort="' . htmlspecialchars($ariaSort, ENT_QUOTES, 'UTF-8') . '"' : '' ?>>
     <?php if ($list->isSortableColumn($columnKey)) : ?>
         <a href="<?= htmlspecialchars($list->getSortUrl($columnKey), ENT_QUOTES, 'UTF-8') ?>" style="white-space: nowrap">
             <?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?>
