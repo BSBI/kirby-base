@@ -352,6 +352,29 @@ abstract class BaseList
     }
 
     /**
+     * Returns the ARIA `aria-sort` token for the given column, for use on its
+     * `<th>` element (WCAG 2.2 SC 4.1.3):
+     *   'ascending' / 'descending' if it is the active sort column,
+     *   'none' if it is sortable but not currently active,
+     *   '' if the column is not sortable (caller should omit the attribute).
+     *
+     * @param string $columnKey
+     * @return string
+     */
+    public function getAriaSortForColumn(string $columnKey): string
+    {
+        if (!$this->isSortableColumn($columnKey)) {
+            return '';
+        }
+
+        return match ($this->getSortDirectionForColumn($columnKey)) {
+            'asc' => 'ascending',
+            'desc' => 'descending',
+            default => 'none',
+        };
+    }
+
+    /**
      * Returns the URL to sort by the given column, toggling direction if already active.
      * Requires setSortBaseUrl() to have been called first.
      *
