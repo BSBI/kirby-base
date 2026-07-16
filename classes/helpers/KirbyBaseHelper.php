@@ -78,6 +78,7 @@ abstract class KirbyBaseHelper
     protected UserService $userService;
     protected FileDeliveryService $fileDeliveryService;
     private FilterResetService $filterResetService;
+    private FilterCookiePolicy $filterCookiePolicy;
 
     #region CONSTRUCTOR
     /**
@@ -3682,22 +3683,84 @@ abstract class KirbyBaseHelper
     }
 
     /**
+     * Persists a per-user filter selection.
+     *
+     * ALWAYS set filter cookies through this method (never the raw
+     * {@see self::setCookie()}). It namespaces the cookie with
+     * {@see FilterCookiePolicy::PREFIX} ('flt_') so the page cache can detect an
+     * actively-filtered request and skip caching it. A filter cookie set without
+     * the prefix is invisible to {@see self::isPageCacheable()} and would let a
+     * cached filtered listing leak between visitors / survive a reset (#603).
+     * See documentation/caching.md.
+     *
+     * @param string $key The filter key (unprefixed), e.g. 'newsExternalKeywords'
+     * @param string $value The value to persist
+     * @param int $days Number of days until expiry
+     * @return void
+     */
+    protected function setFilterCookie(string $key, string $value, int $days = 90): void
+    {
+        $this->setCookie($this->getFilterCookiePolicy()->prefixedName($key), $value, $days);
+    }
+
+    /**
+     * Deletes a per-user filter cookie (the prefixed one written by
+     * {@see self::setFilterCookie()}).
+     *
+     * @param string $key The filter key (unprefixed)
+     * @return void
+     */
+    protected function deleteFilterCookie(string $key): void
+    {
+        $this->deleteCookie($this->getFilterCookiePolicy()->prefixedName($key));
+    }
+
+    /**
      * Reads a persisted filter cookie, honouring a filter reset request:
      * when the current request carries the clearFilters parameter the cookie
      * is deleted and the fallback returned, so the filter reverts to the same
      * default a fresh visitor (with no cookies) sees.
      *
-     * @param string $key The cookie name
+     * Filter cookies are namespaced with {@see FilterCookiePolicy::PREFIX} so
+     * that {@see self::isPageCacheable()} can spot a filtered request. A legacy
+     * un-prefixed cookie (set before the prefix was introduced) is adopted once
+     * on read — re-persisted under the prefixed name and the orphan expired — so
+     * existing visitors keep their saved filters. That transition fallback can
+     * be removed once legacy cookies have aged out (~90 days). See
+     * documentation/caching.md.
+     *
+     * @param string $key The filter key (unprefixed)
      * @param string $fallback Default value the filter reverts to
      * @return string The persisted value, or the fallback on reset/missing cookie
      */
     protected function getFilterCookieAsString(string $key, string $fallback = ''): string
     {
+        $prefixedKey = $this->getFilterCookiePolicy()->prefixedName($key);
+
+        // Transition fallback: migrate a legacy un-prefixed filter cookie to the
+        // prefixed name once, then expire the orphan. setCookie()/deleteCookie()
+        // update $_COOKIE in place, so the migrated value is readable via the
+        // prefixed key immediately below within this same request.
+        if (!$this->hasCookie($prefixedKey) && $this->hasCookie($key)) {
+            $this->setFilterCookie($key, $this->getCookieAsString($key, $fallback));
+            $this->deleteCookie($key);
+        }
+
         return $this->getFilterResetService()->resolve(
-            $this->getCookieAsString($key, $fallback),
+            $this->getCookieAsString($prefixedKey, $fallback),
             $fallback,
-            fn () => $this->deleteCookie($key)
+            fn () => $this->deleteFilterCookie($key)
         );
+    }
+
+    /**
+     * Lazily builds the filter-cookie namespacing/cache policy.
+     *
+     * @return FilterCookiePolicy
+     */
+    private function getFilterCookiePolicy(): FilterCookiePolicy
+    {
+        return $this->filterCookiePolicy ??= new FilterCookiePolicy();
     }
 
     /**
@@ -4929,6 +4992,16 @@ abstract class KirbyBaseHelper
 
         // Don't cache login/auth related pages or config-excluded templates
         if (in_array($page->template()->name(), $allExcludedTemplates)) {
+            return false;
+        }
+
+        // Don't cache an actively-filtered listing. Filter selections are
+        // persisted in per-user 'flt_'-prefixed cookies (see setFilterCookie /
+        // getFilterCookieAsString), but the page cache is keyed on URL only.
+        // Caching a filtered render would serve it to other visitors and would
+        // survive the visitor clearing the filter (#603), so any request that
+        // carries an active filter cookie is rendered fresh and marked private.
+        if ($this->getFilterCookiePolicy()->requestCarriesActiveFilter($_COOKIE)) {
             return false;
         }
 
