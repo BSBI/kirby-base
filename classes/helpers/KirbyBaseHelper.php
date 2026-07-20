@@ -240,6 +240,14 @@ abstract class KirbyBaseHelper
 
             if (!$this->isCurrentUserAdminOrEditor()) {
                 $password = $this->getPageFieldAsString($page, 'password');
+                if ($password === '') {
+                    // Fall back to a template-wide password (e.g. to gate every
+                    // auto-generated order page behind one temporary password).
+                    $password = TemplatePasswordPolicy::passwordForTemplate(
+                        $page->template()->name(),
+                        $this->kirby->option('templatePasswords', [])
+                    );
+                }
                 if (!empty($password)) {
                     $passwordFromUser = $this->getRequestAsString('password');
                     if (!empty($passwordFromUser)) {
