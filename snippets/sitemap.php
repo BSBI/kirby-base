@@ -1,7 +1,7 @@
 <?php
 
 use BSBI\WebBase\helpers\KirbyRetrievalException;
-use Kirby\Toolkit\Str;
+use BSBI\WebBase\helpers\SeoPolicy;
 
 ?>
 <?= '<?xml version="1.0" encoding="utf-8"?>'; ?>
@@ -16,11 +16,16 @@ endif;
 
     foreach ($pages as $p): ?>
         <?php
-        // Skip pages explicitly ignored in config
-        if (in_array($p->uri(), $ignore)) continue;
-        if (Str::startsWith($p->uri(), 'members/')) continue;
-        // Skip pages with a custom field flagging them as 'noindex'
-        if ($p->meta_robots()->exists() && $p->meta_robots()->value() === 'noindex') continue;
+        // Skip pages excluded by uri or template, members-area pages, and pages
+        // explicitly flagged noindex. Matching on the intended template name (not
+        // just the uri) keeps nested pages such as order pages at checkout/<uuid>
+        // out of the sitemap even though their uri never equals 'order'.
+        if (SeoPolicy::isExcludedFromSitemap(
+            $p->uri(),
+            $p->intendedTemplate()->name(),
+            $p->meta_robots()->exists() ? $p->meta_robots()->value() : null,
+            $ignore
+        )) continue;
         ?>
         <url>
             <loc><?= html($p->url()) ?></loc>
