@@ -1712,6 +1712,158 @@ panel.plugin('open-foundations/kirby-base', {
   },
 
   components: {
+    'k-maintenance-view': {
+      props: ['authorized', 'retentionDays', 'disk', 'tasks'],
+      data: function () {
+        return {
+          currentTasks: this.tasks || [],
+          currentDisk: this.disk,
+          running: null,
+          refreshing: false,
+          lastResult: null
+        };
+      },
+      computed: {
+        diskReports: function () {
+          if (!this.currentDisk) return [];
+          return [
+            { label: 'Disk free', value: this.currentDisk.freeHuman, icon: 'server' },
+            { label: 'Disk total', value: this.currentDisk.totalHuman, icon: 'server' },
+            { label: 'Used', value: this.currentDisk.usedPercent + '%', icon: 'chart' }
+          ];
+        }
+      },
+      methods: {
+        // Re-fetch the preview counts + disk usage in place, so a run's effect shows
+        // immediately without a full view reload (which would also drop keyboard focus).
+        refresh: function () {
+          var self = this;
+          self.refreshing = true;
+          return self.$api.get('maintenance/dashboard')
+            .then(function (data) {
+              if (data && data.tasks) {
+                self.currentTasks = data.tasks;
+                self.currentDisk = data.disk;
+              }
+            })
+            .catch(function (error) {
+              console.error('Failed to refresh maintenance dashboard:', error);
+            })
+            .finally(function () {
+              self.refreshing = false;
+            });
+        },
+        runTask: function (task) {
+          var self = this;
+          if (task.items === 0) return;
+          var msg = 'Run the "' + task.label + '" cleanup?\n\n'
+            + 'This will free about ' + task.humanBytes + ' (' + task.items + ' item(s)).\n'
+            + 'This cannot be undone.';
+          if (!window.confirm(msg)) return;
+
+          self.running = task.key;
+          self.lastResult = null;
+          self.$api.post('maintenance/run', { key: task.key, retentionDays: self.retentionDays })
+            .then(function (res) {
+              self.lastResult = 'Freed ' + res.humanReclaimed + ' from "' + task.label + '".';
+              // Refresh the previews so the just-cleaned task now reads "Nothing to reclaim".
+              return self.refresh();
+            })
+            .catch(function (error) {
+              var detail = (error && error.message) ? error.message : 'The task could not be run.';
+              self.lastResult = 'Error running "' + task.label + '": ' + detail;
+            })
+            .finally(function () {
+              self.running = null;
+            });
+        }
+      },
+      template: `
+        <k-panel-inside class="k-maintenance-view">
+          <k-header>
+            Maintenance
+            <template #buttons>
+              <k-button
+                icon="refresh"
+                text="Refresh"
+                size="sm"
+                variant="filled"
+                :disabled="refreshing || running !== null"
+                @click="refresh"
+              />
+            </template>
+          </k-header>
+
+          <k-box
+            v-if="!authorized"
+            theme="negative"
+            text="You must be an administrator to use the maintenance tools."
+          />
+
+          <template v-else>
+            <k-text>
+              Reclaim disk space by removing provably-dead data. Each task shows a dry-run
+              preview first; nothing is deleted until you confirm. Retention window:
+              {{ retentionDays }} days.
+            </k-text>
+
+            <k-stats
+              v-if="currentDisk"
+              :reports="diskReports"
+              size="huge"
+            />
+
+            <div role="status" aria-live="polite" aria-atomic="true">
+              <k-box
+                v-if="lastResult"
+                theme="info"
+                :text="lastResult"
+              />
+            </div>
+
+            <div class="k-maintenance-tasks">
+              <div
+                v-for="task in currentTasks"
+                :key="task.key"
+                class="k-maintenance-task"
+              >
+                <div class="k-maintenance-task-info">
+                  <h2>{{ task.label }}</h2>
+                  <p class="k-maintenance-task-desc">{{ task.description }}</p>
+                  <p class="k-maintenance-task-preview">
+                    <strong v-if="task.error" style="color: var(--color-negative);">Preview failed</strong>
+                    <strong v-else-if="task.items === 0">Nothing to reclaim</strong>
+                    <strong v-else>Would free {{ task.humanBytes }} &middot; {{ task.items }} item(s)</strong>
+                  </p>
+                  <ul v-if="task.sample && task.sample.length" class="k-maintenance-sample">
+                    <li v-for="(line, i) in task.sample" :key="i">{{ line }}</li>
+                  </ul>
+                </div>
+                <div class="k-maintenance-task-action">
+                  <k-button
+                    :icon="running === task.key ? 'loader' : 'trash'"
+                    :text="running === task.key ? 'Running…' : 'Run'"
+                    size="sm"
+                    variant="filled"
+                    theme="negative"
+                    :disabled="task.items === 0 || task.error || running !== null"
+                    @click="runTask(task)"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <k-empty
+              v-if="currentTasks.length === 0"
+              icon="trash"
+            >
+              No maintenance tasks are registered.
+            </k-empty>
+          </template>
+        </k-panel-inside>
+      `
+    },
+
     'k-index-stats-view': {
       props: ['searchStats', 'contentIndexes', 'imageBankStats', 'fileLinkStats'],
       data: function () {

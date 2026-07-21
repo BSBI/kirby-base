@@ -11,6 +11,10 @@ use BSBI\WebBase\helpers\FilteredPagesHelper;
 use BSBI\WebBase\helpers\FormSubmissionIndexDefinition;
 use BSBI\WebBase\helpers\SearchIndexHelper;
 use BSBI\WebBase\helpers\StyleGuideService;
+use BSBI\WebBase\helpers\maintenance\CacheClearTask;
+use BSBI\WebBase\helpers\maintenance\LogRetentionTask;
+use BSBI\WebBase\helpers\maintenance\MaintenancePanel;
+use BSBI\WebBase\helpers\maintenance\MaintenanceRegistry;
 use Kirby\Cms\App as Kirby;
 use Kirby\Panel\Ui\Item\PageItem;
 use Kirby\Toolkit\I18n;
@@ -280,7 +284,61 @@ if (option('contentIndex.showIndexStatsPanel', false)) {
     };
 }
 
+// Maintenance panel area — opt-in via maintenance.showPanel config. Provides a live-safe
+// "Reclaim disk" dashboard (dry-run preview → confirm → run) for the registered tasks.
+if (option('maintenance.showPanel', false)) {
+    if (!array_key_exists('areas', $pluginConfig)) {
+        $pluginConfig['areas'] = [];
+    }
+    $pluginConfig['areas']['maintenance'] = function () {
+        return [
+            'label' => 'Maintenance',
+            'icon'  => 'trash',
+            'menu'  => true,
+            'link'  => 'maintenance',
+            'views' => [
+                [
+                    'pattern' => 'maintenance',
+                    'action'  => function () {
+                        return [
+                            'component' => 'k-maintenance-view',
+                            'title'     => 'Maintenance',
+                            'props'     => MaintenancePanel::dashboardProps(kirby()),
+                        ];
+                    },
+                ],
+            ],
+        ];
+    };
+
+    // $pluginConfig always defines api.routes (above), so append directly.
+    $pluginConfig['api']['routes'][] = [
+        'pattern' => 'maintenance/dashboard',
+        'method'  => 'GET',
+        'action'  => function () {
+            return MaintenancePanel::dashboardProps(kirby());
+        },
+    ];
+    $pluginConfig['api']['routes'][] = [
+        'pattern' => 'maintenance/run',
+        'method'  => 'POST',
+        'action'  => function () {
+            return MaintenancePanel::run(kirby());
+        },
+    ];
+}
+
 Kirby::plugin('open-foundations/kirby-base', $pluginConfig);
+
+// Register the generic maintenance tasks (site-specific ones register themselves).
+if (option('maintenance.showPanel', false)) {
+    try {
+        MaintenanceRegistry::register(new LogRetentionTask(kirby()));
+        MaintenanceRegistry::register(new CacheClearTask(kirby()));
+    } catch (Throwable $e) {
+        error_log('Failed to register maintenance tasks: ' . $e->getMessage());
+    }
+}
 
 // Register built-in form submissions index
 try {
