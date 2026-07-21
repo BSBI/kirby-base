@@ -1719,6 +1719,7 @@ panel.plugin('open-foundations/kirby-base', {
           currentTasks: this.tasks || [],
           currentDisk: this.disk,
           running: null,
+          progress: null,
           refreshing: false,
           lastResult: null
         };
@@ -1753,7 +1754,18 @@ panel.plugin('open-foundations/kirby-base', {
               self.refreshing = false;
             });
         },
-        runTask: function (task) {
+        // Format a byte count the same way the PHP MaintenanceFilesystem::humanBytes does,
+        // so the accumulated client-side total reads consistently with the previews.
+        humanBytes: function (bytes) {
+          if (bytes < 1024) return bytes + ' B';
+          if (bytes < 1048576) return (Math.round(bytes / 1024 * 10) / 10) + ' KB';
+          if (bytes < 1073741824) return (Math.round(bytes / 1048576 * 10) / 10) + ' MB';
+          return (Math.round(bytes / 1073741824 * 100) / 100) + ' GB';
+        },
+        // Run a task to completion. Blocking tasks (logs/cache/import) finish in one request
+        // (done:true immediately); the chunked media task loops, feeding nextOffset back and
+        // advancing a progress estimate against the previewed orphan count.
+        runTask: async function (task) {
           var self = this;
           if (task.items === 0) return;
           var msg = 'Run the "' + task.label + '" cleanup?\n\n'
@@ -1762,20 +1774,42 @@ panel.plugin('open-foundations/kirby-base', {
           if (!window.confirm(msg)) return;
 
           self.running = task.key;
+          self.progress = null;
           self.lastResult = null;
-          self.$api.post('maintenance/run', { key: task.key, retentionDays: self.retentionDays })
-            .then(function (res) {
-              self.lastResult = 'Freed ' + res.humanReclaimed + ' from "' + task.label + '".';
-              // Refresh the previews so the just-cleaned task now reads "Nothing to reclaim".
-              return self.refresh();
-            })
-            .catch(function (error) {
-              var detail = (error && error.message) ? error.message : 'The task could not be run.';
-              self.lastResult = 'Error running "' + task.label + '": ' + detail;
-            })
-            .finally(function () {
-              self.running = null;
-            });
+
+          var offset = 0;
+          var totalReclaimed = 0;
+          var totalProcessed = 0;
+          var guard = 0;
+
+          try {
+            var done = false;
+            while (!done) {
+              if (++guard > 100000) throw new Error('Too many chunks; aborting to avoid a loop.');
+              var res = await self.$api.post('maintenance/run', {
+                key: task.key,
+                retentionDays: self.retentionDays,
+                offset: offset
+              });
+              totalProcessed += res.processed;
+              totalReclaimed += res.reclaimedBytes;
+              offset = res.nextOffset;
+              done = res.done;
+              if (task.items > 0) {
+                self.progress = Math.min(100, Math.round(totalProcessed / task.items * 100));
+              }
+            }
+            self.lastResult = 'Freed ' + self.humanBytes(totalReclaimed)
+              + ' from "' + task.label + '" (' + totalProcessed + ' item(s)).';
+            // Refresh the previews so the just-cleaned task now reads "Nothing to reclaim".
+            await self.refresh();
+          } catch (error) {
+            var detail = (error && error.message) ? error.message : 'The task could not be run.';
+            self.lastResult = 'Error running "' + task.label + '": ' + detail;
+          } finally {
+            self.running = null;
+            self.progress = null;
+          }
         }
       },
       template: `
@@ -1842,7 +1876,7 @@ panel.plugin('open-foundations/kirby-base', {
                 <div class="k-maintenance-task-action">
                   <k-button
                     :icon="running === task.key ? 'loader' : 'trash'"
-                    :text="running === task.key ? 'Running…' : 'Run'"
+                    :text="running === task.key ? (progress !== null ? ('Running ' + progress + '%') : 'Running…') : 'Run'"
                     size="sm"
                     variant="filled"
                     theme="negative"

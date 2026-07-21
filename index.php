@@ -15,6 +15,7 @@ use BSBI\WebBase\helpers\maintenance\CacheClearTask;
 use BSBI\WebBase\helpers\maintenance\LogRetentionTask;
 use BSBI\WebBase\helpers\maintenance\MaintenancePanel;
 use BSBI\WebBase\helpers\maintenance\MaintenanceRegistry;
+use BSBI\WebBase\helpers\maintenance\MediaCleanupTask;
 use Kirby\Cms\App as Kirby;
 use Kirby\Panel\Ui\Item\PageItem;
 use Kirby\Toolkit\I18n;
@@ -335,6 +336,7 @@ if (option('maintenance.showPanel', false)) {
     try {
         MaintenanceRegistry::register(new LogRetentionTask(kirby()));
         MaintenanceRegistry::register(new CacheClearTask(kirby()));
+        MaintenanceRegistry::register(new MediaCleanupTask(kirby()));
     } catch (Throwable $e) {
         error_log('Failed to register maintenance tasks: ' . $e->getMessage());
     }
