@@ -2,6 +2,8 @@
 
 use BSBI\WebBase\helpers\ContentIndexDefinition;
 use BSBI\WebBase\helpers\ContentIndexRegistry;
+use BSBI\WebBase\helpers\ErrorNotificationThrottle;
+use BSBI\WebBase\helpers\FatalError;
 use BSBI\WebBase\helpers\FileLinkIndexHelper;
 use BSBI\WebBase\helpers\ImageBankIndexHelper;
 use BSBI\WebBase\helpers\FilteredFilesHelper;
@@ -300,10 +302,57 @@ foreach ($contentIndexes as $definition) {
 }
 
 if (option('debug') === false) {
-// Set a global exception handler
-    set_exception_handler(function (Throwable $exception) {
+    /**
+     * Sends an alert to the site admin, at most once per throttle window per distinct
+     * fault.
+     *
+     * Un-throttled, a site-wide fault alerts once per request: every visitor hit
+     * generates an email. That is enough to get the sending domain rate-limited, which
+     * takes out the site's transactional mail (membership, payments, password resets)
+     * along with the alert channel itself — the alerting amplifies the outage it exists
+     * to report.
+     *
+     * @param string $fingerprint stable identifier for the fault, so distinct faults
+     *                            each alert rather than the first masking the rest
+     * @param string $subject email subject
+     * @param string $bodyHtml email body
+     */
+    $notifyAdmin = static function (string $fingerprint, string $subject, string $bodyHtml): void {
+        if (str_starts_with((string) ($_SERVER['HTTP_HOST'] ?? ''), 'localhost')) {
+            return;
+        }
 
-        $pageUrl = $_SERVER['REDIRECT_URL'] ?? '';
+        try {
+            $window = option('errorNotificationWindowSeconds', ErrorNotificationThrottle::DEFAULT_WINDOW_SECONDS);
+
+            $throttle = new ErrorNotificationThrottle(
+                kirby()->root('logs') . '/error-throttle',
+                is_numeric($window) ? (int) $window : ErrorNotificationThrottle::DEFAULT_WINDOW_SECONDS
+            );
+
+            if ($throttle->shouldNotify($fingerprint) === false) {
+                return;
+            }
+
+            kirby()->email([
+                'to' => option('adminEmail'),
+                'from' => option('defaultEmail'),
+                'subject' => $subject,
+                'body' => ['html' => $bodyHtml],
+            ]);
+        } catch (Throwable) {
+            // alerting must never break error handling
+        }
+    };
+
+    // Set by the exception handler so the shutdown handler below does not report the
+    // same failure a second time.
+    $errorReported = false;
+
+    // Set a global exception handler
+    set_exception_handler(function (Throwable $exception) use ($notifyAdmin, &$errorReported) {
+        $redirectUrl = $_SERVER['REDIRECT_URL'] ?? '';
+        $pageUrl = is_string($redirectUrl) ? $redirectUrl : '';
         $exceptionAsString = "Message: " . $exception->getMessage() . "\n" .
             "File:" . $exception->getFile() . "'\n" .
             "Line:" . $exception->getLine() . "\n" .
@@ -312,34 +361,104 @@ if (option('debug') === false) {
 
         error_log($exceptionAsString);
 
-        if (!str_starts_with((string) $_SERVER['HTTP_HOST'], 'localhost')) {
-            try {
-                $email = [
-                    'to' => option('adminEmail'),
-                    'from' => option('defaultEmail'),
-                    'subject' => 'Website Exception: ' . $exception->getMessage(),
-                    'body' => [
-                        'html' => "<b>An unhandled exception occurred:</b><br>" .
-                            "<b>Message</b>: " . $exception->getMessage() . "<br>" .
-                            "<b>File:</b> " . $exception->getFile() . "<br>" .
-                            "<b>Line:</b> " . $exception->getLine() . "<br>" .
-                            "<b>Trace:</b> " . $exception->getTraceAsString() . "<br>" .
-                            "<b>Page:</b> " . $pageUrl,
-                    ]
-                ];
-                kirby()->email($email);
-            } catch (Throwable) {
-                //continue if an exception occurs when sending the email
-            }
-        }
+        $notifyAdmin(
+            $exception->getMessage() . '|' . $exception->getFile() . '|' . $exception->getLine(),
+            'Website Exception: ' . $exception->getMessage(),
+            "<b>An unhandled exception occurred:</b><br>" .
+                "<b>Message</b>: " . htmlspecialchars($exception->getMessage()) . "<br>" .
+                "<b>File:</b> " . htmlspecialchars($exception->getFile()) . "<br>" .
+                "<b>Line:</b> " . $exception->getLine() . "<br>" .
+                "<b>Trace:</b> " . htmlspecialchars($exception->getTraceAsString()) . "<br>" .
+                "<b>Page:</b> " . htmlspecialchars($pageUrl)
+        );
 
         // Render the error page and pass the exception
         $kirby = Kirby::instance();
-        $kirby->response()->code(500); // Set HTTP status code to 500
-        echo Tpl::load(__DIR__ . '/templates/error-500.php', [
-            'userRole' => $kirby->user() ? $kirby->user()->role()->name() : '',
-            'exception' => $exceptionAsString,
-        ]);
+
+        // Send the status line directly. This handler bypasses Kirby's normal
+        // render/send flow, and Responder::code() only records the code for that flow
+        // to apply later — so on its own it leaves the error page being served as 200,
+        // which reports a dead site as healthy to uptime monitoring.
+        if (headers_sent() === false) {
+            http_response_code(500);
+        }
+
+        $kirby->response()->code(500); // keep the Responder in step for anything reading it
+
+        // Only now mark the failure as reported. Doing it earlier would mean a fault in
+        // the error page itself (below) is swallowed by the shutdown handler, which is
+        // the exact silent-failure this handling exists to prevent.
+        $errorReported = true;
+
+        try {
+            echo Tpl::load(__DIR__ . '/templates/error-500.php', [
+                'userRole' => $kirby->user() ? $kirby->user()->role()->name() : '',
+                'exception' => $exceptionAsString,
+            ]);
+        } catch (Throwable $renderFailure) {
+            error_log('Error page failed to render: ' . $renderFailure->getMessage());
+            $notifyAdmin(
+                'error-page|' . $renderFailure->getMessage(),
+                'Website error page failed to render',
+                '<b>The error page itself failed to render:</b><br>' .
+                    htmlspecialchars($renderFailure->getMessage())
+            );
+            echo 'A server error occurred.';
+        }
+
         exit;
+    });
+
+    /**
+     * Fatal errors — out of memory, parse errors, E_USER_ERROR — never reach
+     * set_exception_handler. Without this they produce a blank or truncated page with no
+     * log entry and no alert, making them the failures least likely to be noticed.
+     */
+    register_shutdown_function(function () use ($notifyAdmin, &$errorReported): void {
+        if ($errorReported === true) {
+            return;
+        }
+
+        $error = FatalError::fromLastError(error_get_last());
+
+        if ($error === null) {
+            return;
+        }
+
+        $redirectUrl = $_SERVER['REDIRECT_URL'] ?? '';
+        $pageUrl = is_string($redirectUrl) ? $redirectUrl : '';
+        $errorAsString = $error->describe($pageUrl);
+
+        error_log($errorAsString);
+
+        // Log and alert before attempting to render: an out-of-memory fatal may not
+        // leave enough headroom to load a template, and the alert matters more.
+        $notifyAdmin(
+            $error->fingerprint(),
+            'Website Fatal Error: ' . $error->message,
+            "<b>A fatal error occurred:</b><br>" .
+                "<b>Message</b>: " . htmlspecialchars($error->message) . "<br>" .
+                "<b>File:</b> " . htmlspecialchars($error->file) . "<br>" .
+                "<b>Line:</b> " . $error->line . "<br>" .
+                "<b>Page:</b> " . htmlspecialchars($pageUrl)
+        );
+
+        // If output has already started the response cannot be salvaged — the visitor
+        // gets truncated HTML and the status line is long gone. Only a keyword-based
+        // uptime check will see this case; the log and alert above are all we can do.
+        if (headers_sent() === true) {
+            return;
+        }
+
+        http_response_code(500);
+
+        try {
+            echo Tpl::load(__DIR__ . '/templates/error-500.php', [
+                'userRole' => '',
+                'exception' => $errorAsString,
+            ]);
+        } catch (Throwable) {
+            echo 'A server error occurred.';
+        }
     });
 }
