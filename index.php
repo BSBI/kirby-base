@@ -321,6 +321,13 @@ if (option('maintenance.showPanel', false)) {
         },
     ];
     $pluginConfig['api']['routes'][] = [
+        'pattern' => 'maintenance/preview',
+        'method'  => 'GET',
+        'action'  => function () {
+            return MaintenancePanel::previewOne(kirby());
+        },
+    ];
+    $pluginConfig['api']['routes'][] = [
         'pattern' => 'maintenance/run',
         'method'  => 'POST',
         'action'  => function () {

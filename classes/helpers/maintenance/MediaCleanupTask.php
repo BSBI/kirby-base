@@ -22,7 +22,7 @@ use Kirby\Cms\App;
  *
  * @package BSBI\WebBase\helpers\maintenance
  */
-final readonly class MediaCleanupTask implements MaintenanceTask
+final readonly class MediaCleanupTask implements MaintenanceTask, DeferredPreviewTask
 {
     /** Page directories processed per chunk when the caller supplies no limit. */
     public const int DEFAULT_CHUNK_SIZE = 250;

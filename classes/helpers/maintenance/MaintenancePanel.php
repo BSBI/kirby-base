@@ -30,7 +30,7 @@ final class MaintenancePanel
      * sensitive is disclosed in the props JSON.
      *
      * @param App $kirby the Kirby app
-     * @return array{authorized: bool, retentionDays: int, disk: array{freeBytes: int, totalBytes: int, usedPercent: int, freeHuman: string, totalHuman: string}|null, tasks: array<int, array{key: string, label: string, description: string, items: int, bytes: int, humanBytes: string, sample: array<int, string>, error: bool}>}
+     * @return array{authorized: bool, retentionDays: int, disk: array{freeBytes: int, totalBytes: int, usedPercent: int, freeHuman: string, totalHuman: string}|null, tasks: array<int, array{key: string, label: string, description: string, items: int, bytes: int, humanBytes: string, sample: array<int, string>, error: bool, deferred: bool, countOnly: bool}>}
      */
     public static function dashboardProps(App $kirby): array
     {
@@ -48,7 +48,12 @@ final class MaintenancePanel
 
         $tasks = [];
         foreach (MaintenanceRegistry::all() as $task) {
-            $tasks[] = self::previewTask($task, $options);
+            // Expensive previews (e.g. the media walk) are deferred: return a placeholder now and
+            // let the client fetch the real preview from the time-limit-lifted preview endpoint,
+            // so a slow scan never blocks or times out this 30-second dashboard request.
+            $tasks[] = $task instanceof DeferredPreviewTask
+                ? self::deferredPlaceholder($task)
+                : self::previewTask($task, $options);
         }
 
         return [
@@ -114,11 +119,68 @@ final class MaintenancePanel
     }
 
     /**
+     * Compute a single deferred task's preview on demand, with lifted time/memory limits so a
+     * full-tree scan (e.g. media) can reach the web server timeout instead of blocking the
+     * dashboard. Admin-gated.
+     *
+     * @param App $kirby the Kirby app
+     * @return Response JSON task preview, or an error status (403/404/500)
+     */
+    public static function previewOne(App $kirby): Response
+    {
+        if (!self::isAdmin()) {
+            return self::error('You must be an administrator to run maintenance.', 403);
+        }
+
+        $request = $kirby->request();
+        $key = (string) $request->get('key', '');
+        $task = MaintenanceRegistry::get($key);
+
+        if ($task === null) {
+            return self::error("Unknown maintenance task '{$key}'.", 404);
+        }
+
+        $retentionDays = $request->get('retentionDays');
+        $options = MaintenanceOptions::fromRetentionDays(
+            is_numeric($retentionDays) ? (int) $retentionDays : null,
+        );
+
+        // Lift limits so a full-tree preview scan can reach the web server's ~300s timeout.
+        @set_time_limit(0);
+        @ini_set('memory_limit', '512M');
+
+        return Response::json(self::previewTask($task, $options), 200);
+    }
+
+    /**
+     * A placeholder card for a deferred task: no counts computed yet, flagged so the client
+     * fetches the real preview lazily via {@see previewOne()}.
+     *
+     * @param MaintenanceTask $task the deferred task
+     * @return array{key: string, label: string, description: string, items: int, bytes: int, humanBytes: string, sample: array<int, string>, error: bool, deferred: bool, countOnly: bool}
+     */
+    private static function deferredPlaceholder(MaintenanceTask $task): array
+    {
+        return [
+            'key'         => $task->key(),
+            'label'       => $task->label(),
+            'description' => $task->description(),
+            'items'       => 0,
+            'bytes'       => 0,
+            'humanBytes'  => MaintenanceFilesystem::humanBytes(0),
+            'sample'      => [],
+            'error'       => false,
+            'deferred'    => true,
+            'countOnly'   => false,
+        ];
+    }
+
+    /**
      * Preview a single task, isolating failures so one bad task never breaks the dashboard.
      *
      * @param MaintenanceTask $task the task to preview
      * @param MaintenanceOptions $options shared options
-     * @return array{key: string, label: string, description: string, items: int, bytes: int, humanBytes: string, sample: array<int, string>, error: bool}
+     * @return array{key: string, label: string, description: string, items: int, bytes: int, humanBytes: string, sample: array<int, string>, error: bool, deferred: bool, countOnly: bool}
      */
     private static function previewTask(MaintenanceTask $task, MaintenanceOptions $options): array
     {
@@ -127,11 +189,13 @@ final class MaintenancePanel
             $items = $preview->items;
             $bytes = $preview->bytes;
             $sample = $preview->sample;
+            $countOnly = $preview->countOnly;
             $error = false;
         } catch (Throwable) {
             $items = 0;
             $bytes = 0;
             $sample = [];
+            $countOnly = false;
             $error = true;
         }
 
@@ -144,6 +208,8 @@ final class MaintenancePanel
             'humanBytes'  => MaintenanceFilesystem::humanBytes($bytes),
             'sample'      => $sample,
             'error'       => $error,
+            'deferred'    => false,
+            'countOnly'   => $countOnly,
         ];
     }
 

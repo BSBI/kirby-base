@@ -1721,8 +1721,14 @@ panel.plugin('open-foundations/kirby-base', {
           running: null,
           progress: null,
           refreshing: false,
-          lastResult: null
+          lastResult: null,
+          deferredLoading: {}
         };
+      },
+      created: function () {
+        // Expensive previews (media) arrive as deferred placeholders; fetch them lazily so
+        // the dashboard itself renders immediately.
+        this.loadDeferredPreviews();
       },
       computed: {
         diskReports: function () {
@@ -1732,6 +1738,12 @@ panel.plugin('open-foundations/kirby-base', {
             { label: 'Disk total', value: this.currentDisk.totalHuman, icon: 'server' },
             { label: 'Used', value: this.currentDisk.usedPercent + '%', icon: 'chart' }
           ];
+        },
+        // Label of the task currently running, for the visually-hidden progress announcer.
+        runningLabel: function () {
+          var self = this;
+          var task = (self.currentTasks || []).find(function (t) { return t.key === self.running; });
+          return task ? task.label : 'Cleanup';
         }
       },
       methods: {
@@ -1745,6 +1757,7 @@ panel.plugin('open-foundations/kirby-base', {
               if (data && data.tasks) {
                 self.currentTasks = data.tasks;
                 self.currentDisk = data.disk;
+                self.loadDeferredPreviews();
               }
             })
             .catch(function (error) {
@@ -1752,6 +1765,37 @@ panel.plugin('open-foundations/kirby-base', {
             })
             .finally(function () {
               self.refreshing = false;
+            });
+        },
+        // Fetch every deferred task's real preview from the time-limit-lifted endpoint.
+        loadDeferredPreviews: function () {
+          var self = this;
+          (self.currentTasks || []).forEach(function (task) {
+            if (task.deferred) self.loadPreview(task);
+          });
+        },
+        loadPreview: function (task) {
+          var self = this;
+          self.$set(self.deferredLoading, task.key, true);
+          self.$api.get('maintenance/preview', { key: task.key, retentionDays: self.retentionDays })
+            .then(function (data) {
+              // Mutate the existing (reactive) task object in place; deferred → false reveals counts.
+              Object.assign(task, {
+                items: data.items,
+                bytes: data.bytes,
+                humanBytes: data.humanBytes,
+                sample: data.sample,
+                error: data.error,
+                deferred: false
+              });
+            })
+            .catch(function (error) {
+              task.error = true;
+              task.deferred = false;
+              console.error('Failed to load preview for ' + task.key + ':', error);
+            })
+            .finally(function () {
+              self.$set(self.deferredLoading, task.key, false);
             });
         },
         // Format a byte count the same way the PHP MaintenanceFilesystem::humanBytes does,
@@ -1764,13 +1808,15 @@ panel.plugin('open-foundations/kirby-base', {
         },
         // Run a task to completion. Blocking tasks (logs/cache/import) finish in one request
         // (done:true immediately); the chunked media task loops, feeding nextOffset back and
-        // advancing a progress estimate against the previewed orphan count.
+        // advancing a progress estimate against the previewed item count.
         runTask: async function (task) {
           var self = this;
           if (task.items === 0) return;
-          var msg = 'Run the "' + task.label + '" cleanup?\n\n'
-            + 'This will free about ' + task.humanBytes + ' (' + task.items + ' item(s)).\n'
-            + 'This cannot be undone.';
+          // Count-only tasks (media) have no pre-computed size; the run reports the real total.
+          var impact = task.countOnly
+            ? 'This will clear ' + task.items + ' item(s); freed space is reported when it finishes.'
+            : 'This will free about ' + task.humanBytes + ' (' + task.items + ' item(s)).';
+          var msg = 'Run the "' + task.label + '" cleanup?\n\n' + impact + '\nThis cannot be undone.';
           if (!window.confirm(msg)) return;
 
           self.running = task.key;
@@ -1855,6 +1901,16 @@ panel.plugin('open-foundations/kirby-base', {
               />
             </div>
 
+            <!-- Visually-hidden announcer for run progress; polite so it never interrupts. -->
+            <div
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+              style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;"
+            >
+              {{ running !== null && progress !== null ? (runningLabel + ': ' + progress + ' percent complete') : '' }}
+            </div>
+
             <div class="k-maintenance-tasks">
               <div
                 v-for="task in currentTasks"
@@ -1864,9 +1920,11 @@ panel.plugin('open-foundations/kirby-base', {
                 <div class="k-maintenance-task-info">
                   <h2>{{ task.label }}</h2>
                   <p class="k-maintenance-task-desc">{{ task.description }}</p>
-                  <p class="k-maintenance-task-preview">
-                    <strong v-if="task.error" style="color: var(--color-negative);">Preview failed</strong>
+                  <p class="k-maintenance-task-preview" role="status" aria-live="polite" aria-atomic="true">
+                    <strong v-if="task.deferred || deferredLoading[task.key]">Calculating…</strong>
+                    <strong v-else-if="task.error" style="color: var(--color-negative);">Preview failed</strong>
                     <strong v-else-if="task.items === 0">Nothing to reclaim</strong>
+                    <strong v-else-if="task.countOnly">{{ task.items }} old item(s) to clear</strong>
                     <strong v-else>Would free {{ task.humanBytes }} &middot; {{ task.items }} item(s)</strong>
                   </p>
                   <ul v-if="task.sample && task.sample.length" class="k-maintenance-sample">
@@ -1880,7 +1938,12 @@ panel.plugin('open-foundations/kirby-base', {
                     size="sm"
                     variant="filled"
                     theme="negative"
-                    :disabled="task.items === 0 || task.error || running !== null"
+                    :aria-label="running === task.key
+                      ? ('Running ' + task.label + (progress !== null ? ' ' + progress + '%' : ''))
+                      : (task.deferred || deferredLoading[task.key]
+                        ? ('Calculating ' + task.label + ' preview, please wait')
+                        : (task.items === 0 ? ('Nothing to reclaim for ' + task.label) : ('Run ' + task.label + ' cleanup')))"
+                    :disabled="task.deferred || deferredLoading[task.key] || task.items === 0 || task.error || running !== null"
                     @click="runTask(task)"
                   />
                 </div>

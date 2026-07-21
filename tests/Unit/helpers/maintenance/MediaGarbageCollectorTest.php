@@ -96,9 +96,12 @@ final class MediaGarbageCollectorTest extends TestCase
 
         $collector = $this->collector();
 
+        // The preview counts old dirs but does NOT size them (unbounded on a large tree);
+        // it is flagged count-only, and the run reports the real reclaimed bytes.
         $preview = $collector->preview($this->root, $this->options());
         self::assertSame(1, $preview->items);
-        self::assertSame(500, $preview->bytes);
+        self::assertSame(0, $preview->bytes);
+        self::assertTrue($preview->countOnly);
 
         $result = $collector->runChunk($this->root, $this->options(), 0, 0);
         self::assertTrue($result->done);

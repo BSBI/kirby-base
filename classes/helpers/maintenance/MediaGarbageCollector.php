@@ -53,18 +53,21 @@ final readonly class MediaGarbageCollector
     }
 
     /**
-     * Compute — without deleting anything — the old hash dirs and bytes that a full run would
-     * reclaim across the whole media tree.
+     * Count — without deleting or sizing anything — the old hash dirs a full run would remove.
+     *
+     * Deliberately **count-only**: summing bytes would stat every file in every stale dir, which
+     * is unbounded on a large (tens-of-GB) media tree and could exceed even the lifted request
+     * timeout. Enumeration + a per-dir mtime stat is bounded and fast, so the preview reports an
+     * exact item count; the run reports the real reclaimed bytes.
      *
      * @param string $mediaPagesDir absolute path to `media/pages`
      * @param MaintenanceOptions $options shared retention options
-     * @return MaintenancePreview total stale dirs and bytes, with a sample
+     * @return MaintenancePreview exact count of stale dirs (count-only: bytes not computed)
      */
     public function preview(string $mediaPagesDir, MaintenanceOptions $options): MaintenancePreview
     {
         $cutoff = $this->cutoff($options->retentionDays);
         $items = 0;
-        $bytes = 0;
         $sample = [];
 
         foreach ($this->enumeratePageDirs($mediaPagesDir) as $pageDir) {
@@ -73,20 +76,13 @@ final readonly class MediaGarbageCollector
                     continue;
                 }
                 $items++;
-                $size = MaintenanceFilesystem::size($pageDir['path'] . '/' . $hashDir['name']);
-                $bytes += $size;
                 if (count($sample) < self::SAMPLE_LIMIT) {
-                    $sample[] = sprintf(
-                        '%s/%s (%s)',
-                        $pageDir['pageId'],
-                        $hashDir['name'],
-                        MaintenanceFilesystem::humanBytes($size),
-                    );
+                    $sample[] = $pageDir['pageId'] . '/' . $hashDir['name'];
                 }
             }
         }
 
-        return new MaintenancePreview($items, $bytes, $sample);
+        return new MaintenancePreview($items, 0, $sample, true);
     }
 
     /**
