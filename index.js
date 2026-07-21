@@ -1786,6 +1786,7 @@ panel.plugin('open-foundations/kirby-base', {
                 humanBytes: data.humanBytes,
                 sample: data.sample,
                 error: data.error,
+                countOnly: data.countOnly,
                 deferred: false
               });
             })
