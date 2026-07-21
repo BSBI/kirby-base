@@ -1786,7 +1786,6 @@ panel.plugin('open-foundations/kirby-base', {
                 humanBytes: data.humanBytes,
                 sample: data.sample,
                 error: data.error,
-                countOnly: data.countOnly,
                 deferred: false
               });
             })
@@ -1813,11 +1812,9 @@ panel.plugin('open-foundations/kirby-base', {
         runTask: async function (task) {
           var self = this;
           if (task.items === 0) return;
-          // Count-only tasks (media) have no pre-computed size; the run reports the real total.
-          var impact = task.countOnly
-            ? 'This will clear ' + task.items + ' item(s); freed space is reported when it finishes.'
-            : 'This will free about ' + task.humanBytes + ' (' + task.items + ' item(s)).';
-          var msg = 'Run the "' + task.label + '" cleanup?\n\n' + impact + '\nThis cannot be undone.';
+          var msg = 'Run the "' + task.label + '" cleanup?\n\n'
+            + 'This will free about ' + task.humanBytes + ' (' + task.items + ' item(s)).\n'
+            + 'This cannot be undone.';
           if (!window.confirm(msg)) return;
 
           self.running = task.key;
@@ -1925,7 +1922,6 @@ panel.plugin('open-foundations/kirby-base', {
                     <strong v-if="task.deferred || deferredLoading[task.key]">Calculating…</strong>
                     <strong v-else-if="task.error" style="color: var(--color-negative);">Preview failed</strong>
                     <strong v-else-if="task.items === 0">Nothing to reclaim</strong>
-                    <strong v-else-if="task.countOnly">{{ task.items }} old item(s) to clear</strong>
                     <strong v-else>Would free {{ task.humanBytes }} &middot; {{ task.items }} item(s)</strong>
                   </p>
                   <ul v-if="task.sample && task.sample.length" class="k-maintenance-sample">

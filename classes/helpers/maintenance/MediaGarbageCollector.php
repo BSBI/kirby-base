@@ -53,21 +53,23 @@ final readonly class MediaGarbageCollector
     }
 
     /**
-     * Count — without deleting or sizing anything — the old hash dirs a full run would remove.
+     * Compute — without deleting anything — the old hash dirs and bytes a full run would reclaim.
      *
-     * Deliberately **count-only**: summing bytes would stat every file in every stale dir, which
-     * is unbounded on a large (tens-of-GB) media tree and could exceed even the lifted request
-     * timeout. Enumeration + a per-dir mtime stat is bounded and fast, so the preview reports an
-     * exact item count; the run reports the real reclaimed bytes.
+     * Runs off the deferred, time-limit-lifted preview endpoint (never inline in the dashboard
+     * render), so sizing the stale dirs is affordable: it is bounded by the number of stale
+     * files, which is fast at real scale. If a pathologically large tree ever overran, the
+     * endpoint would surface a "preview failed" and the run (which reports its own reclaimed
+     * bytes) would still work.
      *
      * @param string $mediaPagesDir absolute path to `media/pages`
      * @param MaintenanceOptions $options shared retention options
-     * @return MaintenancePreview exact count of stale dirs (count-only: bytes not computed)
+     * @return MaintenancePreview count and bytes of stale dirs, with a sample
      */
     public function preview(string $mediaPagesDir, MaintenanceOptions $options): MaintenancePreview
     {
         $cutoff = $this->cutoff($options->retentionDays);
         $items = 0;
+        $bytes = 0;
         $sample = [];
 
         foreach ($this->enumeratePageDirs($mediaPagesDir) as $pageDir) {
@@ -76,13 +78,20 @@ final readonly class MediaGarbageCollector
                     continue;
                 }
                 $items++;
+                $size = MaintenanceFilesystem::size($pageDir['path'] . '/' . $hashDir['name']);
+                $bytes += $size;
                 if (count($sample) < self::SAMPLE_LIMIT) {
-                    $sample[] = $pageDir['pageId'] . '/' . $hashDir['name'];
+                    $sample[] = sprintf(
+                        '%s/%s (%s)',
+                        $pageDir['pageId'],
+                        $hashDir['name'],
+                        MaintenanceFilesystem::humanBytes($size),
+                    );
                 }
             }
         }
 
-        return new MaintenancePreview($items, 0, $sample, true);
+        return new MaintenancePreview($items, $bytes, $sample);
     }
 
     /**

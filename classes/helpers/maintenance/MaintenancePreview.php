@@ -14,16 +14,13 @@ final readonly class MaintenancePreview
 {
     /**
      * @param int $items number of items (files/dirs/log entries) that would be removed or rewritten
-     * @param int $bytes total bytes that would be reclaimed (0 and meaningless when $countOnly)
+     * @param int $bytes total bytes that would be reclaimed
      * @param array<int, string> $sample human-readable sample lines describing the biggest/first targets
-     * @param bool $countOnly true when sizing was skipped as too expensive — $items is exact but
-     *                        $bytes is not computed (the run reports the real reclaimed bytes instead)
      */
     public function __construct(
         public int $items,
         public int $bytes,
         public array $sample = [],
-        public bool $countOnly = false,
     ) {
     }
 

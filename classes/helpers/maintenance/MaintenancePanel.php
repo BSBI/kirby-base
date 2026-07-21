@@ -30,7 +30,7 @@ final class MaintenancePanel
      * sensitive is disclosed in the props JSON.
      *
      * @param App $kirby the Kirby app
-     * @return array{authorized: bool, retentionDays: int, disk: array{freeBytes: int, totalBytes: int, usedPercent: int, freeHuman: string, totalHuman: string}|null, tasks: array<int, array{key: string, label: string, description: string, items: int, bytes: int, humanBytes: string, sample: array<int, string>, error: bool, deferred: bool, countOnly: bool}>}
+     * @return array{authorized: bool, retentionDays: int, disk: array{freeBytes: int, totalBytes: int, usedPercent: int, freeHuman: string, totalHuman: string}|null, tasks: array<int, array{key: string, label: string, description: string, items: int, bytes: int, humanBytes: string, sample: array<int, string>, error: bool, deferred: bool}>}
      */
     public static function dashboardProps(App $kirby): array
     {
@@ -157,7 +157,7 @@ final class MaintenancePanel
      * fetches the real preview lazily via {@see previewOne()}.
      *
      * @param MaintenanceTask $task the deferred task
-     * @return array{key: string, label: string, description: string, items: int, bytes: int, humanBytes: string, sample: array<int, string>, error: bool, deferred: bool, countOnly: bool}
+     * @return array{key: string, label: string, description: string, items: int, bytes: int, humanBytes: string, sample: array<int, string>, error: bool, deferred: bool}
      */
     private static function deferredPlaceholder(MaintenanceTask $task): array
     {
@@ -171,7 +171,6 @@ final class MaintenancePanel
             'sample'      => [],
             'error'       => false,
             'deferred'    => true,
-            'countOnly'   => false,
         ];
     }
 
@@ -180,7 +179,7 @@ final class MaintenancePanel
      *
      * @param MaintenanceTask $task the task to preview
      * @param MaintenanceOptions $options shared options
-     * @return array{key: string, label: string, description: string, items: int, bytes: int, humanBytes: string, sample: array<int, string>, error: bool, deferred: bool, countOnly: bool}
+     * @return array{key: string, label: string, description: string, items: int, bytes: int, humanBytes: string, sample: array<int, string>, error: bool, deferred: bool}
      */
     private static function previewTask(MaintenanceTask $task, MaintenanceOptions $options): array
     {
@@ -189,13 +188,11 @@ final class MaintenancePanel
             $items = $preview->items;
             $bytes = $preview->bytes;
             $sample = $preview->sample;
-            $countOnly = $preview->countOnly;
             $error = false;
         } catch (Throwable) {
             $items = 0;
             $bytes = 0;
             $sample = [];
-            $countOnly = false;
             $error = true;
         }
 
@@ -209,7 +206,6 @@ final class MaintenancePanel
             'sample'      => $sample,
             'error'       => $error,
             'deferred'    => false,
-            'countOnly'   => $countOnly,
         ];
     }
 
