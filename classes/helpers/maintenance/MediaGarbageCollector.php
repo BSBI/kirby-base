@@ -63,9 +63,11 @@ final readonly class MediaGarbageCollector
      *
      * @param string $mediaPagesDir absolute path to `media/pages`
      * @param MaintenanceOptions $options shared retention options
+     * @param bool $wipeAll when true, ignore the retention window and count every hash dir (used
+     *        by the staging blanket-wipe task; the age-gated live cleanup leaves it false)
      * @return MaintenancePreview count and bytes of stale dirs, with a sample
      */
-    public function preview(string $mediaPagesDir, MaintenanceOptions $options): MaintenancePreview
+    public function preview(string $mediaPagesDir, MaintenanceOptions $options, bool $wipeAll = false): MaintenancePreview
     {
         $cutoff = $this->cutoff($options->retentionDays);
         $items = 0;
@@ -74,7 +76,7 @@ final readonly class MediaGarbageCollector
 
         foreach ($this->enumeratePageDirs($mediaPagesDir) as $pageDir) {
             foreach ($this->hashDirsOf($pageDir['path']) as $hashDir) {
-                if ($hashDir['mtime'] >= $cutoff) {
+                if (!$wipeAll && $hashDir['mtime'] >= $cutoff) {
                     continue;
                 }
                 $items++;
@@ -101,9 +103,11 @@ final readonly class MediaGarbageCollector
      * @param MaintenanceOptions $options shared retention options
      * @param int $offset page-directory offset to resume from
      * @param int $limit maximum page directories to process (<= 0 = all remaining, single shot)
+     * @param bool $wipeAll when true, ignore the retention window and delete every hash dir (used
+     *        by the staging blanket-wipe task; the age-gated live cleanup leaves it false)
      * @return MaintenanceRunResult hash dirs deleted, bytes reclaimed, and the next offset
      */
-    public function runChunk(string $mediaPagesDir, MaintenanceOptions $options, int $offset, int $limit): MaintenanceRunResult
+    public function runChunk(string $mediaPagesDir, MaintenanceOptions $options, int $offset, int $limit, bool $wipeAll = false): MaintenanceRunResult
     {
         $cutoff = $this->cutoff($options->retentionDays);
         $pageDirs = $this->enumeratePageDirs($mediaPagesDir);
@@ -120,7 +124,7 @@ final readonly class MediaGarbageCollector
             $deleted = 0;
 
             foreach ($hashDirs as $hashDir) {
-                if ($hashDir['mtime'] >= $cutoff) {
+                if (!$wipeAll && $hashDir['mtime'] >= $cutoff) {
                     continue;
                 }
                 $full = $pageDir['path'] . '/' . $hashDir['name'];

@@ -39,15 +39,18 @@ final readonly class FileAgePruner
      * @param array<int, string> $reclaimable entry names eligible for removal
      * @param array<int, string> $protected entry names that must never be removed
      * @param int $retentionDays remove only entries older than this many days
+     * @param bool $wipeAll when true, ignore the retention window and reclaim every listed entry
+     *        regardless of age (used by the staging blanket-wipe task; the age-gated live cleanup
+     *        leaves it false). The reclaimable/protected lists are still fully honoured.
      * @return MaintenancePreview
      */
-    public function preview(string $baseDir, array $reclaimable, array $protected, int $retentionDays): MaintenancePreview
+    public function preview(string $baseDir, array $reclaimable, array $protected, int $retentionDays, bool $wipeAll = false): MaintenancePreview
     {
         $items = 0;
         $bytes = 0;
         $sample = [];
 
-        foreach ($this->eligible($baseDir, $reclaimable, $protected, $retentionDays) as $name => $size) {
+        foreach ($this->eligible($baseDir, $reclaimable, $protected, $retentionDays, $wipeAll) as $name => $size) {
             $items++;
             $bytes += $size;
             if (count($sample) < self::SAMPLE_LIMIT) {
@@ -65,14 +68,16 @@ final readonly class FileAgePruner
      * @param array<int, string> $reclaimable entry names eligible for removal
      * @param array<int, string> $protected entry names that must never be removed
      * @param int $retentionDays remove only entries older than this many days
+     * @param bool $wipeAll when true, ignore the retention window and reclaim every listed entry
+     *        regardless of age. The reclaimable/protected lists are still fully honoured.
      * @return MaintenanceRunResult
      */
-    public function prune(string $baseDir, array $reclaimable, array $protected, int $retentionDays): MaintenanceRunResult
+    public function prune(string $baseDir, array $reclaimable, array $protected, int $retentionDays, bool $wipeAll = false): MaintenanceRunResult
     {
         $processed = 0;
         $bytes = 0;
 
-        foreach ($this->eligible($baseDir, $reclaimable, $protected, $retentionDays) as $name => $size) {
+        foreach ($this->eligible($baseDir, $reclaimable, $protected, $retentionDays, $wipeAll) as $name => $size) {
             if (MaintenanceFilesystem::delete($baseDir . '/' . $name)) {
                 $processed++;
                 $bytes += $size;
@@ -89,9 +94,10 @@ final readonly class FileAgePruner
      * @param array<int, string> $reclaimable entry names eligible for removal
      * @param array<int, string> $protected entry names that must never be removed
      * @param int $retentionDays remove only entries older than this many days
+     * @param bool $wipeAll when true, skip the age floor entirely (still honours reclaimable/protected)
      * @return iterable<string, int>
      */
-    private function eligible(string $baseDir, array $reclaimable, array $protected, int $retentionDays): iterable
+    private function eligible(string $baseDir, array $reclaimable, array $protected, int $retentionDays, bool $wipeAll = false): iterable
     {
         if (!is_dir($baseDir)) {
             return;
@@ -109,7 +115,7 @@ final readonly class FileAgePruner
                 continue;
             }
 
-            if (MaintenanceFilesystem::newestFileMtime($path) >= $cutoff) {
+            if (!$wipeAll && MaintenanceFilesystem::newestFileMtime($path) >= $cutoff) {
                 continue; // too fresh — age floor protects it
             }
 
