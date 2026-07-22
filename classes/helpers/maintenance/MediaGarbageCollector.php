@@ -239,8 +239,13 @@ final readonly class MediaGarbageCollector
     }
 
     /**
-     * Whether a directory is a media hash dir: its name matches the token-mtime pattern and it
-     * contains no subdirectories (real thumb dirs hold only variant files).
+     * Whether a directory is a media hash dir: its name matches the token-mtime pattern and it holds
+     * no *visible* subdirectory.
+     *
+     * A real page-file media dir holds variant files and, in newer Kirby, a hidden `.jobs/` directory
+     * of pending thumb-generation jobs — so a dot-prefixed subdir is tolerated. A *visible*
+     * subdirectory instead means this is a page path (holding child-page/hash subdirs) that merely
+     * looks like a hash, and must never be treated as a hash dir (and thus deleted).
      *
      * @param string $path absolute path to the directory
      * @param string $name the directory's basename
@@ -252,8 +257,13 @@ final readonly class MediaGarbageCollector
             return false;
         }
 
-        // A subdirectory means this is a page path, not a hash dir (thumb dirs hold only files).
-        return $this->childDirs($path) === [];
+        foreach ($this->childDirs($path) as $child) {
+            if (!str_starts_with($child, '.')) {
+                return false; // a visible subdir ⇒ page path, not a hash dir
+            }
+        }
+
+        return true;
     }
 
     /**

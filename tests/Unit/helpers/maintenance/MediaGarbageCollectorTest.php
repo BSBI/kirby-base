@@ -139,6 +139,26 @@ final class MediaGarbageCollectorTest extends TestCase
         self::assertTrue($this->exists('abcdef0123-9999999999')); // page path container survives
     }
 
+    public function testHashDirWithHiddenJobsSubdirIsStillCollected(): void
+    {
+        // Newer Kirby stores pending thumb jobs in a hidden `.jobs/` directory INSIDE the hash dir.
+        // Its presence must NOT stop the hash dir being recognised (previously a fatal blind spot:
+        // every freshly-generated media dir carries a live `.jobs` and became invisible).
+        $this->makeHashDir('news', 'aaaaaaaaaa-1700000000', $this->oldMtime, 500);
+        mkdir($this->root . '/news/aaaaaaaaaa-1700000000/.jobs', 0777, true);
+        file_put_contents($this->root . '/news/aaaaaaaaaa-1700000000/.jobs/thumb.json', '{}');
+        // Creating the .jobs subdir bumps the hash dir's mtime; re-stamp it old so the age gate
+        // still classes it as reclaimable.
+        touch($this->root . '/news/aaaaaaaaaa-1700000000', $this->oldMtime);
+
+        $preview = $this->collector()->preview($this->root, $this->options());
+        self::assertSame(1, $preview->items);
+
+        $result = $this->collector()->runChunk($this->root, $this->options(), 0, 0);
+        self::assertSame(1, $result->processed);
+        self::assertFalse($this->exists('news/aaaaaaaaaa-1700000000'), 'hash dir (with its .jobs) removed');
+    }
+
     public function testChunkedRunProcessesEveryPageAndTerminates(): void
     {
         // Six pages, each one old hash dir; a small chunk limit forces resumption.
