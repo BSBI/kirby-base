@@ -15,7 +15,7 @@ endif;
 
 ?>
 <!DOCTYPE html>
-<html lang="en" <?php snippet('colour-mode/tag') ?>>
+<html <?php snippet('html-lang') ?> <?php snippet('colour-mode/tag') ?>>
 <head>
     <meta charset="utf-8">
     <title><?=strip_tags($currentPage->getHtmlTitle()) ?></title>

@@ -4,6 +4,7 @@ return [
     'sitemap' => __DIR__ . '/snippets/sitemap.php',
     'rss' => __DIR__ . '/snippets/rss.php',
     'rss-html' => __DIR__ . '/snippets/rss-html.php',
+    'html-lang' => __DIR__ . '/snippets/html-lang.php',
     'robots-txt' => __DIR__ . '/snippets/robots-txt.php',
     'block-consent' => __DIR__ . '/snippets/block-consent.php',
     'cookie-consent/banner' => __DIR__ . '/snippets/cookie-consent/banner.php',

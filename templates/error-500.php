@@ -3,7 +3,7 @@
 /** @var string $exception */
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html <?php snippet('html-lang') ?>>
 <head>
     <meta charset="utf-8">
     <title>Error</title>
