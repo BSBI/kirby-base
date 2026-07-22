@@ -5,7 +5,6 @@ use BSBI\WebBase\helpers\FileLinkIndexHelper;
 use BSBI\WebBase\helpers\ImageConversionHelper;
 use BSBI\WebBase\helpers\KirbyBaseHelper;
 use BSBI\WebBase\helpers\KirbyInternalHelper;
-use BSBI\WebBase\helpers\LocaleNumberFormatterGuard;
 use BSBI\WebBase\helpers\SearchIndexHelper;
 use Kirby\Filesystem\F;
 
@@ -127,23 +126,6 @@ function handlePageChange($newPage, $oldPage) {
 }
 
 return [
-    /**
-     * Restore graceful number formatting for languages whose Kirby code is not a valid
-     * ICU locale (e.g. "cyr"). PHP 8.4 made NumberFormatter::__construct() throw on such
-     * codes, which otherwise fatals every front-end niceSize()/tc()/formatNumber() call
-     * on that language. Runs once per request during boot, before any controller renders.
-     */
-    'system.loadPlugins:after' => function () {
-        try {
-            LocaleNumberFormatterGuard::guardConfiguredLanguages();
-        } catch (Throwable $e) {
-            KirbyBaseHelper::writeToLogFile(
-                'locale-formatter',
-                'Failed to guard invalid language locales: ' . $e->getMessage()
-            );
-        }
-    },
-
     'file.create:after' => function (Kirby\Cms\File $file) {
         $filename = $file->filename();
         if (strtolower(pathinfo($filename, PATHINFO_EXTENSION)) !== 'bmp') {
