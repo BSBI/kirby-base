@@ -63,9 +63,11 @@ final readonly class MediaGarbageCollector
      *
      * @param string $mediaPagesDir absolute path to `media/pages`
      * @param MaintenanceOptions $options shared retention options
+     * @param bool $wipeAll when true, ignore the retention window and count every hash dir (used
+     *        by the staging blanket-wipe task; the age-gated live cleanup leaves it false)
      * @return MaintenancePreview count and bytes of stale dirs, with a sample
      */
-    public function preview(string $mediaPagesDir, MaintenanceOptions $options): MaintenancePreview
+    public function preview(string $mediaPagesDir, MaintenanceOptions $options, bool $wipeAll = false): MaintenancePreview
     {
         $cutoff = $this->cutoff($options->retentionDays);
         $items = 0;
@@ -74,7 +76,7 @@ final readonly class MediaGarbageCollector
 
         foreach ($this->enumeratePageDirs($mediaPagesDir) as $pageDir) {
             foreach ($this->hashDirsOf($pageDir['path']) as $hashDir) {
-                if ($hashDir['mtime'] >= $cutoff) {
+                if (!$wipeAll && $hashDir['mtime'] >= $cutoff) {
                     continue;
                 }
                 $items++;
@@ -101,9 +103,11 @@ final readonly class MediaGarbageCollector
      * @param MaintenanceOptions $options shared retention options
      * @param int $offset page-directory offset to resume from
      * @param int $limit maximum page directories to process (<= 0 = all remaining, single shot)
+     * @param bool $wipeAll when true, ignore the retention window and delete every hash dir (used
+     *        by the staging blanket-wipe task; the age-gated live cleanup leaves it false)
      * @return MaintenanceRunResult hash dirs deleted, bytes reclaimed, and the next offset
      */
-    public function runChunk(string $mediaPagesDir, MaintenanceOptions $options, int $offset, int $limit): MaintenanceRunResult
+    public function runChunk(string $mediaPagesDir, MaintenanceOptions $options, int $offset, int $limit, bool $wipeAll = false): MaintenanceRunResult
     {
         $cutoff = $this->cutoff($options->retentionDays);
         $pageDirs = $this->enumeratePageDirs($mediaPagesDir);
@@ -120,7 +124,7 @@ final readonly class MediaGarbageCollector
             $deleted = 0;
 
             foreach ($hashDirs as $hashDir) {
-                if ($hashDir['mtime'] >= $cutoff) {
+                if (!$wipeAll && $hashDir['mtime'] >= $cutoff) {
                     continue;
                 }
                 $full = $pageDir['path'] . '/' . $hashDir['name'];
@@ -235,8 +239,13 @@ final readonly class MediaGarbageCollector
     }
 
     /**
-     * Whether a directory is a media hash dir: its name matches the token-mtime pattern and it
-     * contains no subdirectories (real thumb dirs hold only variant files).
+     * Whether a directory is a media hash dir: its name matches the token-mtime pattern and it holds
+     * no *visible* subdirectory.
+     *
+     * A real page-file media dir holds variant files and, in newer Kirby, a hidden `.jobs/` directory
+     * of pending thumb-generation jobs — so a dot-prefixed subdir is tolerated. A *visible*
+     * subdirectory instead means this is a page path (holding child-page/hash subdirs) that merely
+     * looks like a hash, and must never be treated as a hash dir (and thus deleted).
      *
      * @param string $path absolute path to the directory
      * @param string $name the directory's basename
@@ -248,8 +257,13 @@ final readonly class MediaGarbageCollector
             return false;
         }
 
-        // A subdirectory means this is a page path, not a hash dir (thumb dirs hold only files).
-        return $this->childDirs($path) === [];
+        foreach ($this->childDirs($path) as $child) {
+            if (!str_starts_with($child, '.')) {
+                return false; // a visible subdir ⇒ page path, not a hash dir
+            }
+        }
+
+        return true;
     }
 
     /**

@@ -22,6 +22,15 @@ use Throwable;
 final class MaintenancePanel
 {
     /**
+     * Explains why the gauge's free figure can read lower than the hosting dashboard: it is
+     * derived from {@see disk_free_space()}, which excludes the filesystem's root-reserved
+     * blocks (space the site cannot use), whereas most host panels count those as free.
+     */
+    public const string FREE_SPACE_NOTE = 'Free space is what the site can actually use. '
+        . 'The filesystem keeps some blocks reserved for the operating system, so this may read '
+        . 'lower than your hosting dashboard. Those reserved blocks are not reclaimable here.';
+
+    /**
      * Assemble the Vue view props: whether the viewer may act, the retention window, disk
      * usage, and a dry-run preview for every registered task.
      *
@@ -30,7 +39,7 @@ final class MaintenancePanel
      * sensitive is disclosed in the props JSON.
      *
      * @param App $kirby the Kirby app
-     * @return array{authorized: bool, retentionDays: int, disk: array{freeBytes: int, totalBytes: int, usedPercent: int, freeHuman: string, totalHuman: string}|null, tasks: array<int, array{key: string, label: string, description: string, items: int, bytes: int, humanBytes: string, sample: array<int, string>, error: bool, deferred: bool}>}
+     * @return array{authorized: bool, retentionDays: int, disk: array{freeBytes: int, totalBytes: int, usedPercent: int, freeHuman: string, totalHuman: string, note: string}|null, tasks: array<int, array{key: string, label: string, description: string, items: int, bytes: int, humanBytes: string, sample: array<int, string>, error: bool, deferred: bool}>}
      */
     public static function dashboardProps(App $kirby): array
     {
@@ -213,7 +222,7 @@ final class MaintenancePanel
      * Disk usage of the filesystem holding the site.
      *
      * @param App $kirby the Kirby app
-     * @return array{freeBytes: int, totalBytes: int, usedPercent: int, freeHuman: string, totalHuman: string}
+     * @return array{freeBytes: int, totalBytes: int, usedPercent: int, freeHuman: string, totalHuman: string, note: string}
      */
     private static function diskUsage(App $kirby): array
     {
@@ -221,8 +230,26 @@ final class MaintenancePanel
         $free = disk_free_space($root);
         $total = disk_total_space($root);
 
-        $freeBytes = is_float($free) ? (int) $free : 0;
-        $totalBytes = is_float($total) ? (int) $total : 0;
+        return self::diskReport(
+            is_float($free) ? (int) $free : 0,
+            is_float($total) ? (int) $total : 0,
+        );
+    }
+
+    /**
+     * Assemble the disk-gauge report from raw byte figures. Pure (no filesystem or global
+     * state) so the percentage maths and the reserved-blocks note stay unit-testable.
+     *
+     * `usedPercent` is `(total - free) / total`, where `free` is the space available to the
+     * site; root-reserved blocks therefore count towards "used". {@see FREE_SPACE_NOTE}
+     * explains why that can read higher than a host dashboard.
+     *
+     * @param int $freeBytes bytes available to the site (from {@see disk_free_space()})
+     * @param int $totalBytes total filesystem bytes (from {@see disk_total_space()})
+     * @return array{freeBytes: int, totalBytes: int, usedPercent: int, freeHuman: string, totalHuman: string, note: string}
+     */
+    public static function diskReport(int $freeBytes, int $totalBytes): array
+    {
         $usedPercent = $totalBytes > 0 ? (int) round((($totalBytes - $freeBytes) / $totalBytes) * 100) : 0;
 
         return [
@@ -231,6 +258,7 @@ final class MaintenancePanel
             'usedPercent' => $usedPercent,
             'freeHuman'   => MaintenanceFilesystem::humanBytes($freeBytes),
             'totalHuman'  => MaintenanceFilesystem::humanBytes($totalBytes),
+            'note'        => self::FREE_SPACE_NOTE,
         ];
     }
 

@@ -1891,6 +1891,13 @@ panel.plugin('open-foundations/kirby-base', {
               size="huge"
             />
 
+            <k-text
+              v-if="currentDisk && currentDisk.note"
+              theme="help"
+            >
+              {{ currentDisk.note }}
+            </k-text>
+
             <div role="status" aria-live="polite" aria-atomic="true">
               <k-box
                 v-if="lastResult"

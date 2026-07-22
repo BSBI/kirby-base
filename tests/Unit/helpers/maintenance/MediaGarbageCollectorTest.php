@@ -139,6 +139,26 @@ final class MediaGarbageCollectorTest extends TestCase
         self::assertTrue($this->exists('abcdef0123-9999999999')); // page path container survives
     }
 
+    public function testHashDirWithHiddenJobsSubdirIsStillCollected(): void
+    {
+        // Newer Kirby stores pending thumb jobs in a hidden `.jobs/` directory INSIDE the hash dir.
+        // Its presence must NOT stop the hash dir being recognised (previously a fatal blind spot:
+        // every freshly-generated media dir carries a live `.jobs` and became invisible).
+        $this->makeHashDir('news', 'aaaaaaaaaa-1700000000', $this->oldMtime, 500);
+        mkdir($this->root . '/news/aaaaaaaaaa-1700000000/.jobs', 0777, true);
+        file_put_contents($this->root . '/news/aaaaaaaaaa-1700000000/.jobs/thumb.json', '{}');
+        // Creating the .jobs subdir bumps the hash dir's mtime; re-stamp it old so the age gate
+        // still classes it as reclaimable.
+        touch($this->root . '/news/aaaaaaaaaa-1700000000', $this->oldMtime);
+
+        $preview = $this->collector()->preview($this->root, $this->options());
+        self::assertSame(1, $preview->items);
+
+        $result = $this->collector()->runChunk($this->root, $this->options(), 0, 0);
+        self::assertSame(1, $result->processed);
+        self::assertFalse($this->exists('news/aaaaaaaaaa-1700000000'), 'hash dir (with its .jobs) removed');
+    }
+
     public function testChunkedRunProcessesEveryPageAndTerminates(): void
     {
         // Six pages, each one old hash dir; a small chunk limit forces resumption.
@@ -191,6 +211,74 @@ final class MediaGarbageCollectorTest extends TestCase
         for ($i = 0; $i < 4; $i++) {
             self::assertTrue($this->exists('keep' . $i . '/aaaaaaaaaa-170000000' . $i . '/image-800x600.jpg'));
             self::assertFalse($this->exists('drop' . $i));
+        }
+    }
+
+    // --- wipe-all mode (blanket staging wipe: no age gate) ------------------
+
+    public function testWipeAllDeletesRecentDirsThatTheAgeGateWouldKeep(): void
+    {
+        $this->makeHashDir('news', 'aaaaaaaaaa-1700000000', $this->oldMtime, 500);    // old
+        $this->makeHashDir('news', 'bbbbbbbbbb-1700000001', $this->recentMtime, 300); // recent
+
+        // wipeAll ignores the retention window entirely — both go.
+        $result = $this->collector()->runChunk($this->root, $this->options(), 0, 0, true);
+
+        self::assertTrue($result->done);
+        self::assertSame(2, $result->processed);
+        self::assertSame(800, $result->reclaimedBytes);
+        self::assertFalse($this->exists('news/aaaaaaaaaa-1700000000'));
+        self::assertFalse($this->exists('news/bbbbbbbbbb-1700000001'));
+        self::assertFalse($this->exists('news')); // emptied page dir pruned
+    }
+
+    public function testWipeAllPreviewCountsEveryHashDirRegardlessOfAge(): void
+    {
+        $this->makeHashDir('news', 'aaaaaaaaaa-1700000000', $this->oldMtime, 500);
+        $this->makeHashDir('news', 'bbbbbbbbbb-1700000001', $this->recentMtime, 300);
+
+        $preview = $this->collector()->preview($this->root, $this->options(), true);
+
+        self::assertSame(2, $preview->items);
+        self::assertSame(800, $preview->bytes);
+    }
+
+    public function testWipeAllStillPreservesPagePathContainers(): void
+    {
+        // Even wiping everything, a page path that merely looks like a hash must not be deleted as
+        // one — the walk recurses into it and wipes the real hash dirs inside.
+        $this->makeHashDir('abcdef0123-9999999999', 'dddddddddd-1698000000', $this->recentMtime, 250);
+
+        $result = $this->collector()->runChunk($this->root, $this->options(), 0, 0, true);
+
+        self::assertSame(1, $result->processed);
+        self::assertFalse($this->exists('abcdef0123-9999999999/dddddddddd-1698000000'));
+    }
+
+    public function testWipeAllChunkedProcessesEveryPageAndTerminates(): void
+    {
+        // Mix recent + old across several pages; a small chunk forces resumption. All must go.
+        for ($i = 0; $i < 6; $i++) {
+            $mtime = $i % 2 === 0 ? $this->recentMtime : $this->oldMtime;
+            $this->makeHashDir('page' . $i, 'cccccccccc-169900000' . $i, $mtime, 100);
+        }
+
+        $collector = $this->collector();
+        $options = $this->options();
+
+        $offset = 0;
+        $processed = 0;
+        $iterations = 0;
+        do {
+            $result = $collector->runChunk($this->root, $options, $offset, 2, true);
+            $processed += $result->processed;
+            $offset = $result->nextOffset;
+            self::assertLessThan(20, ++$iterations, 'wipe chunk loop failed to terminate');
+        } while (!$result->done);
+
+        self::assertSame(6, $processed);
+        for ($i = 0; $i < 6; $i++) {
+            self::assertFalse($this->exists('page' . $i));
         }
     }
 }

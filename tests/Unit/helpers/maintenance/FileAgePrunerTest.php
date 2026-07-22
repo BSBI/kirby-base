@@ -169,4 +169,50 @@ final class FileAgePrunerTest extends TestCase
         self::assertSame(0, $preview->items);
         self::assertSame(0, $preview->bytes);
     }
+
+    // --- wipe-all mode (blanket import wipe: no age gate) -------------------
+
+    public function testWipeAllRemovesRecentReclaimableDirTheAgeGateWouldKeep(): void
+    {
+        $this->makeFile('Flora/data.txt', $this->ageDays(1), 100); // fresh — normally kept
+
+        $result = $this->pruner->prune($this->dir, ['Flora'], [], self::RETENTION_DAYS, true);
+
+        self::assertSame(1, $result->processed);
+        self::assertSame(100, $result->reclaimedBytes);
+        self::assertDirectoryDoesNotExist($this->dir . '/Flora');
+    }
+
+    public function testWipeAllStillProtectsProtectedNames(): void
+    {
+        $this->makeFile('family/key.json', $this->ageDays(1), 100);
+
+        // Even wiping everything, the git-tracked family/ data must survive.
+        $result = $this->pruner->prune($this->dir, ['family', 'Flora'], ['family'], self::RETENTION_DAYS, true);
+
+        self::assertSame(0, $result->processed);
+        self::assertDirectoryExists($this->dir . '/family');
+    }
+
+    public function testWipeAllStillIgnoresUnlistedNames(): void
+    {
+        // A fresh dir that is NOT in the reclaimable list must be left even in wipe mode.
+        $this->makeFile('Watsonia/data.txt', $this->ageDays(1), 100);
+
+        $result = $this->pruner->prune($this->dir, ['Flora'], [], self::RETENTION_DAYS, true);
+
+        self::assertSame(0, $result->processed);
+        self::assertDirectoryExists($this->dir . '/Watsonia');
+    }
+
+    public function testWipeAllPreviewCountsRecentReclaimableDirs(): void
+    {
+        $this->makeFile('Flora/data.txt', $this->ageDays(1), 100);
+        $this->makeFile('Watsonia/data.txt', $this->ageDays(1), 250);
+
+        $preview = $this->pruner->preview($this->dir, ['Flora', 'Watsonia'], [], self::RETENTION_DAYS, true);
+
+        self::assertSame(2, $preview->items);
+        self::assertSame(350, $preview->bytes);
+    }
 }
