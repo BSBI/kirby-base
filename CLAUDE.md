@@ -15,6 +15,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Run tests:** `vendor/bin/phpunit` (all tests) or `vendor/bin/phpunit tests/Unit/models/UserTest.php` (single file)
 - **Lint (PHP CodeSniffer):** `vendor/bin/phpcs` — enforces PSR-12 + Slevomat standards on the `site/` directory
 - **Fix lint issues:** `vendor/bin/phpcbf`
+- **Static analysis (PHPStan):** `vendor/bin/phpstan analyse --memory-limit=1G` (level 9, config in `phpstan.neon`). The
+  `--memory-limit=1G` flag is required — the default 128M limit is too low for this codebase and PHPStan will crash with
+  an out-of-memory fatal without it.
 
 There is no JavaScript build process or CSS preprocessor configured in this project.  They would be supplied by the web 
 application using the plugin.
