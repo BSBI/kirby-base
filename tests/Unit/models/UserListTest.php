@@ -72,4 +72,23 @@ final class UserListTest extends TestCase
         $this->assertSame('Bob', $items[1]->getTitle());
         $this->assertSame('Alice', $items[2]->getTitle());
     }
+
+    /**
+     * Verify sortByTitle(false) sorts ascending — the $descending parameter
+     * must be honoured, not ignored.
+     */
+    public function testSortByTitleAscending(): void
+    {
+        $list = new UserList();
+        $list->addListItem($this->createUser('Charlie'));
+        $list->addListItem($this->createUser('Alice'));
+        $list->addListItem($this->createUser('Bob'));
+
+        $list->sortByTitle(false);
+
+        $items = $list->getListItems();
+        $this->assertSame('Alice', $items[0]->getTitle());
+        $this->assertSame('Bob', $items[1]->getTitle());
+        $this->assertSame('Charlie', $items[2]->getTitle());
+    }
 }

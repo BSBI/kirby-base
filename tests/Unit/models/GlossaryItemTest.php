@@ -47,6 +47,45 @@ final class GlossaryItemTest extends TestCase
         );
     }
 
+    public function testExtendedContentHtmlHandling(): void
+    {
+        $item = new GlossaryItem('Bract', '/glossary/bract');
+
+        $this->assertFalse($item->hasExtendedContentHtml());
+        $this->assertSame('', $item->getExtendedContentHtml());
+
+        $item->setExtendedContentHtml('<p>Bracts occur in many families.</p>');
+
+        $this->assertTrue($item->hasExtendedContentHtml());
+        $this->assertSame('<p>Bracts occur in many families.</p>', $item->getExtendedContentHtml());
+    }
+
+    public function testUuidHandling(): void
+    {
+        $item = new GlossaryItem('Bract', '/glossary/bract');
+
+        $this->assertFalse($item->hasUuid());
+        $this->assertSame('', $item->getUuid());
+
+        $item->setUuid('page://bract-uuid');
+
+        $this->assertTrue($item->hasUuid());
+        $this->assertSame('page://bract-uuid', $item->getUuid());
+    }
+
+    public function testPanelUrlHandling(): void
+    {
+        $item = new GlossaryItem('Bract', '/glossary/bract');
+
+        $this->assertFalse($item->hasPanelUrl());
+        $this->assertSame('', $item->getPanelUrl());
+
+        $item->setPanelUrl('/panel/pages/glossary+bract');
+
+        $this->assertTrue($item->hasPanelUrl());
+        $this->assertSame('/panel/pages/glossary+bract', $item->getPanelUrl());
+    }
+
     public function testTypeHandling(): void
     {
         $item = new GlossaryItem('Bract', '/glossary/bract');
@@ -79,6 +118,8 @@ final class GlossaryItemTest extends TestCase
         $result = $item
             ->setDefinition('A modified leaf.')
             ->setDefinitionHtml('<p>A modified leaf.</p>')
+            ->setExtendedContentHtml('<p>More detail.</p>')
+            ->setPanelUrl('/panel/pages/glossary+bract')
             ->setType('botany')
             ->setSlug('bract');
 

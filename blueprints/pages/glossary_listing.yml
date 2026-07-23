@@ -10,8 +10,9 @@ sections:
     label: Glossary
     text: |
       Glossary items added below are listed alphabetically on this page.
-      To make glossary links appear in site content, the `glossary.page`
-      config option must point at this page's path.
+      To make glossary links appear in site content, select this page as the
+      Glossary Location in Site Settings (or set the `glossary.page` config
+      option to this page's path).
   items:
     label: Glossary Items
     type: pages

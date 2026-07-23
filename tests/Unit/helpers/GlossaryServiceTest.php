@@ -43,12 +43,13 @@ final class GlossaryServiceTest extends TestCase
         restore_exception_handler();
     }
 
-    private function makeApp(array $options = []): App
+    private function makeApp(array $options = [], array $siteContent = []): App
     {
         return new App([
             'roots' => ['index' => self::$tmpDir],
             'options' => $options,
             'site' => [
+                'content' => $siteContent,
                 'children' => [
                     [
                         'slug' => 'discover',
@@ -58,6 +59,7 @@ final class GlossaryServiceTest extends TestCase
                                 'slug' => 'glossary',
                                 'template' => 'glossary_listing',
                                 'num' => 1,
+                                'content' => ['uuid' => 'glossary-page-uuid'],
                                 'children' => [
                                     [
                                         'slug' => 'bract',
@@ -68,6 +70,7 @@ final class GlossaryServiceTest extends TestCase
                                             'uuid' => 'bract-uuid',
                                             'definition' => '<p>A modified leaf at the base of a <a href="page://petiole-uuid">flower</a>.</p>',
                                             'glossarytype' => 'botany',
+                                            'extendedcontent' => '[{"content":{"text":"<p>Bracts occur in many families.</p>"},"id":"b1-block","isHidden":false,"type":"text"}]',
                                         ],
                                     ],
                                     [
@@ -99,7 +102,7 @@ final class GlossaryServiceTest extends TestCase
 
     private const array GLOSSARY_OPTION = ['glossary' => ['page' => 'discover/glossary']];
 
-    public function testDisabledWhenOptionNotSet(): void
+    public function testDisabledWhenNeitherSiteFieldNorOptionSet(): void
     {
         $app = $this->makeApp();
         $service = new GlossaryService($app, $app->site());
@@ -108,6 +111,29 @@ final class GlossaryServiceTest extends TestCase
 
         $this->assertFalse($service->isEnabled());
         $this->assertSame($html, $service->enrichHtml($html));
+    }
+
+    public function testGlossaryResolvedFromSiteField(): void
+    {
+        // editors control the glossary location via the glossaryLocation site
+        // field (a pages field storing the page UUID); no config needed
+        $app = $this->makeApp([], ['glossarylocation' => '- page://glossary-page-uuid']);
+        $service = new GlossaryService($app, $app->site());
+
+        $this->assertTrue($service->isEnabled());
+        $this->assertSame(2, $service->getGlossary()->count());
+    }
+
+    public function testSiteFieldTakesPrecedenceOverConfigOption(): void
+    {
+        $app = $this->makeApp(
+            ['glossary' => ['page' => 'does/not/exist']],
+            ['glossarylocation' => '- page://glossary-page-uuid']
+        );
+        $service = new GlossaryService($app, $app->site());
+
+        $this->assertTrue($service->isEnabled());
+        $this->assertSame(2, $service->getGlossary()->count());
     }
 
     public function testGlossaryBuiltFromListedChildren(): void
@@ -131,6 +157,13 @@ final class GlossaryServiceTest extends TestCase
         $this->assertNotNull($petiole);
         $this->assertSame('The stalk & support of a leaf.', $petiole->getDefinition());
 
+        // optional extended content blocks are rendered to HTML; panel URLs let
+        // editors jump from the listing to the item
+        $this->assertStringContainsString('Bracts occur in many families.', $bract->getExtendedContentHtml());
+        $this->assertFalse($petiole->hasExtendedContentHtml());
+        $this->assertStringContainsString('/panel/pages/', $bract->getPanelUrl());
+        $this->assertSame('page://bract-uuid', $bract->getUuid());
+
         $bractPage = $app->page('discover/glossary/bract');
         $this->assertNotNull($bractPage);
         $this->assertSame($bractPage->url(), $bract->getUrl());
@@ -153,6 +186,22 @@ final class GlossaryServiceTest extends TestCase
         $this->assertStringContainsString('href="' . $petiolePage->url() . '"', $bract->getDefinitionHtml());
         $this->assertStringNotContainsString('page://', $bract->getDefinitionHtml());
         $this->assertStringNotContainsString('<a', $bract->getDefinition());
+    }
+
+    public function testBuildGlossaryFromPageWorksWithoutConfigOption(): void
+    {
+        // the listing page builds its glossary directly from the page being
+        // rendered, so it works even before the glossary.page option is set
+        $app = $this->makeApp();
+        $service = new GlossaryService($app, $app->site());
+
+        $glossaryPage = $app->page('discover/glossary');
+        $this->assertNotNull($glossaryPage);
+
+        $glossary = $service->buildGlossaryFromPage($glossaryPage);
+
+        $this->assertSame(2, $glossary->count());
+        $this->assertNotNull($glossary->findByTerm('Bract'));
     }
 
     public function testUnlistedChildrenAreExcluded(): void

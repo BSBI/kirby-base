@@ -20,6 +20,15 @@ class GlossaryItem extends BaseModel
     /** @var string The short definition as HTML, which may link to other glossary terms */
     private string $definitionHtml = '';
 
+    /** @var string Optional extended content about the term, rendered as HTML */
+    private string $extendedContentHtml = '';
+
+    /** @var string The item page's UUID permalink (page://...) */
+    private string $uuid = '';
+
+    /** @var string The Kirby Panel URL for editing the item */
+    private string $panelUrl = '';
+
     /** @var string The optional glossary type (e.g. general, botany) */
     private string $type = '';
 
@@ -81,6 +90,93 @@ class GlossaryItem extends BaseModel
     public function setDefinitionHtml(string $definitionHtml): self
     {
         $this->definitionHtml = $definitionHtml;
+        return $this;
+    }
+
+    /**
+     * Whether extended content has been set
+     * @return bool
+     */
+    public function hasExtendedContentHtml(): bool
+    {
+        return $this->extendedContentHtml !== '';
+    }
+
+    /**
+     * Get the extended content as HTML
+     * @return string
+     */
+    public function getExtendedContentHtml(): string
+    {
+        return $this->extendedContentHtml;
+    }
+
+    /**
+     * Set the extended content as HTML
+     * @param string $extendedContentHtml
+     * @return GlossaryItem
+     */
+    public function setExtendedContentHtml(string $extendedContentHtml): self
+    {
+        $this->extendedContentHtml = $extendedContentHtml;
+        return $this;
+    }
+
+    /**
+     * Whether a UUID has been set
+     * @return bool
+     */
+    public function hasUuid(): bool
+    {
+        return $this->uuid !== '';
+    }
+
+    /**
+     * Get the item page's UUID permalink
+     * @return string
+     */
+    public function getUuid(): string
+    {
+        return $this->uuid;
+    }
+
+    /**
+     * Set the item page's UUID permalink
+     * @param string $uuid
+     * @return GlossaryItem
+     */
+    public function setUuid(string $uuid): self
+    {
+        $this->uuid = $uuid;
+        return $this;
+    }
+
+    /**
+     * Whether a panel URL has been set
+     * @return bool
+     */
+    public function hasPanelUrl(): bool
+    {
+        return $this->panelUrl !== '';
+    }
+
+    /**
+     * Get the Kirby Panel URL for editing the item
+     * @return string
+     */
+    public function getPanelUrl(): string
+    {
+        return $this->panelUrl;
+    }
+
+    /**
+     * Set the Kirby Panel URL for editing the item
+     * @param string $panelUrl
+     * @return GlossaryItem
+     */
+    public function setPanelUrl(string $panelUrl): self
+    {
+        $this->panelUrl = $panelUrl;
         return $this;
     }
 

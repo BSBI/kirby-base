@@ -14,16 +14,23 @@ use Throwable;
 /**
  * Request-scoped entry point for glossary link enrichment.
  *
- * Resolves the glossary page from the `glossary.page` config option (a page
- * path, resolved by targeted path-walking — never a full-index scan), builds
- * the GlossaryList once per request, and enriches block HTML via
- * GlossaryLinkEnricher. When the option is not set the feature is dormant and
- * enrichment is a pass-through.
+ * Resolves the glossary page from the `glossaryLocation` site field (a pages
+ * field, so editors control where the glossary lives), falling back to the
+ * `glossary.page` config option (a page path, resolved by targeted
+ * path-walking — never a full-index scan). Builds the GlossaryList once per
+ * request and enriches block HTML via GlossaryLinkEnricher. When neither
+ * source is set the feature is dormant and enrichment is a pass-through.
  */
 final class GlossaryService
 {
     /** @var GlossaryList|null The glossary items, built once per request */
     private ?GlossaryList $glossary = null;
+
+    /** @var Page|null The resolved glossary page */
+    private ?Page $glossaryPage = null;
+
+    /** @var bool Whether glossary page resolution has already run */
+    private bool $glossaryPageResolved = false;
 
     /**
      * Constructor.
@@ -40,14 +47,54 @@ final class GlossaryService
     }
 
     /**
-     * Whether the glossary feature is enabled (the `glossary.page` config
-     * option is set).
+     * Whether the glossary feature is enabled (a glossary page is resolvable
+     * from the `glossaryLocation` site field or the `glossary.page` option).
      *
      * @return bool
      */
     public function isEnabled(): bool
     {
-        return $this->getGlossaryPagePath() !== '';
+        return $this->getGlossaryPage() !== null;
+    }
+
+    /**
+     * Resolve the glossary page: the `glossaryLocation` site field wins
+     * (editor-controlled, stored as a page UUID so it survives page moves),
+     * with the `glossary.page` config path as fallback. Resolved once per
+     * request.
+     *
+     * @return Page|null The glossary page, or null when not configured
+     */
+    public function getGlossaryPage(): ?Page
+    {
+        if ($this->glossaryPageResolved) {
+            return $this->glossaryPage;
+        }
+
+        $this->glossaryPageResolved = true;
+
+        try {
+            $fieldReader = new KirbyFieldReader($this->kirby, $this->site);
+            return $this->glossaryPage = $fieldReader->getSiteFieldAsPage('glossaryLocation');
+        } catch (KirbyRetrievalException) {
+            // field not set — fall through to the config option
+        } catch (Throwable $e) {
+            KirbyBaseHelper::writeToLogFile(
+                'glossary-errors',
+                'Glossary location site field could not be resolved: ' . $e->getMessage()
+            );
+        }
+
+        $path = $this->getGlossaryPagePath();
+
+        if ($path !== '') {
+            $configPage = $this->site->find($path);
+            if ($configPage instanceof Page) {
+                return $this->glossaryPage = $configPage;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -100,20 +147,28 @@ final class GlossaryService
      */
     private function buildGlossary(): GlossaryList
     {
-        $glossary = new GlossaryList();
-        $path = $this->getGlossaryPagePath();
+        $glossaryPage = $this->getGlossaryPage();
 
-        if ($path === '') {
-            return $glossary;
+        if ($glossaryPage === null) {
+            return new GlossaryList();
         }
 
+        return $this->buildGlossaryFromPage($glossaryPage);
+    }
+
+    /**
+     * Build a glossary list from the listed children of a glossary page.
+     * Public so listing pages can build their glossary directly from the page
+     * being rendered, independently of the `glossary.page` option.
+     *
+     * @param Page $glossaryPage The glossary listing page
+     * @return GlossaryList
+     */
+    public function buildGlossaryFromPage(Page $glossaryPage): GlossaryList
+    {
+        $glossary = new GlossaryList();
+
         try {
-            $glossaryPage = $this->site->find($path);
-
-            if (!$glossaryPage instanceof Page) {
-                return $glossary;
-            }
-
             // a plain reader (no glossary service) so building the glossary
             // can never recurse into enrichment
             $fieldReader = new KirbyFieldReader($this->kirby, $this->site);
@@ -124,6 +179,9 @@ final class GlossaryService
                 $item->setSlug($itemPage->slug())
                     ->setDefinition($this->toPlainText($definitionHtml))
                     ->setDefinitionHtml($definitionHtml)
+                    ->setExtendedContentHtml($this->getExtendedContentHtml($fieldReader, $itemPage))
+                    ->setUuid($itemPage->uuid()->toString())
+                    ->setPanelUrl($itemPage->panel()->url())
                     ->setType($fieldReader->getPageFieldAsString($itemPage, 'glossaryType'));
                 $glossary->addListItem($item);
             }
@@ -132,6 +190,22 @@ final class GlossaryService
         }
 
         return $glossary;
+    }
+
+    /**
+     * Get an item's optional extended content blocks rendered as HTML.
+     *
+     * @param KirbyFieldReader $fieldReader The field reader
+     * @param Page $itemPage The glossary item page
+     * @return string The extended content HTML, or an empty string when the field is empty
+     */
+    private function getExtendedContentHtml(KirbyFieldReader $fieldReader, Page $itemPage): string
+    {
+        try {
+            return $fieldReader->getPageFieldAsBlocksHtml($itemPage, 'extendedContent');
+        } catch (KirbyRetrievalException) {
+            return '';
+        }
     }
 
     /**

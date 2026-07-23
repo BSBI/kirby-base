@@ -551,6 +551,150 @@ panel.plugin('open-foundations/kirby-base', {
       `
     },
 
+    glossarylinks: {
+      data: function () {
+        return {
+          headline: 'Glossary Links',
+          pageId: '',
+          enabled: false,
+          matches: [],
+          selected: {},
+          loading: false,
+          loaded: false,
+          applying: false,
+          appliedCount: null,
+          error: ''
+        }
+      },
+      created: async function() {
+        try {
+          const response = await this.load();
+          this.headline = response.headline;
+          this.pageId = response.pageId;
+          this.enabled = response.enabled;
+        } catch (error) {
+          console.error("Failed to load glossary links section:", error);
+        }
+      },
+      computed: {
+        selectedCount: function () {
+          return this.matches.filter((m, i) => this.selected[i]).length;
+        }
+      },
+      methods: {
+        preview: async function () {
+          this.loading = true;
+          this.error = '';
+          this.appliedCount = null;
+          try {
+            const response = await this.$api.get('glossary/preview-links', { page: this.pageId });
+            if (response.error) {
+              throw new Error(response.error);
+            }
+            this.matches = response.matches || [];
+            const selected = {};
+            this.matches.forEach((m, i) => { selected[i] = true; });
+            this.selected = selected;
+            this.loaded = true;
+          } catch (error) {
+            this.error = error.message || 'Scanning for glossary links failed';
+          } finally {
+            this.loading = false;
+          }
+        },
+        apply: async function () {
+          const selections = this.matches
+            .filter((m, i) => this.selected[i])
+            .map(m => ({ blockId: m.blockId, term: m.term }));
+          if (selections.length === 0) {
+            return;
+          }
+          this.applying = true;
+          this.error = '';
+          try {
+            const response = await this.$api.post('glossary/apply-links', {
+              page: this.pageId,
+              selections: selections
+            });
+            if (response.error) {
+              throw new Error(response.error);
+            }
+            this.appliedCount = response.applied;
+            this.matches = [];
+            this.loaded = false;
+          } catch (error) {
+            this.error = error.message || 'Applying glossary links failed';
+          } finally {
+            this.applying = false;
+          }
+        }
+      },
+      template: `
+        <section v-if="enabled" class="k-section k-glossarylinks-section">
+          <header class="k-section-header">
+            <h2 class="k-headline">{{ headline }}</h2>
+          </header>
+          <div style="padding: 0.75rem 0 0.5rem;">
+            <p v-if="appliedCount !== null" aria-live="polite" style="margin-bottom: 0.75rem; color: var(--color-green-700, #15803d); font-size: 0.875rem;">
+              {{ appliedCount }} glossary link{{ appliedCount !== 1 ? 's' : '' }} added.
+              Reload this page to see the updated content.
+            </p>
+            <p v-if="error" aria-live="assertive" style="margin-bottom: 0.75rem; color: var(--color-red-600, #dc2626); font-size: 0.875rem;">
+              {{ error }}
+            </p>
+            <k-button
+              v-if="!loaded"
+              :disabled="loading"
+              icon="book"
+              variant="filled"
+              @click="preview"
+            >
+              {{ loading ? 'Scanning content…' : 'Preview glossary links' }}
+            </k-button>
+            <template v-if="loaded">
+              <k-empty v-if="matches.length === 0" icon="book">
+                No new glossary links found in this page's content.
+              </k-empty>
+              <template v-else>
+                <p style="margin-bottom: 0.5rem; color: var(--color-text-dimmed); font-size: 0.875rem;">
+                  Untick any links you don't want, then apply. Unsaved changes to
+                  this page should be saved first.
+                </p>
+                <ul style="list-style: none; padding: 0; margin: 0 0 0.75rem;">
+                  <li v-for="(match, index) in matches" :key="index" style="padding: 0.35rem 0; border-bottom: 1px solid var(--color-border);">
+                    <label style="display: flex; gap: 0.5rem; align-items: baseline; cursor: pointer;">
+                      <input type="checkbox" v-model="selected[index]">
+                      <span style="font-size: 0.875rem;">
+                        <strong>{{ match.term }}</strong><br>
+                        <span style="color: var(--color-text-dimmed);">
+                          …{{ match.contextBefore }} <mark>{{ match.matchedText }}</mark> {{ match.contextAfter }}…
+                        </span>
+                      </span>
+                    </label>
+                  </li>
+                </ul>
+                <k-button
+                  :disabled="applying || selectedCount === 0"
+                  icon="check"
+                  variant="filled"
+                  @click="apply"
+                >
+                  {{ applying ? 'Applying…' : 'Add ' + selectedCount + ' link' + (selectedCount !== 1 ? 's' : '') }}
+                </k-button>
+              </template>
+              <k-button
+                :disabled="loading || applying"
+                icon="refresh"
+                @click="preview"
+              >
+                Rescan
+              </k-button>
+            </template>
+          </div>
+        </section>
+      `
+    },
+
     searchindexstats: {
       data: function () {
         return {

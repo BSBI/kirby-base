@@ -229,9 +229,18 @@ abstract class BaseList
      * @return $this
      * @noinspection PhpUnused
      */
-    public function sortByTitle(bool $descending = false): static
+    /**
+     * Sort the list by item title. Descending by default for legacy reasons:
+     * the parameter was historically ignored and the list always sorted
+     * descending, and existing callers (e.g. blog month folders) rely on
+     * that. Pass false for an ascending A–Z sort.
+     *
+     * @param bool $descending Sort Z–A when true (default), A–Z when false
+     * @return $this
+     */
+    public function sortByTitle(bool $descending = true): static
     {
-        return $this->sortBy(fn($item) => $item->getTitle(), true);
+        return $this->sortBy(fn($item) => $item->getTitle(), $descending);
     }
 
     /**

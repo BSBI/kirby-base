@@ -9,6 +9,10 @@ use BSBI\WebBase\helpers\ImageBankIndexHelper;
 use BSBI\WebBase\helpers\FilteredFilesHelper;
 use BSBI\WebBase\helpers\FilteredPagesHelper;
 use BSBI\WebBase\helpers\FormSubmissionIndexDefinition;
+use BSBI\WebBase\helpers\GlossaryPanelService;
+use BSBI\WebBase\helpers\GlossaryService;
+use BSBI\WebBase\helpers\KirbyBaseHelper;
+use BSBI\WebBase\helpers\KirbyInternalHelper;
 use BSBI\WebBase\helpers\SearchIndexHelper;
 use BSBI\WebBase\helpers\StyleGuideService;
 use BSBI\WebBase\helpers\maintenance\CacheClearTask;
@@ -52,6 +56,7 @@ $pluginConfig = [
         'file_link' => __DIR__ . '/templates/file_link.php',
         'form_submission' => __DIR__ . '/templates/form_submission.php',
         'page_link' => __DIR__ . '/templates/page_link.php',
+        'glossary_item' => __DIR__ . '/templates/glossary_item.php',
         'emails/form-notification.html' => __DIR__ . '/templates/emails/form-notification.html.php',
         'emails/form-notification.text' => __DIR__ . '/templates/emails/form-notification.text.php',
         'search_log' => __DIR__ . '/templates/search_log.php',
@@ -78,6 +83,7 @@ $pluginConfig = [
         'filteredfiles'   => require __DIR__ . '/sections/filteredfiles.php',
         'filearchivelinks' => require __DIR__ . '/sections/filearchivelinks.php',
         'styleguidecheck' => require __DIR__ . '/sections/styleguidecheck.php',
+        'glossarylinks' => require __DIR__ . '/sections/glossarylinks.php',
     ],
     'api' => [
         'routes' => [
@@ -115,6 +121,79 @@ $pluginConfig = [
                     $modelId    = (string)get('model_id', '');
                     $template   = (string)get('template', '');
                     return FilteredPagesHelper::getOptions($filterDefs, $modelId, $template);
+                },
+            ],
+            [
+                'pattern' => 'glossary/preview-links',
+                'method'  => 'GET',
+                /**
+                 * Preview the glossary links that could be added to a page.
+                 *
+                 * @return array{matches: array<int, array<string, string>>}|array{error: string}
+                 */
+                'action'  => function (): array {
+                    $helper = new KirbyInternalHelper();
+                    if (!$helper->isCurrentUserAdminOrEditor()) {
+                        return ['error' => 'Not authorised'];
+                    }
+                    $pageId = get('page', '');
+                    $page = is_string($pageId) ? kirby()->page($pageId) : null;
+                    if ($page === null) {
+                        return ['error' => 'Page not found'];
+                    }
+                    $service = new GlossaryPanelService(
+                        kirby(),
+                        new GlossaryService(kirby(), kirby()->site())
+                    );
+                    return ['matches' => $service->previewForPage($page)];
+                },
+            ],
+            [
+                'pattern' => 'glossary/apply-links',
+                'method'  => 'POST',
+                /**
+                 * Apply editor-confirmed glossary links to a page's content.
+                 *
+                 * @return array{applied: int}|array{error: string}
+                 */
+                'action'  => function (): array {
+                    $helper = new KirbyInternalHelper();
+                    if (!$helper->isCurrentUserAdminOrEditor()) {
+                        return ['error' => 'Not authorised'];
+                    }
+                    $pageId = get('page', '');
+                    $page = is_string($pageId) ? kirby()->page($pageId) : null;
+                    if ($page === null) {
+                        return ['error' => 'Page not found'];
+                    }
+                    if ($page->permissions()->can('update') !== true) {
+                        return ['error' => 'Not authorised'];
+                    }
+                    $rawSelections = get('selections', []);
+                    if (!is_array($rawSelections)) {
+                        return ['error' => 'Invalid selections'];
+                    }
+                    $selections = [];
+                    foreach ($rawSelections as $selection) {
+                        if (!is_array($selection)) {
+                            continue;
+                        }
+                        $blockId = $selection['blockId'] ?? '';
+                        $term = $selection['term'] ?? '';
+                        if (is_string($blockId) && is_string($term)) {
+                            $selections[] = ['blockId' => $blockId, 'term' => $term];
+                        }
+                    }
+                    try {
+                        $service = new GlossaryPanelService(
+                            kirby(),
+                            new GlossaryService(kirby(), kirby()->site())
+                        );
+                        return ['applied' => $service->applyToPage($page, $selections)];
+                    } catch (Throwable $e) {
+                        KirbyBaseHelper::writeToLogFile('glossary-errors', 'Glossary apply failed: ' . $e->getMessage());
+                        return ['error' => 'Applying links failed'];
+                    }
                 },
             ],
             [
