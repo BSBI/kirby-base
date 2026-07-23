@@ -204,6 +204,69 @@ final class GlossaryServiceTest extends TestCase
         $this->assertNotNull($glossary->findByTerm('Bract'));
     }
 
+    public function testGetItemsForPickerReturnsUuidTitleAndTruncatedDefinition(): void
+    {
+        // feeds the writer toolbar "insert glossary link" dialog: one option
+        // per term with the page uuid as the value
+        $app = $this->makeApp(self::GLOSSARY_OPTION);
+        $service = new GlossaryService($app, $app->site());
+
+        $items = $service->getItemsForPicker();
+
+        $this->assertCount(2, $items);
+        $this->assertSame('Bract', $items[0]['title']);
+        $this->assertSame('page://bract-uuid', $items[0]['uuid']);
+        $this->assertSame('A modified leaf at the base of a flower.', $items[0]['definition']);
+    }
+
+    public function testGetItemsForPickerGeneratesUuidsAndTruncatesLongDefinitions(): void
+    {
+        // Kirby auto-generates a uuid when a page has none, so every item is
+        // linkable; long definitions are shortened for the picker
+
+        $app = new App([
+            'roots' => ['index' => self::$tmpDir],
+            'options' => ['glossary' => ['page' => 'glossary']],
+            'site' => [
+                'children' => [
+                    [
+                        'slug' => 'glossary',
+                        'template' => 'glossary_listing',
+                        'num' => 1,
+                        'children' => [
+                            [
+                                'slug' => 'no-uuid-term',
+                                'template' => 'glossary_item',
+                                'num' => 1,
+                                'content' => ['title' => 'No Uuid Term', 'definition' => '<p>Whatever.</p>'],
+                            ],
+                            [
+                                'slug' => 'wordy',
+                                'template' => 'glossary_item',
+                                'num' => 2,
+                                'content' => [
+                                    'title' => 'Wordy',
+                                    'uuid' => 'wordy-uuid',
+                                    'definition' => '<p>' . str_repeat('word ', 40) . '</p>',
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+        $service = new GlossaryService($app, $app->site());
+
+        $items = $service->getItemsForPicker();
+
+        $this->assertCount(2, $items);
+        $this->assertStringStartsWith('page://', $items[0]['uuid']);
+        $wordy = $items[1];
+        $this->assertSame('Wordy', $wordy['title']);
+        $this->assertLessThanOrEqual(83, strlen($wordy['definition']));
+        $this->assertStringEndsWith('…', $wordy['definition']);
+    }
+
     public function testUnlistedChildrenAreExcluded(): void
     {
         $app = $this->makeApp(self::GLOSSARY_OPTION);

@@ -149,6 +149,23 @@ $pluginConfig = [
                 },
             ],
             [
+                'pattern' => 'glossary/items',
+                'method'  => 'GET',
+                /**
+                 * List glossary terms for the writer toolbar link picker.
+                 *
+                 * @return array{items: array<int, array{title: string, uuid: string, definition: string}>}|array{error: string}
+                 */
+                'action'  => function (): array {
+                    $helper = new KirbyInternalHelper();
+                    if (!$helper->isCurrentUserAdminOrEditor()) {
+                        return ['error' => 'Not authorised'];
+                    }
+                    $service = new GlossaryService(kirby(), kirby()->site());
+                    return ['items' => $service->getItemsForPicker()];
+                },
+            ],
+            [
                 'pattern' => 'glossary/apply-links',
                 'method'  => 'POST',
                 /**

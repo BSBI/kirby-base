@@ -13,6 +13,7 @@ fields:
       - bold
       - italic
       - link
+      - glossaryLink
     required: true
     help: |
       A short definition of the term, shown on the glossary page and when

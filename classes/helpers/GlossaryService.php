@@ -9,6 +9,7 @@ use BSBI\WebBase\models\GlossaryList;
 use Kirby\Cms\App;
 use Kirby\Cms\Page;
 use Kirby\Cms\Site;
+use Kirby\Toolkit\Str;
 use Throwable;
 
 /**
@@ -126,6 +127,33 @@ final class GlossaryService
             KirbyBaseHelper::writeToLogFile('glossary-errors', 'Glossary enrichment failed: ' . $e->getMessage());
             return $html;
         }
+    }
+
+    /**
+     * Get the glossary items in the shape needed by the writer toolbar
+     * "insert glossary link" picker: one entry per term with the item page
+     * UUID as the value and a shortened plain-text definition for context.
+     * Items without a UUID are skipped (they cannot be linked reliably).
+     *
+     * @return array<int, array{title: string, uuid: string, definition: string}>
+     */
+    public function getItemsForPicker(): array
+    {
+        $items = [];
+
+        foreach ($this->getGlossary()->getListItems() as $item) {
+            if (!$item->hasUuid()) {
+                continue;
+            }
+
+            $items[] = [
+                'title' => $item->getTitle(),
+                'uuid' => $item->getUuid(),
+                'definition' => Str::short($item->getDefinition(), 80),
+            ];
+        }
+
+        return $items;
     }
 
     /**

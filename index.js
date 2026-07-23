@@ -1,4 +1,99 @@
 panel.plugin('open-foundations/kirby-base', {
+  writerMarks: {
+    /**
+     * Glossary link mark: a book toolbar button that opens a term picker and
+     * wraps the selected text in a link to the chosen glossary item page.
+     * The schema owns the data-glossary attribute, so it survives the
+     * ProseMirror round-trip and marks glossary links as such in stored
+     * content (Kirby's Sane\Html allows data-* attributes server-side).
+     * Available in every writer-based field (text blocks, list blocks) whose
+     * `marks` option is unrestricted or includes `glossaryLink`.
+     */
+    glossaryLink: {
+      get button() {
+        return { icon: "book", label: "Glossary" };
+      },
+      commands() {
+        const mark = this;
+        return () => {
+          window.panel.api
+            .get("glossary/items")
+            .then((response) => {
+              if (response.error) {
+                throw new Error(response.error);
+              }
+              const items = response.items || [];
+              if (items.length === 0) {
+                window.panel.notification.info(
+                  "No glossary terms found. Add items to the glossary page first."
+                );
+                return;
+              }
+              window.panel.dialog.open({
+                component: "k-form-dialog",
+                props: {
+                  fields: {
+                    term: {
+                      label: "Glossary term",
+                      type: "select",
+                      required: true,
+                      options: items.map((item) => ({
+                        value: item.uuid,
+                        text: item.definition
+                          ? item.title + " — " + item.definition
+                          : item.title
+                      }))
+                    }
+                  },
+                  submitButton: { icon: "check", text: "Insert glossary link" }
+                },
+                on: {
+                  submit: (value) => {
+                    if (value && value.term) {
+                      // /@/page/ permalink form: page:// hrefs are stripped by
+                      // Kirby's server-side sanitiser on save. update() (not
+                      // toggle(), which ignores attributes) applies the mark
+                      // with its href, as the built-in link mark does.
+                      mark.update({
+                        href: "/@/page/" + value.term.replace(/^page:\/\//, "")
+                      });
+                    }
+                    window.panel.dialog.close();
+                  }
+                }
+              });
+            })
+            .catch((error) => {
+              window.panel.notification.error(
+                error.message || "Loading glossary terms failed"
+              );
+            });
+        };
+      },
+      get name() {
+        return "glossaryLink";
+      },
+      get schema() {
+        return {
+          attrs: {
+            href: {}
+          },
+          inclusive: false,
+          parseDOM: [
+            {
+              tag: "a[data-glossary]",
+              getAttrs: (dom) => ({ href: dom.getAttribute("href") })
+            }
+          ],
+          toDOM: (node) => [
+            "a",
+            { href: node.attrs.href, "data-glossary": "true" },
+            0
+          ]
+        };
+      }
+    }
+  },
   fields: {
     // Renders identically to the core users field; all the narrowed
     // full-name search lives in the PHP UserNamePicker behind its api.

@@ -90,6 +90,18 @@ final class GlossaryLinkEnricherTest extends TestCase
         $this->assertStringContainsString('href="https://example.test/glossary/bract#detail"', $result);
     }
 
+    public function testGlossaryMarkLinksWithDataAttributeAreEnriched(): void
+    {
+        // links inserted by the writer toolbar glossary mark carry a
+        // data-glossary attribute; enrichment must handle them and keep it
+        $html = '<p><a href="https://example.test/glossary/bract" data-glossary="true">bract</a></p>';
+
+        $result = $this->enricher->enrich($html, $this->glossary);
+
+        $this->assertStringContainsString('title="A modified leaf at the base of a flower."', $result);
+        $this->assertStringContainsString('data-glossary="true"', $result);
+    }
+
     public function testDefinitionIsHtmlEscapedInAttribute(): void
     {
         $glossary = new GlossaryList();

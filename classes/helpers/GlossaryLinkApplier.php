@@ -9,8 +9,10 @@ namespace BSBI\WebBase\helpers;
  *
  * For each supplied term, the first available whole-word occurrence (outside
  * tags and existing links) is wrapped in an anchor whose href is the glossary
- * item's page:// permalink, so the link survives page moves and is resolved
- * to a URL at render time. Occurrence detection is delegated to
+ * item's /@/page/{id} permalink, so the link survives page moves and is
+ * resolved to a URL at render time. That permalink form (the same one Kirby's
+ * writer stores) is required: Kirby's Sane\Html sanitiser strips hrefs with a
+ * page:// scheme on save. Occurrence detection is delegated to
  * GlossaryMatcherService so preview and apply always agree on what matches.
  */
 final readonly class GlossaryLinkApplier
@@ -49,11 +51,16 @@ final readonly class GlossaryLinkApplier
                 continue;
             }
 
-            $href = str_starts_with($uuid, 'page://') ? $uuid : 'page://' . $uuid;
+            // /@/page/ permalink form: page:// hrefs are stripped by Kirby's
+            // Sane\Html sanitiser when the content is next saved in the panel
+            $href = '/@/page/' . (str_starts_with($uuid, 'page://') ? substr($uuid, 7) : $uuid);
             // matchedText is a verbatim substring of the source HTML's text
             // segments (never contains markup); the href is escaped so nothing
             // can break out of the attribute
-            $link = '<a href="' . htmlspecialchars($href, ENT_QUOTES) . '">'
+            // data-glossary identifies glossary links in stored content (the
+            // panel writer parses them as the glossaryLink mark and styles
+            // them); Sane\Html allows data-* attributes so it survives saves
+            $link = '<a href="' . htmlspecialchars($href, ENT_QUOTES) . '" data-glossary="true">'
                 . htmlspecialchars($match->getMatchedText(), ENT_NOQUOTES) . '</a>';
             $html = substr_replace($html, $link, $match->getOffset(), strlen($match->getMatchedText()));
         }

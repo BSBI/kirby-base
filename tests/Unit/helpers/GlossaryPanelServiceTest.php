@@ -137,7 +137,7 @@ final class GlossaryPanelServiceTest extends TestCase
         );
 
         $this->assertSame(1, $result['applied']);
-        $this->assertStringContainsString('<a href=\"page://bract-uuid\">bract</a>', $result['json']);
+        $this->assertStringContainsString('<a href=\"/@/page/bract-uuid\" data-glossary=\"true\">bract</a>', $result['json']);
         // the untouched block is preserved
         $this->assertStringContainsString('blk-linked', $result['json']);
     }
@@ -174,7 +174,7 @@ final class GlossaryPanelServiceTest extends TestCase
         );
 
         $this->assertSame(1, $result['applied']);
-        $this->assertStringContainsString('page://bract-uuid', $result['json']);
+        $this->assertStringContainsString('/@/page/bract-uuid', $result['json']);
     }
 
     public function testApplyToPagePersistsLinks(): void

@@ -20,6 +20,8 @@ return [
     'pages/glossary_item' => __DIR__ . '/blueprints/pages/glossary_item.yml',
 
     //block blueprints
+    'blocks/text' => __DIR__ . '/blueprints/blocks/text.yml',
+    'blocks/list' => __DIR__ . '/blueprints/blocks/list.yml',
     'blocks/accordion' => __DIR__ . '/blueprints/blocks/accordion.yml',
     'blocks/button' => __DIR__ . '/blueprints/blocks/button.yml',
     'blocks/cards' => __DIR__ . '/blueprints/blocks/cards.yml',
