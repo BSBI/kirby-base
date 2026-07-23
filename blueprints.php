@@ -16,6 +16,8 @@ return [
     'pages/image_bank' => __DIR__ . '/blueprints/pages/image_bank.yml',
     'pages/search_log' => __DIR__ . '/blueprints/pages/search_log.yml',
     'pages/search_log_item' => __DIR__ . '/blueprints/pages/search_log_item.yml',
+    'pages/glossary_listing' => __DIR__ . '/blueprints/pages/glossary_listing.yml',
+    'pages/glossary_item' => __DIR__ . '/blueprints/pages/glossary_item.yml',
 
     //block blueprints
     'blocks/accordion' => __DIR__ . '/blueprints/blocks/accordion.yml',

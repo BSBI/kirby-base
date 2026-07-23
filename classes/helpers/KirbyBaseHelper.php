@@ -71,6 +71,7 @@ abstract class KirbyBaseHelper
     protected const string ASSETS_PATH = '/media/plugins/open-foundations/kirby-base/';
 
     protected KirbyFieldReader $fieldReader;
+    protected GlossaryService $glossaryService;
     protected ImageService $imageService;
     protected NavigationService $navigationService;
     protected SearchService $searchService;
@@ -108,7 +109,8 @@ abstract class KirbyBaseHelper
         $this->kirby = kirby();
         $this->site = site();
         $this->page = page();
-        $this->fieldReader = new KirbyFieldReader($this->kirby, $this->site);
+        $this->glossaryService = new GlossaryService($this->kirby, $this->site);
+        $this->fieldReader = new KirbyFieldReader($this->kirby, $this->site, $this->glossaryService);
         $this->imageService = new ImageService($this->fieldReader);
         $this->navigationService = new NavigationService(
             $this->fieldReader,

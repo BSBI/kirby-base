@@ -1,0 +1,33 @@
+title: Glossary Item
+icon: bookmark
+
+options:
+  changeTemplate: false
+
+fields:
+  definition:
+    label: Definition
+    type: writer
+    inline: true
+    marks:
+      - bold
+      - italic
+      - link
+    required: true
+    help: |
+      A short definition of the term, shown on the glossary page and when
+      hovering over a glossary link in site content. It may link to other
+      glossary terms; any links and formatting are stripped when the
+      definition is shown as a hover tooltip. The page title is the term
+      itself.
+  glossaryType:
+    label: Type
+    type: select
+    options:
+      general: General
+      botany: Botany
+    help: Optional grouping for the term (leave empty if unsure)
+  extendedContent:
+    extends: fields/simpleContent
+    label: Extended Content
+    help: Optional additional content about the term, shown on the glossary page

@@ -1,0 +1,19 @@
+title: Glossary
+icon: book
+
+options:
+  changeTemplate: false
+
+sections:
+  info:
+    type: info
+    label: Glossary
+    text: |
+      Glossary items added below are listed alphabetically on this page.
+      To make glossary links appear in site content, the `glossary.page`
+      config option must point at this page's path.
+  items:
+    label: Glossary Items
+    type: pages
+    template: glossary_item
+    sortBy: title asc

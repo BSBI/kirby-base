@@ -37,10 +37,14 @@ final readonly class KirbyFieldReader
     /**
      * @param App $kirby
      * @param Site $site
+     * @param GlossaryService|null $glossaryService Optional glossary service; when provided,
+     *                                              glossary links in text/list blocks are
+     *                                              enriched with definition title attributes
      */
     public function __construct(
         private App  $kirby,
         private Site $site,
+        private ?GlossaryService $glossaryService = null,
     )
     {
     }
@@ -1487,13 +1491,15 @@ final readonly class KirbyFieldReader
 
     /**
      * Converts a block to its HTML representation, resolving @page permalinks to URLs
-     * for text and list blocks.
+     * for text and list blocks. When a GlossaryService is available, glossary links
+     * are enriched with definition title attributes after permalink resolution.
      */
     public function getHTMLfromBlock(Block $block): string
     {
         if (in_array($block->type(), ['text', 'list'])) {
             /** @noinspection PhpUndefinedMethodInspection */
-            return $block->text()->toHtml()->permalinksToUrls()->toString();
+            $html = $block->text()->toHtml()->permalinksToUrls()->toString();
+            return $this->glossaryService?->enrichHtml($html) ?? $html;
         }
         return $block->toHtml();
     }
