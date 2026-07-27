@@ -72,8 +72,17 @@ These are registered in `blueprints.php`.
 - **Image handling:** Responsive images with srcset generation, WebP conversion, and image bank support
 
 ## Making changes
-Be aware that kirby-base may be updated from other projects.  Always best to pull the latest version of the plugin 
-before making changes.
+
+**Always pull the latest changes before starting work.** kirby-base is updated from several
+consuming projects, so `origin` is frequently ahead of your local checkout — start every task with:
+
+```
+git pull --rebase origin main
+```
+
+Rebasing (rather than merging) keeps your new commits on top of the latest remote history and avoids
+noisy merge commits. If a push is later rejected with "fetch first", it means new commits landed on
+`origin` while you worked — `git pull --rebase origin main` again, then push.
 
 When adding any new blueprint, snippet, or template file, you MUST also register it explicitly in the corresponding registration file — Kirby does not auto-discover files in a plugin:
 
