@@ -20,12 +20,14 @@ use PHPUnit\Framework\TestCase;
  */
 final class EnvironmentGuardTest extends TestCase
 {
-    /** @var array<int, string> the BSBI-style non-production allow-list */
+    /** @var array<int, string> a typical non-production allow-list */
     private const array PERMITTED = ['staging', 'dev'];
 
-    private const string LIVE_MARKER = 'eqscffqqhg';
-    private const string STAGING_PATH = '/home/master/applications/cbheknbrut/public_html';
-    private const string LIVE_PATH = '/home/master/applications/eqscffqqhg/public_html';
+    // Placeholder identifiers/paths only. The guard treats the marker as an opaque substring, so
+    // the test relies solely on: LIVE_PATH contains LIVE_MARKER, STAGING_PATH does not.
+    private const string LIVE_MARKER = 'live-app-id';
+    private const string STAGING_PATH = '/srv/www/staging-app-id/public_html';
+    private const string LIVE_PATH = '/srv/www/live-app-id/public_html';
 
     // --- allow-list: permitted environments ---------------------------------
 
