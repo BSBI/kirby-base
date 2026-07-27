@@ -94,6 +94,31 @@ class GlossaryItem extends BaseModel
     }
 
     /**
+     * Render this item as an enriched glossary link, matching what the
+     * render-time enricher produces for links in block content: href to the
+     * item page, data-glossary hook, the HTML definition (when set) for
+     * front-end tooltips, and the plain definition as the title fallback.
+     * Used by the glossary/glossary-link snippet.
+     *
+     * @param string|null $label Link text (defaults to the term itself)
+     * @return string The anchor HTML
+     */
+    public function getLinkHtml(?string $label = null): string
+    {
+        $html = '<a href="' . htmlspecialchars($this->getUrl(), ENT_QUOTES) . '" data-glossary="true"';
+
+        if ($this->hasDefinitionHtml()) {
+            $html .= ' data-glossary-html="' . htmlspecialchars($this->definitionHtml, ENT_QUOTES) . '"';
+        }
+
+        if ($this->hasDefinition()) {
+            $html .= ' title="' . htmlspecialchars($this->definition, ENT_QUOTES) . '"';
+        }
+
+        return $html . '>' . htmlspecialchars($label ?? $this->getTitle(), ENT_NOQUOTES) . '</a>';
+    }
+
+    /**
      * Whether extended content has been set
      * @return bool
      */

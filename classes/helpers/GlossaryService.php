@@ -24,6 +24,12 @@ use Throwable;
  */
 final class GlossaryService
 {
+    /** @var GlossaryService|null The shared per-request instance */
+    private static ?GlossaryService $instance = null;
+
+    /** @var App|null The App the shared instance was built for */
+    private static ?App $instanceApp = null;
+
     /** @var GlossaryList|null The glossary items, built once per request */
     private ?GlossaryList $glossary = null;
 
@@ -45,6 +51,24 @@ final class GlossaryService
         private readonly Site $site,
         private readonly GlossaryLinkEnricher $enricher = new GlossaryLinkEnricher(),
     ) {
+    }
+
+    /**
+     * Get a shared per-request instance, so callers without access to
+     * dependency injection (e.g. snippets rendered many times on one page)
+     * reuse a single glossary build.
+     *
+     * @param App $kirby The Kirby application instance
+     * @param Site $site The site instance
+     * @return GlossaryService
+     */
+    public static function instance(App $kirby, Site $site): GlossaryService
+    {
+        if (self::$instance === null || self::$instanceApp !== $kirby) {
+            self::$instance = new GlossaryService($kirby, $site);
+            self::$instanceApp = $kirby;
+        }
+        return self::$instance;
     }
 
     /**

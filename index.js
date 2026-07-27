@@ -790,6 +790,157 @@ panel.plugin('open-foundations/kirby-base', {
       `
     },
 
+    glossaryaddtopages: {
+      data: function () {
+        return {
+          headline: 'Add to Pages',
+          pageId: '',
+          term: '',
+          enabled: false,
+          log: [],
+          running: false,
+          done: 0,
+          total: 0,
+          addedLinks: 0,
+          error: ''
+        }
+      },
+      created: async function() {
+        try {
+          const response = await this.load();
+          this.headline = response.headline;
+          this.pageId = response.pageId;
+          this.term = response.term;
+          this.enabled = response.enabled;
+          this.log = response.log || [];
+        } catch (error) {
+          console.error("Failed to load glossary add-to-pages section:", error);
+        }
+      },
+      methods: {
+        start: async function () {
+          if (this.running) {
+            return;
+          }
+          if (!window.confirm(
+            'Scan the whole site and add glossary links for "' + this.term + '" wherever it appears unlinked?'
+          )) {
+            return;
+          }
+          this.running = true;
+          this.error = '';
+          this.done = 0;
+          this.total = 0;
+          this.addedLinks = 0;
+          try {
+            const candidates = await this.$api.get('glossary/add-to-pages/candidates');
+            if (candidates.error) {
+              throw new Error(candidates.error);
+            }
+            let queue = candidates.pages || [];
+            this.total = queue.length;
+            const batchSize = 50;
+            while (queue.length > 0) {
+              const batch = queue.slice(0, batchSize);
+              const response = await this.$api.post('glossary/add-to-pages/batch', {
+                item: this.pageId,
+                pages: batch
+              });
+              if (response.error) {
+                throw new Error(response.error);
+              }
+              (response.results || []).forEach((result) => {
+                this.log.push(result);
+                this.addedLinks += result.applied;
+              });
+              // the route is time-budgeted and may process only part of the
+              // batch; resume from wherever it actually got to
+              const processed = Math.max(1, response.processed || batch.length);
+              queue = queue.slice(processed);
+              this.done = this.total - queue.length;
+            }
+          } catch (error) {
+            this.error = error.message || 'Adding glossary links failed';
+          } finally {
+            this.running = false;
+          }
+        },
+        clearLog: async function () {
+          try {
+            const response = await this.$api.post('glossary/add-to-pages/clear-log', {
+              item: this.pageId
+            });
+            if (response.error) {
+              throw new Error(response.error);
+            }
+            this.log = [];
+            this.addedLinks = 0;
+            this.done = 0;
+            this.total = 0;
+          } catch (error) {
+            this.error = error.message || 'Clearing the log failed';
+          }
+        }
+      },
+      template: `
+        <section v-if="enabled" class="k-section k-glossaryaddtopages-section">
+          <header class="k-section-header">
+            <h2 class="k-headline">{{ headline }}</h2>
+          </header>
+          <div style="padding: 0.75rem 0 0.5rem;">
+            <p style="margin-bottom: 0.75rem; color: var(--color-text-dimmed); font-size: 0.875rem;">
+              Scans every page on the site and links unlinked occurrences of
+              "{{ term }}" to this glossary item. This can take a few minutes;
+              results are added to the change log below.
+            </p>
+            <p style="margin-bottom: 0.75rem; color: var(--color-orange-700, #b45309); font-size: 0.875rem;">
+              <strong>Caution:</strong> best avoided for terms that are
+              everyday words with other meanings — every occurrence on the
+              site would be linked, whatever its sense. For those, add links
+              page by page instead.
+            </p>
+            <p v-if="error" aria-live="assertive" style="margin-bottom: 0.75rem; color: var(--color-red-600, #dc2626); font-size: 0.875rem;">
+              {{ error }}
+            </p>
+            <p v-if="running || done > 0" aria-live="polite" style="margin-bottom: 0.75rem; font-size: 0.875rem;">
+              <template v-if="running">Scanning… {{ done }} of {{ total }} pages checked, {{ addedLinks }} link{{ addedLinks !== 1 ? 's' : '' }} added.</template>
+              <template v-else>Finished: {{ done }} pages checked, {{ addedLinks }} link{{ addedLinks !== 1 ? 's' : '' }} added.</template>
+            </p>
+            <k-button
+              :disabled="running"
+              icon="book"
+              variant="filled"
+              @click="start"
+            >
+              {{ running ? 'Scanning…' : 'Add links across the site' }}
+            </k-button>
+            <template v-if="log.length > 0">
+              <h3 style="margin: 1rem 0 0.5rem; font-size: 0.875rem; font-weight: 600;">Change log</h3>
+              <ul style="list-style: none; padding: 0; margin: 0 0 0.75rem;">
+                <li v-for="(entry, index) in log" :key="index" style="padding: 0.35rem 0; border-bottom: 1px solid var(--color-border); font-size: 0.875rem;">
+                  <a :href="entry.panelUrl"><strong>{{ entry.title }}</strong></a>
+                  — {{ entry.applied }} link{{ entry.applied !== 1 ? 's' : '' }}
+                  <span style="color: var(--color-text-dimmed);">({{ entry.date }})</span>
+                  <ul v-if="entry.contexts && entry.contexts.length" style="list-style: none; padding: 0 0 0 1rem; margin: 0.25rem 0 0;">
+                    <li v-for="(context, contextIndex) in entry.contexts" :key="contextIndex" style="color: var(--color-text-dimmed);">
+                      …{{ context }}…
+                    </li>
+                  </ul>
+                </li>
+              </ul>
+              <k-button
+                :disabled="running"
+                icon="trash"
+                @click="clearLog"
+              >
+                Clear log
+              </k-button>
+            </template>
+          </div>
+        </section>
+      `
+    },
+
     searchindexstats: {
       data: function () {
         return {

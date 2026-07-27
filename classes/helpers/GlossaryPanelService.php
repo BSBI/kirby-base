@@ -7,6 +7,7 @@ namespace BSBI\WebBase\helpers;
 use BSBI\WebBase\models\GlossaryList;
 use Kirby\Cms\App;
 use Kirby\Cms\Page;
+use Kirby\Cms\Site;
 use Kirby\Content\Field;
 
 /**
@@ -21,16 +22,21 @@ use Kirby\Content\Field;
  */
 final readonly class GlossaryPanelService
 {
+    /** Maximum "Add to Pages" change-log entries kept per glossary item */
+    private const int MAX_LOG_ENTRIES = 500;
+
     /**
      * Constructor.
      *
      * @param App $kirby The Kirby application instance
+     * @param Site $site The site instance (for site-wide page traversal)
      * @param GlossaryService $glossaryService The glossary service
      * @param GlossaryMatcherService $matcher The term matcher
      * @param GlossaryLinkApplier $applier The link applier
      */
     public function __construct(
         private App $kirby,
+        private Site $site,
         private GlossaryService $glossaryService,
         private GlossaryMatcherService $matcher = new GlossaryMatcherService(),
         private GlossaryLinkApplier $applier = new GlossaryLinkApplier(),
@@ -52,9 +58,10 @@ final readonly class GlossaryPanelService
      * Preview the glossary links that could be added to a page.
      *
      * @param Page $page The page to scan
+     * @param string[]|null $onlyTerms Restrict matching to these glossary terms (null = all)
      * @return array<int, array{field: string, blockId: string, term: string, matchedText: string, contextBefore: string, contextAfter: string}>
      */
-    public function previewForPage(Page $page): array
+    public function previewForPage(Page $page, ?array $onlyTerms = null): array
     {
         $glossary = $this->glossaryService->getGlossary();
 
@@ -63,6 +70,13 @@ final readonly class GlossaryPanelService
         }
 
         $terms = $glossary->getTerms();
+
+        if ($onlyTerms !== null) {
+            $terms = array_values(array_intersect($terms, $onlyTerms));
+            if ($terms === []) {
+                return [];
+            }
+        }
         $matches = [];
 
         foreach ($this->getContentFieldNames() as $fieldName) {
@@ -90,6 +104,101 @@ final readonly class GlossaryPanelService
         }
 
         return $matches;
+    }
+
+    /**
+     * Apply a single glossary term's links to a page: finds every available
+     * occurrence of just that term and links it, persisting the page.
+     * Used by the site-wide "Add to Pages" tool on glossary items.
+     *
+     * @param Page $page The page to update
+     * @param string $term The glossary term to apply
+     * @return array<int, array{field: string, blockId: string, term: string, matchedText: string, contextBefore: string, contextAfter: string}> The matches that were applied
+     * @throws \Throwable When the page update fails
+     */
+    public function applyTermToPage(Page $page, string $term): array
+    {
+        $item = $this->glossaryService->getGlossary()->findByTerm($term);
+
+        if ($item === null) {
+            return [];
+        }
+
+        $matches = $this->previewForPage($page, [$item->getTitle()]);
+
+        if ($matches === []) {
+            return [];
+        }
+
+        $selections = array_map(
+            static fn (array $match): array => ['blockId' => $match['blockId'], 'term' => $match['term']],
+            $matches
+        );
+        $this->applyToPage($page, $selections);
+
+        return $matches;
+    }
+
+    /**
+     * List the IDs of every page the site-wide "Add to Pages" tool should
+     * scan: the whole published site index except the glossary page and its
+     * items. A deliberate full-index traversal — this is an explicit,
+     * editor-triggered batch operation, not a per-request lookup.
+     *
+     * @return string[]
+     */
+    public function getCandidatePageIds(): array
+    {
+        $glossaryPage = $this->glossaryService->getGlossaryPage();
+        $ids = [];
+
+        foreach ($this->site->index() as $indexPage) {
+            if ($glossaryPage !== null
+                && ($indexPage->is($glossaryPage) || $indexPage->isDescendantOf($glossaryPage))
+            ) {
+                continue;
+            }
+            $ids[] = $indexPage->id();
+        }
+
+        return $ids;
+    }
+
+    /**
+     * Append entries to a glossary item's "Add to Pages" change log (stored
+     * as JSON in its addtopageslog field), so editors can review — and later
+     * clear — what the site-wide tool changed.
+     *
+     * @param Page $itemPage The glossary item page
+     * @param array<int, array<string, mixed>> $entries Log entries to append
+     * @return Page The updated item page
+     * @throws \Throwable When the page update fails
+     */
+    public function appendToItemLog(Page $itemPage, array $entries): Page
+    {
+        $field = $itemPage->content()->get('addtopageslog');
+        $raw = $field instanceof Field ? $field->value() : null;
+        $log = is_string($raw) && $raw !== '' ? json_decode($raw, true) : [];
+
+        if (!is_array($log)) {
+            $log = [];
+        }
+
+        // cap the log so repeated site-wide runs cannot balloon the field;
+        // the newest entries win
+        $log = array_slice(array_merge($log, $entries), -self::MAX_LOG_ENTRIES);
+        $encoded = json_encode($log, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+        if ($encoded === false) {
+            // keep the existing log rather than wiping it, and leave a trace
+            KirbyBaseHelper::writeToLogFile(
+                'glossary-errors',
+                'Add to Pages log encoding failed: ' . json_last_error_msg()
+            );
+            return $itemPage;
+        }
+
+        return $itemPage->update(['addtopageslog' => $encoded]);
     }
 
     /**

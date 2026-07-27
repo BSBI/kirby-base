@@ -45,12 +45,58 @@ final class GlossaryLinkEnricherTest extends TestCase
         $this->assertSame($html, $this->enricher->enrich($html, $this->glossary));
     }
 
-    public function testGlossaryLinkGetsTitleAttribute(): void
+    public function testGlossaryLinkGetsTitleAndDataGlossaryAttributes(): void
     {
+        // data-glossary is added at render time to every matched link (even
+        // ones created with the plain Page link dialog) so front-end tooltip
+        // and styling hooks apply uniformly
         $html = '<p>The <a href="https://example.test/glossary/bract">bract</a> is green.</p>';
-        $expected = '<p>The <a href="https://example.test/glossary/bract" title="A modified leaf at the base of a flower.">bract</a> is green.</p>';
+        $expected = '<p>The <a href="https://example.test/glossary/bract" data-glossary="true"'
+            . ' title="A modified leaf at the base of a flower.">bract</a> is green.</p>';
 
         $this->assertSame($expected, $this->enricher->enrich($html, $this->glossary));
+    }
+
+    public function testDefinitionHtmlIsCarriedInEscapedDataAttribute(): void
+    {
+        // when an item has an HTML definition (which may link to other
+        // glossary terms), it is carried in data-glossary-html so front-end
+        // tooltips can render the definition with its links intact
+        $glossary = new GlossaryList();
+        $glossary->addListItem(
+            (new GlossaryItem('Bract', 'https://example.test/glossary/bract'))
+                ->setDefinition('A modified leaf, see petiole.')
+                ->setDefinitionHtml('A modified leaf, see <a href="https://example.test/glossary/petiole">petiole</a>.')
+        );
+        $html = '<p><a href="https://example.test/glossary/bract">bract</a></p>';
+
+        $result = $this->enricher->enrich($html, $glossary);
+
+        $this->assertStringContainsString(
+            'data-glossary-html="A modified leaf, see '
+            . '&lt;a href=&quot;https://example.test/glossary/petiole&quot;&gt;petiole&lt;/a&gt;."',
+            $result
+        );
+        $this->assertStringContainsString('title="A modified leaf, see petiole."', $result);
+    }
+
+    public function testNoDefinitionHtmlMeansNoHtmlDataAttribute(): void
+    {
+        // fixture items in setUp have plain definitions only
+        $html = '<p><a href="https://example.test/glossary/bract">bract</a></p>';
+
+        $result = $this->enricher->enrich($html, $this->glossary);
+
+        $this->assertStringNotContainsString('data-glossary-html', $result);
+    }
+
+    public function testDataGlossaryAttributeIsNotDuplicated(): void
+    {
+        $html = '<p><a href="https://example.test/glossary/bract" data-glossary="true">bract</a></p>';
+
+        $result = $this->enricher->enrich($html, $this->glossary);
+
+        $this->assertSame(1, substr_count($result, 'data-glossary'));
     }
 
     public function testMultipleGlossaryLinksAllEnriched(): void
@@ -75,7 +121,8 @@ final class GlossaryLinkEnricherTest extends TestCase
     public function testExistingTitleAttributeIsReplaced(): void
     {
         $html = '<p><a href="https://example.test/glossary/bract" title="old title">bract</a></p>';
-        $expected = '<p><a href="https://example.test/glossary/bract" title="A modified leaf at the base of a flower.">bract</a></p>';
+        $expected = '<p><a href="https://example.test/glossary/bract"'
+            . ' title="A modified leaf at the base of a flower." data-glossary="true">bract</a></p>';
 
         $this->assertSame($expected, $this->enricher->enrich($html, $this->glossary));
     }

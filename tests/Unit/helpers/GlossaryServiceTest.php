@@ -204,6 +204,27 @@ final class GlossaryServiceTest extends TestCase
         $this->assertNotNull($glossary->findByTerm('Bract'));
     }
 
+    public function testInstanceIsMemoisedPerApp(): void
+    {
+        // snippets use GlossaryService::instance() so repeated snippet calls
+        // on one page share a single glossary build
+        $app = $this->makeApp(self::GLOSSARY_OPTION);
+        $first = GlossaryService::instance($app, $app->site());
+        $second = GlossaryService::instance($app, $app->site());
+
+        $this->assertSame($first, $second);
+
+        $otherApp = $this->makeApp(self::GLOSSARY_OPTION);
+        $third = GlossaryService::instance($otherApp, $otherApp->site());
+
+        $this->assertNotSame($first, $third);
+
+        // this test boots a second App, registering a second set of
+        // error/exception handlers; tearDown only restores one set
+        restore_error_handler();
+        restore_exception_handler();
+    }
+
     public function testGetItemsForPickerReturnsUuidTitleAndTruncatedDefinition(): void
     {
         // feeds the writer toolbar "insert glossary link" dialog: one option

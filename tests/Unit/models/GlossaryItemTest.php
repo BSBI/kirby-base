@@ -111,6 +111,38 @@ final class GlossaryItemTest extends TestCase
         $this->assertSame('bract', $item->getSlug());
     }
 
+    public function testGetLinkHtmlRendersEnrichedAnchor(): void
+    {
+        // used by the glossary/glossary-link snippet so hand-written template
+        // content can carry glossary links with the same tooltip behaviour
+        $item = (new GlossaryItem('Bract', '/glossary/bract'))
+            ->setDefinition('A modified leaf.')
+            ->setDefinitionHtml('A <em>modified</em> leaf.');
+
+        $html = $item->getLinkHtml();
+
+        $this->assertSame(
+            '<a href="/glossary/bract" data-glossary="true"'
+            . ' data-glossary-html="A &lt;em&gt;modified&lt;/em&gt; leaf."'
+            . ' title="A modified leaf.">Bract</a>',
+            $html
+        );
+    }
+
+    public function testGetLinkHtmlWithCustomLabelAndNoHtmlDefinition(): void
+    {
+        $item = (new GlossaryItem('Bract', '/glossary/bract'))
+            ->setDefinition('A "modified" leaf.');
+
+        $html = $item->getLinkHtml('bracts');
+
+        $this->assertSame(
+            '<a href="/glossary/bract" data-glossary="true"'
+            . ' title="A &quot;modified&quot; leaf.">bracts</a>',
+            $html
+        );
+    }
+
     public function testFluentSetters(): void
     {
         $item = new GlossaryItem('Bract', '/glossary/bract');

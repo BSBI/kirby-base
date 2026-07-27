@@ -84,6 +84,7 @@ $pluginConfig = [
         'filearchivelinks' => require __DIR__ . '/sections/filearchivelinks.php',
         'styleguidecheck' => require __DIR__ . '/sections/styleguidecheck.php',
         'glossarylinks' => require __DIR__ . '/sections/glossarylinks.php',
+        'glossaryaddtopages' => require __DIR__ . '/sections/glossaryaddtopages.php',
     ],
     'api' => [
         'routes' => [
@@ -143,6 +144,7 @@ $pluginConfig = [
                     }
                     $service = new GlossaryPanelService(
                         kirby(),
+                        kirby()->site(),
                         new GlossaryService(kirby(), kirby()->site())
                     );
                     return ['matches' => $service->previewForPage($page)];
@@ -203,13 +205,153 @@ $pluginConfig = [
                     }
                     try {
                         $service = new GlossaryPanelService(
-                            kirby(),
-                            new GlossaryService(kirby(), kirby()->site())
-                        );
+                        kirby(),
+                        kirby()->site(),
+                        new GlossaryService(kirby(), kirby()->site())
+                    );
                         return ['applied' => $service->applyToPage($page, $selections)];
                     } catch (Throwable $e) {
                         KirbyBaseHelper::writeToLogFile('glossary-errors', 'Glossary apply failed: ' . $e->getMessage());
                         return ['error' => 'Applying links failed'];
+                    }
+                },
+            ],
+            [
+                'pattern' => 'glossary/add-to-pages/candidates',
+                'method'  => 'GET',
+                /**
+                 * List the page IDs the site-wide "Add to Pages" tool should scan.
+                 *
+                 * @return array{pages: string[], total: int}|array{error: string}
+                 */
+                'action'  => function (): array {
+                    $helper = new KirbyInternalHelper();
+                    if (!$helper->isCurrentUserAdminOrEditor()) {
+                        return ['error' => 'Not authorised'];
+                    }
+                    $service = new GlossaryPanelService(
+                        kirby(),
+                        kirby()->site(),
+                        new GlossaryService(kirby(), kirby()->site())
+                    );
+                    $pages = $service->getCandidatePageIds();
+                    return ['pages' => $pages, 'total' => count($pages)];
+                },
+            ],
+            [
+                'pattern' => 'glossary/add-to-pages/batch',
+                'method'  => 'POST',
+                /**
+                 * Apply one glossary item's links to a batch of pages,
+                 * appending per-page results to the item's change log.
+                 * Time-budgeted: may process only part of the sent list;
+                 * `processed` tells the client where to resume.
+                 *
+                 * @return array{results: array<int, array<string, mixed>>, processed: int}|array{error: string}
+                 */
+                'action'  => function (): array {
+                    $helper = new KirbyInternalHelper();
+                    if (!$helper->isCurrentUserAdminOrEditor()) {
+                        return ['error' => 'Not authorised'];
+                    }
+                    $itemId = get('item', '');
+                    $itemPage = is_string($itemId) ? kirby()->page($itemId) : null;
+                    if ($itemPage === null || $itemPage->intendedTemplate()->name() !== 'glossary_item') {
+                        return ['error' => 'Glossary item not found'];
+                    }
+                    $rawPages = get('pages', []);
+                    if (!is_array($rawPages)) {
+                        return ['error' => 'Invalid page list'];
+                    }
+                    $termValue = $itemPage->title()->value();
+                    $term = is_string($termValue) ? $termValue : '';
+                    $service = new GlossaryPanelService(
+                        kirby(),
+                        kirby()->site(),
+                        new GlossaryService(kirby(), kirby()->site())
+                    );
+                    $results = [];
+                    $processed = 0;
+                    $startedAt = microtime(true);
+                    foreach (array_slice($rawPages, 0, 100) as $pageId) {
+                        // time-budgeted: stop before the request runs long
+                        // enough to freeze progress or hit PHP's execution
+                        // limit; the client resumes from the reported count
+                        if ($processed > 0 && microtime(true) - $startedAt > 8.0) {
+                            break;
+                        }
+                        $processed++;
+                        if (!is_string($pageId)) {
+                            continue;
+                        }
+                        $page = kirby()->page($pageId);
+                        if ($page === null || $page->permissions()->can('update') !== true) {
+                            continue;
+                        }
+                        try {
+                            $matches = $service->applyTermToPage($page, $term);
+                        } catch (Throwable $e) {
+                            KirbyBaseHelper::writeToLogFile(
+                                'glossary-errors',
+                                'Add to Pages failed for ' . $pageId . ': ' . $e->getMessage()
+                            );
+                            continue;
+                        }
+                        if ($matches === []) {
+                            continue;
+                        }
+                        $titleValue = $page->title()->value();
+                        $results[] = [
+                            'date' => date('Y-m-d H:i'),
+                            'page' => $page->id(),
+                            'title' => is_string($titleValue) ? $titleValue : $page->id(),
+                            'panelUrl' => $page->panel()->url(),
+                            'applied' => count($matches),
+                            'contexts' => array_map(
+                                static fn (array $match): string => trim(
+                                    $match['contextBefore'] . ' ' . $match['matchedText'] . ' ' . $match['contextAfter']
+                                ),
+                                $matches
+                            ),
+                        ];
+                    }
+                    if ($results !== [] && $itemPage->permissions()->can('update') === true) {
+                        try {
+                            $service->appendToItemLog($itemPage, $results);
+                        } catch (Throwable $e) {
+                            KirbyBaseHelper::writeToLogFile(
+                                'glossary-errors',
+                                'Add to Pages log update failed: ' . $e->getMessage()
+                            );
+                        }
+                    }
+                    return ['results' => $results, 'processed' => $processed];
+                },
+            ],
+            [
+                'pattern' => 'glossary/add-to-pages/clear-log',
+                'method'  => 'POST',
+                /**
+                 * Clear a glossary item's "Add to Pages" change log.
+                 *
+                 * @return array{status: string}|array{error: string}
+                 */
+                'action'  => function (): array {
+                    $helper = new KirbyInternalHelper();
+                    if (!$helper->isCurrentUserAdminOrEditor()) {
+                        return ['error' => 'Not authorised'];
+                    }
+                    $itemId = get('item', '');
+                    $itemPage = is_string($itemId) ? kirby()->page($itemId) : null;
+                    if ($itemPage === null || $itemPage->permissions()->can('update') !== true) {
+                        return ['error' => 'Glossary item not found'];
+                    }
+                    try {
+                        $itemPage->update(['addtopageslog' => '']);
+                        return ['status' => 'ok'];
+                    } catch (Throwable $e) {
+                        KirbyBaseHelper::writeToLogFile('glossary-errors', 'Clearing Add to Pages log failed: ' . $e->getMessage());
+                        return ['error' => 'Clearing the log failed'];
                     }
                 },
             ],

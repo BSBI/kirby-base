@@ -62,6 +62,20 @@ final readonly class GlossaryLinkEnricher
 
         $title = htmlspecialchars($item->getDefinition(), ENT_QUOTES);
 
+        // stamp data-glossary at render time so front-end tooltip/styling
+        // hooks apply to every glossary link, however it was created
+        if (preg_match('/data-glossary[=\s>]/i', $tag) !== 1) {
+            $tag = substr($tag, 0, -1) . ' data-glossary="true">';
+        }
+
+        // carry the HTML definition (links to other terms intact) for
+        // front-end tooltips; it derives from the sanitised writer field, so
+        // it is as trustworthy as the definition rendered on the glossary page
+        if ($item->hasDefinitionHtml() && stripos($tag, 'data-glossary-html') === false) {
+            $tag = substr($tag, 0, -1)
+                . ' data-glossary-html="' . htmlspecialchars($item->getDefinitionHtml(), ENT_QUOTES) . '">';
+        }
+
         if (preg_match('/title="[^"]*"/i', $tag) === 1) {
             $replaced = preg_replace('/title="[^"]*"/i', 'title="' . $title . '"', $tag, 1);
             return $replaced ?? $tag;

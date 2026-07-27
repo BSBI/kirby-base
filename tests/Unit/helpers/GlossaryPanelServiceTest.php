@@ -94,7 +94,7 @@ final class GlossaryPanelServiceTest extends TestCase
 
     private function makeService(App $app): GlossaryPanelService
     {
-        return new GlossaryPanelService($app, new GlossaryService($app, $app->site()));
+        return new GlossaryPanelService($app, $app->site(), new GlossaryService($app, $app->site()));
     }
 
     public function testPreviewFindsUnlinkedTermsWithContext(): void
@@ -175,6 +175,103 @@ final class GlossaryPanelServiceTest extends TestCase
 
         $this->assertSame(1, $result['applied']);
         $this->assertStringContainsString('/@/page/bract-uuid', $result['json']);
+    }
+
+    public function testPreviewForPageCanBeRestrictedToGivenTerms(): void
+    {
+        $app = $this->makeApp();
+        $page = $app->page('about-bracts');
+        $this->assertNotNull($page);
+        $service = $this->makeService($app);
+
+        // 'Bract' matches in the fixture; restricting to 'Petiole' must not
+        // surface it
+        $this->assertSame([], $service->previewForPage($page, ['Petiole']));
+        $this->assertCount(1, $service->previewForPage($page, ['Bract']));
+    }
+
+    public function testApplyTermToPageAppliesOnlyThatTerm(): void
+    {
+        $app = $this->makeApp();
+        $app->impersonate('kirby');
+        $page = $app->page('about-bracts');
+        $this->assertNotNull($page);
+        $service = $this->makeService($app);
+
+        $matches = $service->applyTermToPage($page, 'Bract');
+
+        $this->assertCount(1, $matches);
+        $this->assertSame('bract', $matches[0]['matchedText']);
+        $this->assertSame('All about the', $matches[0]['contextBefore']);
+    }
+
+    public function testApplyTermToPageWithUnknownOrAlreadyLinkedTermDoesNothing(): void
+    {
+        $app = $this->makeApp();
+        $app->impersonate('kirby');
+        $page = $app->page('about-bracts');
+        $this->assertNotNull($page);
+        $service = $this->makeService($app);
+
+        $this->assertSame([], $service->applyTermToPage($page, 'Unknown'));
+        // petiole is already linked in the fixture block
+        $this->assertSame([], $service->applyTermToPage($page, 'Petiole'));
+    }
+
+    public function testCandidatePageIdsExcludeGlossarySubtree(): void
+    {
+        $app = $this->makeApp();
+        $service = $this->makeService($app);
+
+        $ids = $service->getCandidatePageIds();
+
+        $this->assertContains('about-bracts', $ids);
+        $this->assertNotContains('glossary', $ids);
+        $this->assertNotContains('glossary/bract', $ids);
+        $this->assertNotContains('glossary/petiole', $ids);
+    }
+
+    public function testAppendToItemLogAccumulatesEntries(): void
+    {
+        $app = $this->makeApp();
+        $app->impersonate('kirby');
+        $itemPage = $app->page('glossary/bract');
+        $this->assertNotNull($itemPage);
+        $service = $this->makeService($app);
+
+        $updated = $service->appendToItemLog($itemPage, [
+            ['date' => '2026-07-27 10:00', 'page' => 'about-bracts', 'title' => 'About Bracts', 'applied' => 1],
+        ]);
+        $updated = $service->appendToItemLog($updated, [
+            ['date' => '2026-07-27 10:01', 'page' => 'other', 'title' => 'Other', 'applied' => 2],
+        ]);
+
+        $log = json_decode($updated->content()->get('addtopageslog')->value(), true);
+        $this->assertCount(2, $log);
+        $this->assertSame('about-bracts', $log[0]['page']);
+        $this->assertSame('Other', $log[1]['title']);
+    }
+
+    public function testItemLogIsCappedAtMostRecentEntries(): void
+    {
+        // repeated site-wide runs must not balloon the stored log field
+        $app = $this->makeApp();
+        $app->impersonate('kirby');
+        $itemPage = $app->page('glossary/bract');
+        $this->assertNotNull($itemPage);
+        $service = $this->makeService($app);
+
+        $entries = [];
+        for ($i = 0; $i < 505; $i++) {
+            $entries[] = ['date' => '2026-07-27', 'page' => 'page-' . $i, 'applied' => 1];
+        }
+        $updated = $service->appendToItemLog($itemPage, $entries);
+
+        $log = json_decode($updated->content()->get('addtopageslog')->value(), true);
+        $this->assertCount(500, $log);
+        // the oldest entries are dropped, the newest kept
+        $this->assertSame('page-5', $log[0]['page']);
+        $this->assertSame('page-504', $log[499]['page']);
     }
 
     public function testApplyToPagePersistsLinks(): void
