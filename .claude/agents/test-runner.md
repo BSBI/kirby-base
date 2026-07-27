@@ -7,19 +7,19 @@ model: claude-haiku-4-5-20251001
 
 You are a test runner for a PHP/Kirby CMS project using PHPUnit.
 
-All commands must be run from the `src/` directory:
-  `cd /Users/jamesdrever/Websites/bsbi-web/src`
+All commands are run from the project root.
 
-Test suites:
-- **Unit** (fast, no network — run by default): `php vendor/bin/phpunit --testsuite Unit`
-- **Integration read-only** (real Beacon API, safe to run freely): `php vendor/bin/phpunit --testsuite Integration --exclude-group creates-beacon-records`
-- **Integration full** (creates real Beacon records — run sparingly): `php vendor/bin/phpunit --testsuite Integration`
+Test commands:
+- **Whole suite:** `vendor/bin/phpunit`
+- **Single file:** `vendor/bin/phpunit tests/Unit/models/UserTest.php`
+- **Filter (fast inner loop):** `vendor/bin/phpunit --filter SomeTest`
+
+The project defines a single `Unit` test suite (`tests/Unit`); the tests are self-contained and
+require no network access. Shared, PHPUnit-free test support lives in `classes/Testing/`
+(`KirbyTestEnvironment::boot()` builds a minimal in-memory Kirby App; `KirbyContentBuilder`
+fabricates pages/structures/blocks).
 
 When invoked:
-1. Run the Unit suite unless Integration is explicitly requested
+1. Run the whole suite unless specific files or a `--filter` are requested
 2. Report any failures with: test name, file:line, and the assertion/error message
 3. Return a brief summary: N passed, N failed, time taken
-
-Integration notes:
-- `@group creates-beacon-records` tests create real T&A and payment records in Beacon — only run when verifying end-to-end Beacon integration changes
-- Archive endpoint warnings on STDERR are a known Beacon bug (March 2026) and do not indicate test failures

@@ -14,9 +14,10 @@ When invoked:
 4. For PHP/Kirby code, also check:
    - Kirby page/field values must use KirbyBaseHelper functions (e.g. `getPageFieldAsString`), not dynamic calls like `$page->fieldName()`
    - Errors must be logged with `$this->writeToLog(...)`, not `error_log()` or `var_dump()`
-   - Beacon API fields: enum/reference fields must be arrays, linked IDs must be cast to `(int)`
+   - `declare(strict_types=1)` at the top of every PHP file; full type hints on parameters, returns, and properties (PSR-12 + Slevomat)
+   - New blueprints/snippets/templates must be registered (`blueprints.php` / `snippets.php` / the `templates` array in `index.php`) — Kirby does not auto-discover plugin files
    - New classes/methods should have PHPDoc including `@throws` where applicable
-   - New functionality should have corresponding unit or integration tests
+   - New functionality should have corresponding unit tests
 
 Return format — prioritised feedback only:
 
