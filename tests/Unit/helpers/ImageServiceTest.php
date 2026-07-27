@@ -159,4 +159,19 @@ final class ImageServiceTest extends TestCase
         $this->expectException(KirbyRetrievalException::class);
         self::$service->getSvgImage($page, 'missingField');
     }
+
+    // -------------------------------------------------------------------------
+    // getImage — unresolvable file reference must raise the domain exception,
+    // not a TypeError (regression: a page referencing an image-bank file that
+    // does not exist in the local content tree took the whole page down)
+    // -------------------------------------------------------------------------
+
+    public function testGetImageThrowsKirbyRetrievalExceptionWhenFileCannotBeResolved(): void
+    {
+        // Field exists but references a file that cannot be resolved → toFile() returns null
+        $page = $this->makePage(['panelimage' => 'file://no-such-file']);
+
+        $this->expectException(KirbyRetrievalException::class);
+        self::$service->getImage($page, 'panelImage', 400, 300);
+    }
 }

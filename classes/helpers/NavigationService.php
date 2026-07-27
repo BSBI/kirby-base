@@ -164,9 +164,16 @@ final readonly class NavigationService
             return $webPageLink;
         }
         if ($getImages && $this->fieldReader->isPageFieldNotEmpty($page, 'panelImage')) {
-            $panelImage = $this->imageService->getImage($page, 'panelImage', 400, 300, 80, $imageType, '', $imageSizes);
-            $panelImage->setClass('img-fix-size img-fix-size--four-three');
-            $webPageLink->setImage($panelImage);
+            try {
+                $panelImage = $this->imageService->getImage($page, 'panelImage', 400, 300, 80, $imageType, '', $imageSizes);
+                $panelImage->setClass('img-fix-size img-fix-size--four-three');
+                $webPageLink->setImage($panelImage);
+            } catch (KirbyRetrievalException $e) {
+                // A panel image that cannot be resolved (e.g. an image-bank file
+                // missing from this content tree) degrades to a link without an
+                // image rather than breaking the whole page.
+                KirbyBaseHelper::writeToLogFile('errors', 'Panel image skipped for ' . $page->id() . ': ' . $e->getMessage());
+            }
         }
 
         return $webPageLink;

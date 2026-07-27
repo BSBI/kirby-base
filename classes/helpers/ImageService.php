@@ -70,6 +70,12 @@ final readonly class ImageService
                              string     $imageClass = ''): Image
     {
         $pageImage = $this->fieldReader->getPageFieldAsFile($page, $fieldName);
+        if ($pageImage === null) {
+            throw new KirbyRetrievalException(
+                'The image for field "' . $fieldName . '" on page "' . $page->id() . '" could not be resolved'
+                . ' (the referenced file does not exist in this content tree)'
+            );
+        }
         return $this->getImageFromFile($pageImage, $width, $height, $quality, $imageType, $imageFormat, $imageSizes, $crop, $imageClass);
     }
 
@@ -100,6 +106,9 @@ final readonly class ImageService
     {
         $pageImages = $this->fieldReader->getPageFieldAsFiles($page, $fieldName);
         $imageList = new ImageList();
+        if ($pageImages === null) {
+            return $imageList;
+        }
         foreach ($pageImages as $image) {
             $imageList->addListItem($this->getImageFromFile($image, $width, $height, $quality, $imageType, $imageFormat, $imageSizes, $crop, $imageClass));
         }

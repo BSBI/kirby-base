@@ -968,7 +968,11 @@ final readonly class KirbyFieldReader
     {
         $siteField = $this->getSiteField($fieldName);
         /** @noinspection PhpUndefinedMethodInspection */
-        return $siteField->toFile();
+        $file = $siteField->toFile();
+        if ($file instanceof File) {
+            return $file;
+        }
+        throw new KirbyRetrievalException('The site file field ' . $fieldName . ' could not be resolved');
     }
 
     /**
