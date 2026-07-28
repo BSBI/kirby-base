@@ -2,3 +2,4 @@
 /kirby
 /.idea
 /.phpunit.cache
+.DS_Store
