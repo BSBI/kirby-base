@@ -76,6 +76,7 @@ abstract class KirbyBaseHelper
     protected NavigationService $navigationService;
     protected SearchService $searchService;
     protected CollectionFilterService $collectionFilterService;
+    protected PageTreeService $pageTreeService;
     protected UserService $userService;
     protected FileDeliveryService $fileDeliveryService;
     private FilterResetService $filterResetService;
@@ -130,6 +131,7 @@ abstract class KirbyBaseHelper
             fn () => $this->hasSessionCookie(),
         );
         $this->collectionFilterService = new CollectionFilterService($this->fieldReader);
+        $this->pageTreeService = new PageTreeService();
         $this->userService = new UserService(
             $this->kirby,
             $this->fieldReader,
@@ -2645,6 +2647,24 @@ abstract class KirbyBaseHelper
         return $childrenOnly
             ? $page->children()->listed()->template($templates)
             : $page->index()->listed()->template($templates);
+    }
+
+    /**
+     * Get the pages below a page, without descending into the children of pages whose
+     * intended template is listed in $leafTemplates.
+     *
+     * A cheaper index() for trees where the pages being looked for sit above large,
+     * uninteresting subtrees (submissions beneath a form, comments beneath an article).
+     * The leaf pages themselves are returned; only their subtrees are skipped, and the
+     * depth-first ordering of index() is preserved.
+     *
+     * @param Page $page The page whose descendants are wanted
+     * @param string[] $leafTemplates Template names whose children should be skipped
+     * @return Pages The descendant pages, excluding anything below a leaf template
+     */
+    protected function getIndexExcludingChildrenOf(Page $page, array $leafTemplates): Pages
+    {
+        return $this->pageTreeService->indexExcludingChildrenOf($page, $leafTemplates);
     }
 
     /**
