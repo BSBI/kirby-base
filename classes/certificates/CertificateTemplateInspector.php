@@ -122,6 +122,92 @@ final readonly class CertificateTemplateInspector
     }
 
     /**
+     * The PDF version a design declares in its header.
+     *
+     * @param string $path Absolute path to the PDF to inspect
+     * @return string The version, e.g. '1.4', or an empty string when absent
+     * @throws CertificateException If the PDF cannot be read
+     */
+    public function getPdfVersion(string $path): string
+    {
+        if ($path === '' || !is_readable($path)) {
+            throw new CertificateException('Certificate design could not be read: ' . $path);
+        }
+
+        $handle = fopen($path, 'rb');
+        if ($handle === false) {
+            throw new CertificateException('Certificate design could not be read: ' . $path);
+        }
+
+        $header = (string)fread($handle, 16);
+        fclose($handle);
+
+        return preg_match('/^%PDF-(\d+\.\d+)/', $header, $matches) === 1 ? $matches[1] : '';
+    }
+
+    /**
+     * Check that a design can actually be used to produce certificates.
+     *
+     * Intended to run when a design is chosen, not when certificates are being
+     * generated. An unusable design discovered at configuration time costs an
+     * administrator a minute; the same design discovered part-way through a run
+     * costs a mailout.
+     *
+     * @param string $path Absolute path to the PDF to check
+     * @param int $page The page intended for use, one-based
+     * @return void
+     * @throws CertificateException If the design cannot be used, with a message
+     *                              describing what to do about it
+     */
+    public function assertUsable(string $path, int $page = 1): void
+    {
+        if ($path === '' || !is_readable($path)) {
+            throw new CertificateException('Certificate design could not be read: ' . $path);
+        }
+
+        $this->assertObjectsAreReadable($path);
+
+        $pageCount = $this->getPageCount($path);
+
+        if ($page < 1 || $page > $pageCount) {
+            throw new CertificateException(sprintf(
+                'Certificate design "%s" has %d page(s), so page %d cannot be used.',
+                basename($path),
+                $pageCount,
+                $page
+            ));
+        }
+    }
+
+    /**
+     * Check that a design's object definitions can be read.
+     *
+     * PDF 1.5 introduced compressed object streams, which the free PDF parser
+     * cannot decode. Designs exported by most current design tools use them by
+     * default; the ones seen so far happen not to, which is easy to mistake for
+     * general compatibility.
+     *
+     * @param string $path Absolute path to the PDF to check
+     * @return void
+     * @throws CertificateException If the design uses compressed object streams
+     */
+    private function assertObjectsAreReadable(string $path): void
+    {
+        if (!str_contains((string)file_get_contents($path), '/ObjStm')) {
+            return;
+        }
+
+        $version = $this->getPdfVersion($path);
+
+        throw new CertificateException(sprintf(
+            'Certificate design "%s"%s uses compressed object streams, which cannot be read. '
+            . 'Re-export the design as PDF 1.4.',
+            basename($path),
+            $version !== '' ? ' (PDF ' . $version . ')' : ''
+        ));
+    }
+
+    /**
      * The names of the fonts a design references.
      *
      * This is the most practical check for variable text left in by mistake. A
@@ -139,6 +225,12 @@ final readonly class CertificateTemplateInspector
         if ($path === '' || !is_readable($path)) {
             throw new CertificateException('Certificate design could not be read: ' . $path);
         }
+
+        // Font names are read from the raw bytes, which only works while the
+        // object definitions are uncompressed. A design using object streams
+        // would yield no matches and so be reported as using no fonts at all —
+        // a silent all-clear from the very check meant to catch a name left in.
+        $this->assertObjectsAreReadable($path);
 
         $contents = (string)file_get_contents($path);
 

@@ -128,6 +128,62 @@ final class CertificateTemplateInspectorTest extends TestCase
     }
 
     /**
+     * Verify the PDF version is read from the header.
+     */
+    public function testPdfVersionIsReported(): void
+    {
+        $version = (new CertificateTemplateInspector())->getPdfVersion($this->makePdf('Alex Example'));
+
+        $this->assertMatchesRegularExpression('/^\d+\.\d+$/', $version);
+    }
+
+    /**
+     * Verify a usable design passes the check without complaint.
+     */
+    public function testUsableDesignPassesTheCheck(): void
+    {
+        $this->expectNotToPerformAssertions();
+
+        (new CertificateTemplateInspector())->assertUsable($this->makePdf('Alex Example'));
+    }
+
+    /**
+     * Verify asking for a page the design does not have is refused.
+     */
+    public function testPageBeyondTheDesignIsRefused(): void
+    {
+        $inspector = new CertificateTemplateInspector();
+
+        $this->expectException(CertificateException::class);
+        $this->expectExceptionMessage('page 4 cannot be used');
+
+        $inspector->assertUsable($this->makePdf('Alex Example'), 4);
+    }
+
+    /**
+     * Verify a design using compressed object streams is refused, not reported clean.
+     *
+     * PDF 1.5 introduced object streams, which the free PDF parser cannot decode
+     * and which most current design tools produce by default. Reading font names
+     * from the raw bytes finds nothing in such a file, so an earlier version
+     * reported it as using no fonts at all — an all-clear from the check whose
+     * entire purpose is to notice a name left in the design.
+     */
+    public function testDesignUsingObjectStreamsIsRefusedRatherThanReportedClean(): void
+    {
+        $path = (string)tempnam(sys_get_temp_dir(), 'cert-objstm-') . '.pdf';
+        file_put_contents($path, "%PDF-1.7\n1 0 obj\n<< /Type /ObjStm /N 1 >>\nstream\nendstream\n");
+        $this->temporaryFiles[] = $path;
+
+        $inspector = new CertificateTemplateInspector();
+
+        $this->expectException(CertificateException::class);
+        $this->expectExceptionMessage('Re-export the design as PDF 1.4');
+
+        $inspector->getFontNames($path);
+    }
+
+    /**
      * Verify an unreadable design produces a clear error rather than a silent pass.
      */
     public function testUnreadableDesignThrows(): void
