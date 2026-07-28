@@ -2167,6 +2167,25 @@ abstract class KirbyBaseHelper
     }
 
     /**
+     * @param \Kirby\Cms\User $user
+     * @param string $fieldName
+     * @return Structure
+     */
+    protected function getUserFieldAsStructure(\Kirby\Cms\User $user, string $fieldName): Structure
+    {
+        return $this->fieldReader->getUserFieldAsStructure($user, $fieldName);
+    }
+
+    /**
+     * @param string $fieldName
+     * @return Structure
+     */
+    public function getCurrentUserFieldAsStructure(string $fieldName): Structure
+    {
+        return $this->fieldReader->getCurrentUserFieldAsStructure($fieldName);
+    }
+
+    /**
      * @param string $fieldName
      * @return bool
      */

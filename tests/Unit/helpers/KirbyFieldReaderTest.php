@@ -871,6 +871,56 @@ final class KirbyFieldReaderTest extends TestCase
         $this->assertFalse(self::$reader->getUserFieldAsBool($user, 'nonexistent'));
     }
 
+    public function testGetUserFieldAsStructureReturnsRows(): void
+    {
+        $user = \Kirby\Cms\User::factory([
+            'email'   => 'test@example.com',
+            'role'    => 'nobody',
+            'content' => [
+                'certificates' => Yaml::encode([
+                    ['context' => 'course-a', 'issued' => '2026-07-28'],
+                    ['context' => 'course-b', 'issued' => '2026-07-29'],
+                ]),
+            ],
+        ]);
+
+        $structure = self::$reader->getUserFieldAsStructure($user, 'certificates');
+
+        $this->assertCount(2, $structure);
+        $this->assertSame('course-a', $structure->first()?->context()->value());
+    }
+
+    public function testGetUserFieldAsStructureReturnsEmptyStructureForMissingField(): void
+    {
+        $user = \Kirby\Cms\User::factory([
+            'email' => 'test@example.com',
+            'role'  => 'nobody',
+        ]);
+
+        $this->assertCount(0, self::$reader->getUserFieldAsStructure($user, 'nonexistent'));
+    }
+
+    /**
+     * A malformed value must not take down the page it is read on.
+     *
+     * Kirby's YAML parsing is lenient and coerces junk into a row rather than
+     * failing, so the guarantee here is that reading returns a usable Structure —
+     * not that the row count is zero.
+     */
+    public function testGetUserFieldAsStructureSurvivesAMalformedValue(): void
+    {
+        $user = \Kirby\Cms\User::factory([
+            'email'   => 'test@example.com',
+            'role'    => 'nobody',
+            'content' => ['certificates' => "\t- not: [valid\n  yaml at all"],
+        ]);
+
+        $this->assertInstanceOf(
+            \Kirby\Cms\Structure::class,
+            self::$reader->getUserFieldAsStructure($user, 'certificates')
+        );
+    }
+
     // =========================================================================
     // ENTRIES FIELDS
     // =========================================================================

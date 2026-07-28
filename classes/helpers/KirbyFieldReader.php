@@ -1553,6 +1553,32 @@ final readonly class KirbyFieldReader
     }
 
     /**
+     * Returns a user field value as a structure.
+     *
+     * An absent or malformed field yields an empty structure rather than an
+     * error: these fields are written by the application and read on pages a user
+     * needs, so a bad row should cost that row and not the page.
+     */
+    public function getUserFieldAsStructure(User $user, string $fieldName): Structure
+    {
+        try {
+            return $user->{$fieldName}()->toStructure();
+        } catch (Throwable) {
+            return new Structure();
+        }
+    }
+
+    /**
+     * Returns the current authenticated user's field value as a structure.
+     */
+    public function getCurrentUserFieldAsStructure(string $fieldName): Structure
+    {
+        $user = $this->kirby->user();
+
+        return $user instanceof User ? $this->getUserFieldAsStructure($user, $fieldName) : new Structure();
+    }
+
+    /**
      * Returns a user field value as the slug of the referenced page.
      */
     public function getUserFieldAsSlug(User $user, string $fieldName, string $default = ''): string
