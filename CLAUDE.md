@@ -124,4 +124,26 @@ edges (empty/null relations, camelCase vs snake_case keys, draft/unlisted exclus
 
 ## Version Management
 
-To release a new version: update `version` in `composer.json`, commit, tag with the version number, and push with tags.
+**The git tag is the only source of truth for the version.** `composer.json` deliberately has no
+`version` field: Packagist infers the version from the tag, and Kirby reads it back from Composer's
+`installed.php` (also tag-derived) — so nothing needs the field, and keeping one in sync by hand is
+a known footgun. Do not add it back.
+
+To release a new version, tag and push:
+
+```
+git tag 3.20.0
+git push origin main --tags
+```
+
+Tags are bare version numbers, no `v` prefix (older `v1.x` tags predate that convention).
+
+Why the field was removed: Packagist silently **drops** any tag whose `version` field disagrees with
+the tag name — no error, the release just never appears. That happened three times in this repo
+(`v1.0.2`, `v1.0.4`, `v1.0.6` are all tagged but absent from Packagist). Composer's own docs
+recommend omitting it: *"Specifying the version yourself will most likely end up creating problems
+at some point due to human error."*
+
+It also kept `composer.lock` permanently "out of date" — `version` feeds Composer's content-hash, so
+every release invalidated it. If you ever do change a dependency-relevant field in `composer.json`,
+run `composer update --lock` to refresh the hash without touching resolved versions.
