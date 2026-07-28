@@ -155,7 +155,6 @@ final readonly class CertificateTemplateInspector
      *
      * @param string $path Absolute path to the PDF to check
      * @param int $page The page intended for use, one-based
-     * @return void
      * @throws CertificateException If the design cannot be used, with a message
      *                              describing what to do about it
      */
@@ -188,7 +187,6 @@ final readonly class CertificateTemplateInspector
      * general compatibility.
      *
      * @param string $path Absolute path to the PDF to check
-     * @return void
      * @throws CertificateException If the design uses compressed object streams
      */
     private function assertObjectsAreReadable(string $path): void

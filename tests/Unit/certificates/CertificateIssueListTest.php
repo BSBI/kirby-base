@@ -1,0 +1,179 @@
+<?php
+
+declare(strict_types=1);
+
+namespace BSBI\WebBase\Tests\Unit\certificates;
+
+use BSBI\WebBase\certificates\CertificateIssue;
+use BSBI\WebBase\certificates\CertificateIssueList;
+use PHPUnit\Framework\TestCase;
+
+/**
+ * Tests for CertificateIssue and CertificateIssueList.
+ *
+ * Covers the stored shape round-tripping intact, looking a record up by context,
+ * and the rule that a reissue replaces rather than duplicates — which is what
+ * keeps a retried batch run from awarding the same person twice.
+ */
+final class CertificateIssueListTest extends TestCase
+{
+    /**
+     * Build an issue record.
+     *
+     * @param string $context The context id
+     * @param string $recipient The recipient id
+     * @param string $issued The issue date
+     * @return CertificateIssue The record
+     */
+    private function makeIssue(
+        string $context = 'course-100-plants',
+        string $recipient = 'student-1',
+        string $issued = '2026-07-28'
+    ): CertificateIssue {
+        return new CertificateIssue($recipient, $context, $issued, '100 Plants Challenge');
+    }
+
+    /**
+     * Verify a record survives being stored and read back.
+     */
+    public function testIssueRoundTripsThroughItsStoredShape(): void
+    {
+        $issue = $this->makeIssue();
+
+        $restored = CertificateIssue::fromArray($issue->toArray());
+
+        $this->assertSame($issue->getRecipientId(), $restored->getRecipientId());
+        $this->assertSame($issue->getContextId(), $restored->getContextId());
+        $this->assertSame($issue->getIssuedOn(), $restored->getIssuedOn());
+        $this->assertSame($issue->getTemplateName(), $restored->getTemplateName());
+    }
+
+    /**
+     * Verify stored data missing keys loads rather than failing.
+     *
+     * A record written before a field existed must still load, or adding a field
+     * would break the dashboard of every student already holding a certificate.
+     */
+    public function testPartialStoredDataStillLoads(): void
+    {
+        $issue = CertificateIssue::fromArray(['recipient' => 'student-1', 'context' => 'course-1']);
+
+        $this->assertSame('student-1', $issue->getRecipientId());
+        $this->assertSame('', $issue->getTemplateName());
+        $this->assertTrue($issue->isValid());
+    }
+
+    /**
+     * Verify a record with no recipient or context is treated as unusable.
+     */
+    public function testRecordWithoutRecipientOrContextIsInvalid(): void
+    {
+        $this->assertFalse((new CertificateIssue('', 'course-1', '2026-07-28'))->isValid());
+        $this->assertFalse((new CertificateIssue('student-1', '', '2026-07-28'))->isValid());
+    }
+
+    /**
+     * Verify unusable records are dropped when a list is built.
+     */
+    public function testUnusableRecordsAreDroppedFromTheList(): void
+    {
+        $list = new CertificateIssueList([
+            $this->makeIssue(),
+            new CertificateIssue('', '', ''),
+        ]);
+
+        $this->assertSame(1, $list->count());
+    }
+
+    /**
+     * Verify a certificate can be found by the context it was awarded for.
+     */
+    public function testRecordIsFoundByContext(): void
+    {
+        $list = new CertificateIssueList([
+            $this->makeIssue('course-foundations'),
+            $this->makeIssue('course-100-plants'),
+        ]);
+
+        $this->assertTrue($list->hasForContext('course-100-plants'));
+        $this->assertSame('course-100-plants', $list->findForContext('course-100-plants')?->getContextId());
+    }
+
+    /**
+     * Verify a context with no certificate reports none.
+     */
+    public function testUnknownContextHasNoRecord(): void
+    {
+        $list = new CertificateIssueList([$this->makeIssue('course-foundations')]);
+
+        $this->assertFalse($list->hasForContext('course-100-plants'));
+        $this->assertNull($list->findForContext('course-100-plants'));
+    }
+
+    /**
+     * Verify an empty context never matches.
+     *
+     * Otherwise a record whose context failed to save would match every lookup and
+     * show a certificate on every course the student is enrolled on.
+     */
+    public function testEmptyContextNeverMatches(): void
+    {
+        $this->assertFalse((new CertificateIssueList([$this->makeIssue()]))->hasForContext(''));
+    }
+
+    /**
+     * Verify adding a record for a new context keeps the existing ones.
+     */
+    public function testAddingANewContextKeepsExistingRecords(): void
+    {
+        $list = (new CertificateIssueList([$this->makeIssue('course-foundations')]))
+            ->with($this->makeIssue('course-100-plants'));
+
+        $this->assertSame(2, $list->count());
+        $this->assertTrue($list->hasForContext('course-foundations'));
+        $this->assertTrue($list->hasForContext('course-100-plants'));
+    }
+
+    /**
+     * Verify reissuing for the same context replaces rather than duplicates.
+     *
+     * A batch run retried after a failure would otherwise leave a student holding
+     * two records for one course.
+     */
+    public function testReissueReplacesRatherThanDuplicates(): void
+    {
+        $list = (new CertificateIssueList([$this->makeIssue('course-1', 'student-1', '2026-01-01')]))
+            ->with($this->makeIssue('course-1', 'student-1', '2026-07-28'));
+
+        $this->assertSame(1, $list->count());
+        $this->assertSame('2026-07-28', $list->findForContext('course-1')?->getIssuedOn());
+    }
+
+    /**
+     * Verify a list survives being stored and read back.
+     */
+    public function testListRoundTripsThroughItsStoredShape(): void
+    {
+        $list = new CertificateIssueList([
+            $this->makeIssue('course-foundations'),
+            $this->makeIssue('course-100-plants'),
+        ]);
+
+        $restored = CertificateIssueList::fromArray($list->toArray());
+
+        $this->assertSame(2, $restored->count());
+        $this->assertTrue($restored->hasForContext('course-foundations'));
+    }
+
+    /**
+     * Verify an empty list reports nothing.
+     */
+    public function testEmptyListReportsNothing(): void
+    {
+        $list = new CertificateIssueList();
+
+        $this->assertSame(0, $list->count());
+        $this->assertSame([], $list->all());
+        $this->assertSame([], $list->toArray());
+    }
+}

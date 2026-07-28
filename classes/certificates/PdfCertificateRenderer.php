@@ -121,7 +121,6 @@ final readonly class PdfCertificateRenderer implements CertificateRendererInterf
      * @param CertificateDocument $pdf The document being built
      * @param CertificateField $field The field to draw
      * @param string $value The value to draw
-     * @return void
      */
     private function drawField(CertificateDocument $pdf, CertificateField $field, string $value): void
     {
@@ -166,8 +165,12 @@ final readonly class PdfCertificateRenderer implements CertificateRendererInterf
      * @param string $family The resolved font family
      * @return float The font size to draw at, in points
      */
-    private function fitFontSize(CertificateDocument $pdf, CertificateField $field, string $value, string $family): float
-    {
+    private function fitFontSize(
+        CertificateDocument $pdf,
+        CertificateField $field,
+        string $value,
+        string $family
+    ): float {
         $size = $field->getFontSize();
 
         if (!$field->shrinksToFit()) {
