@@ -1087,7 +1087,7 @@ panel.plugin('open-foundations/kirby-base', {
                     <label style="display: flex; gap: 0.5rem; align-items: baseline; cursor: pointer;">
                       <input type="checkbox" v-model="selected[index]">
                       <span style="font-size: 0.875rem;">
-                        <a :href="match.panelUrl"><strong>{{ match.pageTitle }}</strong></a><br>
+                        <a :href="match.panelUrl" target="_blank" rel="noopener" title="Opens in a new tab"><strong>{{ match.pageTitle }}</strong> ↗</a><br>
                         <span style="color: var(--color-text-dimmed);">
                           …{{ match.contextBefore }} <mark>{{ match.matchedText }}</mark> {{ match.contextAfter }}…
                         </span>
