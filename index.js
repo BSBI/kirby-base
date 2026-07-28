@@ -823,6 +823,11 @@ panel.plugin('open-foundations/kirby-base', {
     },
 
     glossaryaddtopages: {
+      // Three-phase site-wide tool: a read-only scan collects matches, the
+      // editor reviews them (each pre-selected), and only confirmed links are
+      // applied. Scanning never writes, so a full-site pass cannot trigger
+      // update hooks or cache flushes; updates happen only in the short apply
+      // phase, for the handful of confirmed pages.
       data: function () {
         return {
           headline: 'Add to Pages',
@@ -830,9 +835,14 @@ panel.plugin('open-foundations/kirby-base', {
           term: '',
           enabled: false,
           log: [],
-          running: false,
-          done: 0,
-          total: 0,
+          phase: 'idle', // idle | scanning | reviewing | applying | done
+          scanned: 0,
+          scanTotal: 0,
+          applyDone: 0,
+          applyTotal: 0,
+          matches: [],
+          selected: {},
+          skipped: [],
           addedLinks: 0,
           error: ''
         }
@@ -849,52 +859,158 @@ panel.plugin('open-foundations/kirby-base', {
           console.error("Failed to load glossary add-to-pages section:", error);
         }
       },
+      computed: {
+        selectedCount: function () {
+          return this.matches.filter((m, i) => this.selected[i]).length;
+        },
+        busy: function () {
+          return this.phase === 'scanning' || this.phase === 'applying';
+        }
+      },
       methods: {
-        start: async function () {
-          if (this.running) {
+        // POST with a client-side timeout and one retry; returns null when
+        // both attempts fail so callers can skip the batch and continue —
+        // one bad batch must never freeze the whole run
+        postWithRetry: async function (path, body) {
+          for (let attempt = 0; attempt < 2; attempt++) {
+            try {
+              const response = await Promise.race([
+                this.$api.post(path, body),
+                new Promise((resolve, reject) =>
+                  setTimeout(() => reject(new Error('Request timed out')), 30000)
+                )
+              ]);
+              if (response && response.error) {
+                throw new Error(response.error);
+              }
+              return response;
+            } catch (error) {
+              // fall through to the next attempt; after the last one the
+              // loop exits and null tells the caller to skip this batch
+            }
+          }
+          return null;
+        },
+        scan: async function () {
+          if (this.busy) {
             return;
           }
-          if (!window.confirm(
-            'Scan the whole site and add glossary links for "' + this.term + '" wherever it appears unlinked?'
-          )) {
-            return;
-          }
-          this.running = true;
           this.error = '';
-          this.done = 0;
-          this.total = 0;
+          this.matches = [];
+          this.selected = {};
+          this.skipped = [];
+          this.scanned = 0;
+          this.scanTotal = 0;
           this.addedLinks = 0;
+          this.phase = 'scanning';
           try {
             const candidates = await this.$api.get('glossary/add-to-pages/candidates');
             if (candidates.error) {
               throw new Error(candidates.error);
             }
             let queue = candidates.pages || [];
-            this.total = queue.length;
+            this.scanTotal = queue.length;
             const batchSize = 50;
+            let consecutiveFailures = 0;
             while (queue.length > 0) {
               const batch = queue.slice(0, batchSize);
-              const response = await this.$api.post('glossary/add-to-pages/batch', {
+              const response = await this.postWithRetry('glossary/add-to-pages/scan', {
                 item: this.pageId,
                 pages: batch
               });
-              if (response.error) {
-                throw new Error(response.error);
+              if (response === null) {
+                consecutiveFailures++;
+                if (consecutiveFailures >= 3) {
+                  throw new Error('Scanning stopped: three batches in a row failed. Skipped pages are listed below.');
+                }
+                this.skipped.push(...batch);
+                queue = queue.slice(batch.length);
+              } else {
+                consecutiveFailures = 0;
+                this.matches.push(...(response.matches || []));
+                // the route is time-budgeted and may process only part of the
+                // batch; resume from wherever it actually got to
+                const processed = Math.max(1, response.processed || batch.length);
+                queue = queue.slice(processed);
               }
-              (response.results || []).forEach((result) => {
-                this.log.push(result);
-                this.addedLinks += result.applied;
-              });
-              // the route is time-budgeted and may process only part of the
-              // batch; resume from wherever it actually got to
-              const processed = Math.max(1, response.processed || batch.length);
-              queue = queue.slice(processed);
-              this.done = this.total - queue.length;
+              this.scanned = this.scanTotal - queue.length;
             }
+            const selected = {};
+            this.matches.forEach((m, i) => { selected[i] = true; });
+            this.selected = selected;
+            this.phase = 'reviewing';
           } catch (error) {
+            this.error = error.message || 'Scanning for glossary links failed';
+            this.phase = 'idle';
+          }
+        },
+        setAllSelected: function (value) {
+          const selected = {};
+          this.matches.forEach((m, i) => { selected[i] = value; });
+          this.selected = selected;
+        },
+        cancelReview: function () {
+          this.matches = [];
+          this.selected = {};
+          this.phase = 'idle';
+        },
+        apply: async function () {
+          if (this.busy) {
+            return;
+          }
+          // group the confirmed matches into ordered per-page selections
+          const groupsMap = new Map();
+          this.matches.forEach((match, index) => {
+            if (!this.selected[index]) {
+              return;
+            }
+            if (!groupsMap.has(match.pageId)) {
+              groupsMap.set(match.pageId, []);
+            }
+            groupsMap.get(match.pageId).push(match.blockId);
+          });
+          let groups = Array.from(groupsMap, ([page, blockIds]) => ({ page: page, blockIds: blockIds }));
+          if (groups.length === 0) {
+            return;
+          }
+          this.error = '';
+          this.applyTotal = groups.length;
+          this.applyDone = 0;
+          this.phase = 'applying';
+          try {
+            const chunkSize = 20;
+            let consecutiveFailures = 0;
+            while (groups.length > 0) {
+              const chunk = groups.slice(0, chunkSize);
+              const response = await this.postWithRetry('glossary/add-to-pages/apply', {
+                item: this.pageId,
+                selections: chunk
+              });
+              if (response === null) {
+                consecutiveFailures++;
+                if (consecutiveFailures >= 3) {
+                  throw new Error('Applying stopped: three batches in a row failed. Skipped pages are listed below.');
+                }
+                this.skipped.push(...chunk.map((group) => group.page));
+                groups = groups.slice(chunk.length);
+              } else {
+                consecutiveFailures = 0;
+                (response.results || []).forEach((result) => {
+                  this.log.push(result);
+                  this.addedLinks += result.applied;
+                });
+                const processed = Math.max(1, response.processed || chunk.length);
+                groups = groups.slice(processed);
+              }
+              this.applyDone = this.applyTotal - groups.length;
+            }
+            this.matches = [];
+            this.selected = {};
+            this.phase = 'done';
+          } catch (error) {
+            // matches are kept so the editor can retry applying
             this.error = error.message || 'Adding glossary links failed';
-          } finally {
-            this.running = false;
+            this.phase = 'reviewing';
           }
         },
         clearLog: async function () {
@@ -907,8 +1023,6 @@ panel.plugin('open-foundations/kirby-base', {
             }
             this.log = [];
             this.addedLinks = 0;
-            this.done = 0;
-            this.total = 0;
           } catch (error) {
             this.error = error.message || 'Clearing the log failed';
           }
@@ -921,32 +1035,95 @@ panel.plugin('open-foundations/kirby-base', {
           </header>
           <div style="padding: 0.75rem 0 0.5rem;">
             <p style="margin-bottom: 0.75rem; color: var(--color-text-dimmed); font-size: 0.875rem;">
-              Scans every page on the site and links unlinked occurrences of
-              "{{ term }}" to this glossary item. This can take a few minutes;
-              results are added to the change log below.
+              Scans every page on the site for unlinked occurrences of
+              "{{ term }}". Nothing is changed during the scan — you review
+              the matches found and choose which to link to this glossary
+              item. Confirmed links are recorded in the change log below.
             </p>
-            <p style="margin-bottom: 0.75rem; color: var(--color-orange-700, #b45309); font-size: 0.875rem;">
-              <strong>Caution:</strong> best avoided for terms that are
-              everyday words with other meanings — every occurrence on the
-              site would be linked, whatever its sense. For those, add links
-              page by page instead.
+            <p v-if="phase === 'idle'" style="margin-bottom: 0.75rem; color: var(--color-orange-700, #b45309); font-size: 0.875rem;">
+              <strong>Caution:</strong> for terms that are everyday words with
+              other meanings, expect a long match list — review it carefully,
+              or add links page by page instead.
             </p>
             <p v-if="error" aria-live="assertive" style="margin-bottom: 0.75rem; color: var(--color-red-600, #dc2626); font-size: 0.875rem;">
               {{ error }}
             </p>
-            <p v-if="running || done > 0" aria-live="polite" style="margin-bottom: 0.75rem; font-size: 0.875rem;">
-              <template v-if="running">Scanning… {{ done }} of {{ total }} pages checked, {{ addedLinks }} link{{ addedLinks !== 1 ? 's' : '' }} added.</template>
-              <template v-else>Finished: {{ done }} pages checked, {{ addedLinks }} link{{ addedLinks !== 1 ? 's' : '' }} added.</template>
+
+            <template v-if="phase === 'idle'">
+              <k-button icon="book" variant="filled" @click="scan">
+                Scan the site for "{{ term }}"
+              </k-button>
+            </template>
+
+            <p v-if="phase !== 'idle'" aria-live="polite" style="margin-bottom: 0.75rem; font-size: 0.875rem;">
+              <span v-if="phase === 'scanning'">
+                Scanning… {{ scanned }} of {{ scanTotal }} pages checked,
+                {{ matches.length }} match{{ matches.length !== 1 ? 'es' : '' }} found.
+                Nothing is changed until you confirm.
+              </span>
+              <span v-else-if="phase === 'reviewing' && matches.length === 0">
+                No unlinked occurrences of "{{ term }}" were found.
+              </span>
+              <span v-else-if="phase === 'reviewing'">
+                {{ matches.length }} match{{ matches.length !== 1 ? 'es' : '' }} found.
+                Untick any you don't want, then apply.
+              </span>
+              <span v-else-if="phase === 'applying'">
+                Applying… {{ applyDone }} of {{ applyTotal }} page{{ applyTotal !== 1 ? 's' : '' }} updated.
+              </span>
+              <span v-else-if="phase === 'done'" style="color: var(--color-green-700, #15803d);">
+                {{ addedLinks }} link{{ addedLinks !== 1 ? 's' : '' }} added.
+              </span>
             </p>
-            <k-button
-              :disabled="running"
-              icon="book"
-              variant="filled"
-              @click="start"
-            >
-              {{ running ? 'Scanning…' : 'Add links across the site' }}
-            </k-button>
-            <template v-if="log.length > 0">
+
+            <template v-if="phase === 'reviewing'">
+              <template v-if="matches.length > 0">
+                <p style="margin-bottom: 0.5rem;">
+                  <k-button size="xs" @click="setAllSelected(true)">Select all</k-button>
+                  <k-button size="xs" @click="setAllSelected(false)">Select none</k-button>
+                </p>
+                <ul style="list-style: none; padding: 0; margin: 0 0 0.75rem; max-height: 24rem; overflow-y: auto;">
+                  <li v-for="(match, index) in matches" :key="index" style="padding: 0.35rem 0; border-bottom: 1px solid var(--color-border);">
+                    <label style="display: flex; gap: 0.5rem; align-items: baseline; cursor: pointer;">
+                      <input type="checkbox" v-model="selected[index]">
+                      <span style="font-size: 0.875rem;">
+                        <a :href="match.panelUrl"><strong>{{ match.pageTitle }}</strong></a><br>
+                        <span style="color: var(--color-text-dimmed);">
+                          …{{ match.contextBefore }} <mark>{{ match.matchedText }}</mark> {{ match.contextAfter }}…
+                        </span>
+                      </span>
+                    </label>
+                  </li>
+                </ul>
+                <k-button
+                  :disabled="selectedCount === 0"
+                  icon="check"
+                  variant="filled"
+                  @click="apply"
+                >
+                  Add {{ selectedCount }} link{{ selectedCount !== 1 ? 's' : '' }}
+                </k-button>
+                <k-button icon="cancel" @click="cancelReview">
+                  Cancel
+                </k-button>
+              </template>
+              <k-button v-if="matches.length === 0" icon="cancel" @click="cancelReview">
+                Back
+              </k-button>
+            </template>
+
+            <template v-if="phase === 'done'">
+              <k-button icon="check" @click="phase = 'idle'">
+                OK
+              </k-button>
+            </template>
+
+            <p v-if="skipped.length > 0" style="margin: 0.75rem 0; color: var(--color-orange-700, #b45309); font-size: 0.875rem;">
+              {{ skipped.length }} page{{ skipped.length !== 1 ? 's were' : ' was' }} skipped because of
+              failed requests: {{ skipped.slice(0, 10).join(', ') }}<template v-if="skipped.length > 10"> …</template>
+            </p>
+
+            <template v-if="log.length > 0 && (phase === 'idle' || phase === 'done')">
               <h3 style="margin: 1rem 0 0.5rem; font-size: 0.875rem; font-weight: 600;">Change log</h3>
               <ul style="list-style: none; padding: 0; margin: 0 0 0.75rem;">
                 <li v-for="(entry, index) in log" :key="index" style="padding: 0.35rem 0; border-bottom: 1px solid var(--color-border); font-size: 0.875rem;">
@@ -960,11 +1137,7 @@ panel.plugin('open-foundations/kirby-base', {
                   </ul>
                 </li>
               </ul>
-              <k-button
-                :disabled="running"
-                icon="trash"
-                @click="clearLog"
-              >
+              <k-button icon="trash" @click="clearLog">
                 Clear log
               </k-button>
             </template>

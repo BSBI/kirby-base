@@ -239,21 +239,24 @@ $pluginConfig = [
                 },
             ],
             [
-                'pattern' => 'glossary/add-to-pages/batch',
+                'pattern' => 'glossary/add-to-pages/scan',
                 'method'  => 'POST',
                 /**
-                 * Apply one glossary item's links to a batch of pages,
-                 * appending per-page results to the item's change log.
-                 * Time-budgeted: may process only part of the sent list;
-                 * `processed` tells the client where to resume.
+                 * Read-only scan of a batch of pages for one glossary item's
+                 * term. Nothing is persisted; matches are returned for editor
+                 * review. Time-budgeted: the loop stops ~8 seconds in (after
+                 * at least one page), under a set_time_limit(30) ceiling, so
+                 * it may process only part of the sent list; `processed`
+                 * tells the client where to resume.
                  *
-                 * @return array{results: array<int, array<string, mixed>>, processed: int}|array{error: string}
+                 * @return array{matches: array<int, array<string, string>>, processed: int}|array{error: string}
                  */
                 'action'  => function (): array {
                     $helper = new KirbyInternalHelper();
                     if (!$helper->isCurrentUserAdminOrEditor()) {
                         return ['error' => 'Not authorised'];
                     }
+                    set_time_limit(30);
                     $itemId = get('item', '');
                     $itemPage = is_string($itemId) ? kirby()->page($itemId) : null;
                     if ($itemPage === null || $itemPage->intendedTemplate()->name() !== 'glossary_item') {
@@ -270,10 +273,50 @@ $pluginConfig = [
                         kirby()->site(),
                         new GlossaryService(kirby(), kirby()->site())
                     );
+                    return $service->scanPagesForTerm($term, array_slice(array_values($rawPages), 0, 200));
+                },
+            ],
+            [
+                'pattern' => 'glossary/add-to-pages/apply',
+                'method'  => 'POST',
+                /**
+                 * Apply editor-confirmed glossary links from the site-wide
+                 * review step. Input is an ordered list of per-page selections
+                 * ({page, blockIds}); only those blocks are linked. Appends
+                 * per-page results to the item's change log. Time-budgeted:
+                 * the loop stops ~8 seconds in (after at least one group),
+                 * under a set_time_limit(30) ceiling, so it may process only
+                 * part of the sent list; `processed` tells the client how
+                 * many selection groups were handled.
+                 *
+                 * @return array{results: array<int, array<string, mixed>>, processed: int}|array{error: string}
+                 */
+                'action'  => function (): array {
+                    $helper = new KirbyInternalHelper();
+                    if (!$helper->isCurrentUserAdminOrEditor()) {
+                        return ['error' => 'Not authorised'];
+                    }
+                    set_time_limit(30);
+                    $itemId = get('item', '');
+                    $itemPage = is_string($itemId) ? kirby()->page($itemId) : null;
+                    if ($itemPage === null || $itemPage->intendedTemplate()->name() !== 'glossary_item') {
+                        return ['error' => 'Glossary item not found'];
+                    }
+                    $rawSelections = get('selections', []);
+                    if (!is_array($rawSelections)) {
+                        return ['error' => 'Invalid selections'];
+                    }
+                    $termValue = $itemPage->title()->value();
+                    $term = is_string($termValue) ? $termValue : '';
+                    $service = new GlossaryPanelService(
+                        kirby(),
+                        kirby()->site(),
+                        new GlossaryService(kirby(), kirby()->site())
+                    );
                     $results = [];
                     $processed = 0;
                     $startedAt = microtime(true);
-                    foreach (array_slice($rawPages, 0, 100) as $pageId) {
+                    foreach (array_slice($rawSelections, 0, 100) as $selection) {
                         // time-budgeted: stop before the request runs long
                         // enough to freeze progress or hit PHP's execution
                         // limit; the client resumes from the reported count
@@ -281,15 +324,21 @@ $pluginConfig = [
                             break;
                         }
                         $processed++;
-                        if (!is_string($pageId)) {
+                        if (!is_array($selection)) {
                             continue;
                         }
+                        $pageId = $selection['page'] ?? null;
+                        $blockIds = $selection['blockIds'] ?? null;
+                        if (!is_string($pageId) || !is_array($blockIds)) {
+                            continue;
+                        }
+                        $blockIds = array_values(array_filter($blockIds, 'is_string'));
                         $page = kirby()->page($pageId);
                         if ($page === null || $page->permissions()->can('update') !== true) {
                             continue;
                         }
                         try {
-                            $matches = $service->applyTermToPage($page, $term);
+                            $matches = $service->applyTermToPageBlocks($page, $term, $blockIds);
                         } catch (Throwable $e) {
                             KirbyBaseHelper::writeToLogFile(
                                 'glossary-errors',

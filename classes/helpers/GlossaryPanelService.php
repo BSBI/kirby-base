@@ -25,6 +25,9 @@ final readonly class GlossaryPanelService
     /** Maximum "Add to Pages" change-log entries kept per glossary item */
     private const int MAX_LOG_ENTRIES = 500;
 
+    /** Blocks whose text exceeds this byte size are skipped rather than scanned */
+    private const int MAX_BLOCK_BYTES = 100000;
+
     /**
      * Constructor.
      *
@@ -82,9 +85,18 @@ final readonly class GlossaryPanelService
         foreach ($this->getContentFieldNames() as $fieldName) {
             $structure = $this->decodeFieldJson($page, $fieldName);
 
-            $this->walkTextBlocks($structure, function (array $block) use ($terms, $fieldName, &$matches): array {
+            $this->walkTextBlocks($structure, function (array $block) use ($terms, $fieldName, &$matches, $page): array {
                 $blockId = is_string($block['id'] ?? null) ? $block['id'] : '';
                 $text = $this->getBlockText($block);
+
+                if (strlen($text) > self::MAX_BLOCK_BYTES) {
+                    KirbyBaseHelper::writeToLogFile(
+                        'glossary-errors',
+                        'Glossary scan skipped oversized block ' . $blockId . ' on ' . $page->id()
+                        . ' (' . strlen($text) . ' bytes)'
+                    );
+                    return $block;
+                }
 
                 if ($text !== '') {
                     foreach ($this->matcher->findMatches($terms, $text, $blockId) as $match) {
@@ -125,6 +137,96 @@ final readonly class GlossaryPanelService
         }
 
         $matches = $this->previewForPage($page, [$item->getTitle()]);
+
+        if ($matches === []) {
+            return [];
+        }
+
+        $selections = array_map(
+            static fn (array $match): array => ['blockId' => $match['blockId'], 'term' => $match['term']],
+            $matches
+        );
+        $this->applyToPage($page, $selections);
+
+        return $matches;
+    }
+
+    /**
+     * Read-only scan of a batch of pages for one glossary term.
+     *
+     * Finds every available (unlinked) occurrence of the term without
+     * touching any page, so the site-wide "Add to Pages" tool can present
+     * matches for editor review before anything is persisted. Time-budgeted:
+     * may process only part of the given list; `processed` tells the client
+     * where to resume. The glossary page and its items are skipped, as are
+     * ids that no longer resolve and pages the current user cannot update.
+     *
+     * @param string $term The glossary term to look for
+     * @param array<int, mixed> $pageIds The page ids to scan
+     * @param float $timeBudgetSeconds Stop scanning after this many seconds
+     * @return array{matches: array<int, array<string, string>>, processed: int}
+     */
+    public function scanPagesForTerm(string $term, array $pageIds, float $timeBudgetSeconds = 8.0): array
+    {
+        $glossaryPage = $this->glossaryService->getGlossaryPage();
+        $glossaryId = $glossaryPage?->id();
+        $matches = [];
+        $processed = 0;
+        $startedAt = microtime(true);
+
+        foreach ($pageIds as $pageId) {
+            // guaranteed progress: the first page is always processed, so a
+            // slow page cannot stall the client's resume loop
+            if ($processed > 0 && microtime(true) - $startedAt > $timeBudgetSeconds) {
+                break;
+            }
+            $processed++;
+
+            if (!is_string($pageId) || $pageId === '') {
+                continue;
+            }
+            if ($glossaryId !== null && ($pageId === $glossaryId || str_starts_with($pageId, $glossaryId . '/'))) {
+                continue;
+            }
+            $page = $this->kirby->page($pageId);
+            if ($page === null || $page->permissions()->can('update') !== true) {
+                continue;
+            }
+
+            foreach ($this->previewForPage($page, [$term]) as $match) {
+                $titleValue = $page->title()->value();
+                $matches[] = array_merge($match, [
+                    'pageId' => $page->id(),
+                    'pageTitle' => is_string($titleValue) ? $titleValue : $page->id(),
+                    'panelUrl' => $page->panel()->url(),
+                ]);
+            }
+        }
+
+        return ['matches' => $matches, 'processed' => $processed];
+    }
+
+    /**
+     * Apply a glossary term's links to specific, editor-confirmed blocks of a
+     * page, persisting the page. The site-wide review UI collects blockIds
+     * during the read-only scan; only those blocks are linked here.
+     *
+     * @param Page $page The page to update
+     * @param string $term The glossary term to apply
+     * @param string[] $blockIds The blocks the editor confirmed
+     * @return array<int, array{field: string, blockId: string, term: string, matchedText: string, contextBefore: string, contextAfter: string}> The matches that were applied
+     * @throws \Throwable When the page update fails
+     */
+    public function applyTermToPageBlocks(Page $page, string $term, array $blockIds): array
+    {
+        if ($blockIds === []) {
+            return [];
+        }
+
+        $matches = array_values(array_filter(
+            $this->previewForPage($page, [$term]),
+            static fn (array $match): bool => in_array($match['blockId'], $blockIds, true)
+        ));
 
         if ($matches === []) {
             return [];

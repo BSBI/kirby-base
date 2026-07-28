@@ -44,7 +44,10 @@ final class GlossaryPanelServiceTest extends TestCase
         restore_exception_handler();
     }
 
-    private function makeApp(): App
+    /**
+     * @param array<int, array<string, mixed>> $extraChildren Additional site children
+     */
+    private function makeApp(array $extraChildren = []): App
     {
         return new App([
             'roots' => ['index' => self::$tmpDir],
@@ -87,6 +90,7 @@ final class GlossaryPanelServiceTest extends TestCase
                             'maincontent' => self::LAYOUT_JSON,
                         ],
                     ],
+                    ...$extraChildren,
                 ],
             ],
         ]);
@@ -284,5 +288,119 @@ final class GlossaryPanelServiceTest extends TestCase
         $applied = $this->makeService($app)->applyToPage($page, [['blockId' => 'blk-bract', 'term' => 'Bract']]);
 
         $this->assertSame(1, $applied);
+    }
+
+    public function testScanPagesForTermReturnsMatchesWithPageContext(): void
+    {
+        $app = $this->makeApp();
+        $app->impersonate('kirby');
+        $service = $this->makeService($app);
+
+        $result = $service->scanPagesForTerm('Bract', ['about-bracts']);
+
+        $this->assertSame(1, $result['processed']);
+        $this->assertCount(1, $result['matches']);
+        $match = $result['matches'][0];
+        $this->assertSame('about-bracts', $match['pageId']);
+        $this->assertSame('About Bracts', $match['pageTitle']);
+        $this->assertArrayHasKey('panelUrl', $match);
+        $this->assertSame('Bract', $match['term']);
+        $this->assertSame('blk-bract', $match['blockId']);
+        $this->assertSame('bract', $match['matchedText']);
+        $this->assertSame('All about the', $match['contextBefore']);
+    }
+
+    public function testScanPagesForTermSkipsGlossaryAndMissingPages(): void
+    {
+        $app = $this->makeApp();
+        $app->impersonate('kirby');
+        $service = $this->makeService($app);
+
+        $result = $service->scanPagesForTerm('Bract', ['glossary/bract', 'no-such-page', 'about-bracts']);
+
+        // all three ids are consumed, but only the real, non-glossary page matches
+        $this->assertSame(3, $result['processed']);
+        $this->assertCount(1, $result['matches']);
+        $this->assertSame('about-bracts', $result['matches'][0]['pageId']);
+    }
+
+    public function testScanPagesForTermRespectsTimeBudget(): void
+    {
+        $app = $this->makeApp([
+            [
+                'slug' => 'more-bracts',
+                'template' => 'content',
+                'num' => 3,
+                'content' => [
+                    'title' => 'More Bracts',
+                    'maincontent' => '[{"content":{"text":"<p>Another bract mention.</p>"},"id":"blk-more","isHidden":false,"type":"text"}]',
+                ],
+            ],
+        ]);
+        $app->impersonate('kirby');
+        $service = $this->makeService($app);
+
+        // a zero budget still processes the first page (guaranteed progress),
+        // then stops; the client resumes from `processed`
+        $result = $service->scanPagesForTerm('Bract', ['about-bracts', 'more-bracts'], 0.0);
+
+        $this->assertSame(1, $result['processed']);
+        $this->assertCount(1, $result['matches']);
+        $this->assertSame('about-bracts', $result['matches'][0]['pageId']);
+    }
+
+    public function testApplyTermToPageBlocksAppliesOnlySelectedBlocks(): void
+    {
+        $twoBlocks = '[{"content":{"text":"<p>First bract here.</p>"},"id":"blk-one","isHidden":false,"type":"text"},'
+            . '{"content":{"text":"<p>Second bract here.</p>"},"id":"blk-two","isHidden":false,"type":"text"}]';
+        $app = $this->makeApp([
+            [
+                'slug' => 'two-bracts',
+                'template' => 'content',
+                'num' => 3,
+                'content' => [
+                    'title' => 'Two Bracts',
+                    'maincontent' => $twoBlocks,
+                ],
+            ],
+        ]);
+        $app->impersonate('kirby');
+        $page = $app->page('two-bracts');
+        $this->assertNotNull($page);
+        $service = $this->makeService($app);
+
+        // nothing selected: nothing applied
+        $this->assertSame([], $service->applyTermToPageBlocks($page, 'Bract', ['no-such-block']));
+
+        $matches = $service->applyTermToPageBlocks($page, 'Bract', ['blk-two']);
+
+        $this->assertCount(1, $matches);
+        $this->assertSame('blk-two', $matches[0]['blockId']);
+        $this->assertSame('bract', $matches[0]['matchedText']);
+    }
+
+    public function testPreviewSkipsOversizedBlocks(): void
+    {
+        // a block over the size cap is skipped entirely rather than scanned
+        $bigText = '<p>bract ' . str_repeat('x ', 60000) . '</p>';
+        $blocksJson = json_encode([
+            ['content' => ['text' => $bigText], 'id' => 'blk-big', 'isHidden' => false, 'type' => 'text'],
+        ], JSON_UNESCAPED_SLASHES);
+        $this->assertIsString($blocksJson);
+        $app = $this->makeApp([
+            [
+                'slug' => 'big-page',
+                'template' => 'content',
+                'num' => 3,
+                'content' => [
+                    'title' => 'Big Page',
+                    'maincontent' => $blocksJson,
+                ],
+            ],
+        ]);
+        $page = $app->page('big-page');
+        $this->assertNotNull($page);
+
+        $this->assertSame([], $this->makeService($app)->previewForPage($page, ['Bract']));
     }
 }
