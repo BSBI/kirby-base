@@ -233,8 +233,7 @@ final class GlossaryService
                     ->setDefinitionHtml($definitionHtml)
                     ->setExtendedContentHtml($this->getExtendedContentHtml($fieldReader, $itemPage))
                     ->setUuid($itemPage->uuid()->toString())
-                    ->setPanelUrl($itemPage->panel()->url())
-                    ->setType($fieldReader->getPageFieldAsString($itemPage, 'glossaryType'));
+                    ->setPanelUrl($itemPage->panel()->url());
                 $glossary->addListItem($item);
             }
         } catch (Throwable $e) {

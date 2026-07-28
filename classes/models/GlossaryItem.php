@@ -29,9 +29,6 @@ class GlossaryItem extends BaseModel
     /** @var string The Kirby Panel URL for editing the item */
     private string $panelUrl = '';
 
-    /** @var string The optional glossary type (e.g. general, botany) */
-    private string $type = '';
-
     /** @var string The page slug, used as the anchor on the listing page */
     private string $slug = '';
 
@@ -202,35 +199,6 @@ class GlossaryItem extends BaseModel
     public function setPanelUrl(string $panelUrl): self
     {
         $this->panelUrl = $panelUrl;
-        return $this;
-    }
-
-    /**
-     * Whether a glossary type has been set
-     * @return bool
-     */
-    public function hasType(): bool
-    {
-        return $this->type !== '';
-    }
-
-    /**
-     * Get the glossary type
-     * @return string
-     */
-    public function getType(): string
-    {
-        return $this->type;
-    }
-
-    /**
-     * Set the glossary type
-     * @param string $type
-     * @return GlossaryItem
-     */
-    public function setType(string $type): self
-    {
-        $this->type = $type;
         return $this;
     }
 

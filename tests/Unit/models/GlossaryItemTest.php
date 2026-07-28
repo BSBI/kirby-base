@@ -86,19 +86,6 @@ final class GlossaryItemTest extends TestCase
         $this->assertSame('/panel/pages/glossary+bract', $item->getPanelUrl());
     }
 
-    public function testTypeHandling(): void
-    {
-        $item = new GlossaryItem('Bract', '/glossary/bract');
-
-        $this->assertFalse($item->hasType());
-        $this->assertSame('', $item->getType());
-
-        $item->setType('botany');
-
-        $this->assertTrue($item->hasType());
-        $this->assertSame('botany', $item->getType());
-    }
-
     public function testSlugHandling(): void
     {
         $item = new GlossaryItem('Bract', '/glossary/bract');
@@ -152,7 +139,6 @@ final class GlossaryItemTest extends TestCase
             ->setDefinitionHtml('<p>A modified leaf.</p>')
             ->setExtendedContentHtml('<p>More detail.</p>')
             ->setPanelUrl('/panel/pages/glossary+bract')
-            ->setType('botany')
             ->setSlug('bract');
 
         $this->assertSame($item, $result);

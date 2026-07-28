@@ -24,13 +24,6 @@ sections:
           glossary terms; any links and formatting are stripped when the
           definition is shown as a hover tooltip. The page title is the term
           itself.
-      glossaryType:
-        label: Type
-        type: select
-        options:
-          general: General
-          botany: Botany
-        help: Optional grouping for the term (leave empty if unsure)
       extendedContent:
         extends: fields/simpleContent
         label: Extended Content

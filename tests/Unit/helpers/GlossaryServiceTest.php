@@ -69,7 +69,6 @@ final class GlossaryServiceTest extends TestCase
                                             'title' => 'Bract',
                                             'uuid' => 'bract-uuid',
                                             'definition' => '<p>A modified leaf at the base of a <a href="page://petiole-uuid">flower</a>.</p>',
-                                            'glossarytype' => 'botany',
                                             'extendedcontent' => '[{"content":{"text":"<p>Bracts occur in many families.</p>"},"id":"b1-block","isHidden":false,"type":"text"}]',
                                         ],
                                     ],
@@ -150,7 +149,6 @@ final class GlossaryServiceTest extends TestCase
         $this->assertNotNull($bract);
         $this->assertSame('bract', $bract->getSlug());
         $this->assertSame('A modified leaf at the base of a flower.', $bract->getDefinition());
-        $this->assertSame('botany', $bract->getType());
 
         // entities in writer definitions are decoded in the plain-text version
         $petiole = $glossary->findByTerm('Petiole');
