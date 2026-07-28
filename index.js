@@ -16,6 +16,14 @@ panel.plugin('open-foundations/kirby-base', {
       commands() {
         const mark = this;
         return () => {
+          // When the selection is already inside a glossary link, recover the
+          // linked term from the mark's /@/page/ href so the picker opens with
+          // it preselected (the picker's values are page:// uuids).
+          const attrs = mark.editor.getMarkAttrs("glossaryLink") || {};
+          const currentUuid =
+            typeof attrs.href === "string" && attrs.href.startsWith("/@/page/")
+              ? "page://" + attrs.href.slice("/@/page/".length)
+              : null;
           window.panel.api
             .get("glossary/items")
             .then((response) => {
@@ -29,6 +37,11 @@ panel.plugin('open-foundations/kirby-base', {
                 );
                 return;
               }
+              const selectedUuid = items.some(
+                (item) => item.uuid === currentUuid
+              )
+                ? currentUuid
+                : null;
               window.panel.dialog.open({
                 component: "k-form-dialog",
                 props: {
@@ -45,7 +58,13 @@ panel.plugin('open-foundations/kirby-base', {
                       }))
                     }
                   },
-                  submitButton: { icon: "check", text: "Insert glossary link" }
+                  value: { term: selectedUuid },
+                  submitButton: {
+                    icon: "check",
+                    text: selectedUuid
+                      ? "Update glossary link"
+                      : "Insert glossary link"
+                  }
                 },
                 on: {
                   submit: (value) => {
@@ -81,7 +100,12 @@ panel.plugin('open-foundations/kirby-base', {
           inclusive: false,
           parseDOM: [
             {
+              // Must outrank the built-in link mark's a[href] rule (default
+              // priority 50): with equal priority the built-in rule wins, so
+              // glossary anchors load as plain links and lose data-glossary
+              // on the next save.
               tag: "a[data-glossary]",
+              priority: 60,
               getAttrs: (dom) => ({ href: dom.getAttribute("href") })
             }
           ],
@@ -697,6 +721,10 @@ panel.plugin('open-foundations/kirby-base', {
             this.loading = false;
           }
         },
+        reload: async function () {
+          await this.$reload();
+          this.appliedCount = null;
+        },
         apply: async function () {
           const selections = this.matches
             .filter((m, i) => this.selected[i])
@@ -730,10 +758,14 @@ panel.plugin('open-foundations/kirby-base', {
             <h2 class="k-headline">{{ headline }}</h2>
           </header>
           <div style="padding: 0.75rem 0 0.5rem;">
-            <p v-if="appliedCount !== null" aria-live="polite" style="margin-bottom: 0.75rem; color: var(--color-green-700, #15803d); font-size: 0.875rem;">
-              {{ appliedCount }} glossary link{{ appliedCount !== 1 ? 's' : '' }} added.
-              Reload this page to see the updated content.
-            </p>
+            <div v-if="appliedCount !== null" style="margin-bottom: 0.75rem;">
+              <p aria-live="polite" style="margin-bottom: 0.5rem; color: var(--color-green-700, #15803d); font-size: 0.875rem;">
+                {{ appliedCount }} glossary link{{ appliedCount !== 1 ? 's' : '' }} added.
+              </p>
+              <k-button icon="refresh" variant="filled" @click="reload">
+                Reload to see the updated content
+              </k-button>
+            </div>
             <p v-if="error" aria-live="assertive" style="margin-bottom: 0.75rem; color: var(--color-red-600, #dc2626); font-size: 0.875rem;">
               {{ error }}
             </p>

@@ -59,9 +59,9 @@
 
 /* Glossary links in the panel writer: the panel's base reset unstyles all
    anchors, so without this rule glossary links are invisible while editing.
-   Dotted underline distinguishes them from ordinary links. */
+   Dashed underline distinguishes them from ordinary links. */
 .k-writer-input .ProseMirror a[data-glossary] {
   color: var(--link-color, var(--color-blue-700));
-  text-decoration: underline dotted;
+  text-decoration: underline dashed;
   text-underline-offset: 0.2ex;
 }
