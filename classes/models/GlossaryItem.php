@@ -108,6 +108,10 @@ class GlossaryItem extends BaseModel
             $html .= ' data-glossary-html="' . htmlspecialchars($this->definitionHtml, ENT_QUOTES) . '"';
         }
 
+        if ($this->hasExtendedContentHtml()) {
+            $html .= ' data-glossary-more="true"';
+        }
+
         if ($this->hasDefinition()) {
             $html .= ' title="' . htmlspecialchars($this->definition, ENT_QUOTES) . '"';
         }

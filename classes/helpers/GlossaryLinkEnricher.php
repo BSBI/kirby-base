@@ -76,6 +76,12 @@ final readonly class GlossaryLinkEnricher
                 . ' data-glossary-html="' . htmlspecialchars($item->getDefinitionHtml(), ENT_QUOTES) . '">';
         }
 
+        // flag items with a fuller glossary-page entry so the front-end
+        // tooltip can offer a "Read more" link (to the anchor's own href)
+        if ($item->hasExtendedContentHtml() && stripos($tag, 'data-glossary-more') === false) {
+            $tag = substr($tag, 0, -1) . ' data-glossary-more="true">';
+        }
+
         if (preg_match('/title="[^"]*"/i', $tag) === 1) {
             $replaced = preg_replace('/title="[^"]*"/i', 'title="' . $title . '"', $tag, 1);
             return $replaced ?? $tag;

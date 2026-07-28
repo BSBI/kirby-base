@@ -130,6 +130,22 @@ final class GlossaryItemTest extends TestCase
         );
     }
 
+    public function testGetLinkHtmlMarksItemsWithExtendedContent(): void
+    {
+        // data-glossary-more drives the tooltip's "Read more" link; only
+        // items with a fuller glossary-page entry carry it
+        $item = (new GlossaryItem('Bract', '/glossary/bract'))
+            ->setDefinition('A modified leaf.')
+            ->setExtendedContentHtml('<p>More detail.</p>');
+
+        $this->assertStringContainsString('data-glossary-more="true"', $item->getLinkHtml());
+
+        $plain = (new GlossaryItem('Bract', '/glossary/bract'))
+            ->setDefinition('A modified leaf.');
+
+        $this->assertStringNotContainsString('data-glossary-more', $plain->getLinkHtml());
+    }
+
     public function testFluentSetters(): void
     {
         $item = new GlossaryItem('Bract', '/glossary/bract');

@@ -80,6 +80,34 @@ final class GlossaryLinkEnricherTest extends TestCase
         $this->assertStringContainsString('title="A modified leaf, see petiole."', $result);
     }
 
+    public function testItemWithExtendedContentGetsDataGlossaryMoreAttribute(): void
+    {
+        // the tooltip shows a "Read more" link only for items with a fuller
+        // entry on the glossary page
+        $glossary = new GlossaryList();
+        $glossary->addListItem(
+            (new GlossaryItem('Bract', 'https://example.test/glossary/bract'))
+                ->setDefinition('A modified leaf.')
+                ->setExtendedContentHtml('<p>Bracts occur in many families.</p>')
+        );
+        $html = '<p><a href="https://example.test/glossary/bract">bract</a></p>';
+
+        $this->assertStringContainsString(
+            'data-glossary-more="true"',
+            $this->enricher->enrich($html, $glossary)
+        );
+    }
+
+    public function testItemWithoutExtendedContentHasNoDataGlossaryMoreAttribute(): void
+    {
+        $html = '<p><a href="https://example.test/glossary/bract">bract</a></p>';
+
+        $this->assertStringNotContainsString(
+            'data-glossary-more',
+            $this->enricher->enrich($html, $this->glossary)
+        );
+    }
+
     public function testNoDefinitionHtmlMeansNoHtmlDataAttribute(): void
     {
         // fixture items in setUp have plain definitions only
