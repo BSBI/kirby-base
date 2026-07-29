@@ -25,13 +25,32 @@ final readonly class CertificateIssue
      * @param string $issuedOn The date awarded, as 'YYYY-MM-DD'
      * @param string $templateName The template used, recorded so a reissue can be
      *                             recognised as coming from a different design
+     * @param string $reference An unguessable identifier for this award, used in
+     *                          links sent to the recipient. Replacing it revokes
+     *                          every link previously issued for this award and
+     *                          nobody else's.
      */
     public function __construct(
         private string $recipientId,
         private string $contextId,
         private string $issuedOn,
-        private string $templateName = ''
+        private string $templateName = '',
+        private string $reference = ''
     ) {
+    }
+
+    /**
+     * Generate an unguessable reference for a new award.
+     *
+     * Cryptographically random rather than time-based: a reference that can be
+     * predicted from when it was issued would let somebody derive a link they
+     * were never sent, which is the whole property this is here to provide.
+     *
+     * @return string The reference, as 32 hex characters
+     */
+    public static function generateReference(): string
+    {
+        return bin2hex(random_bytes(16));
     }
 
     /**
@@ -49,7 +68,8 @@ final readonly class CertificateIssue
             self::readString($data, 'recipient'),
             self::readString($data, 'context'),
             self::readString($data, 'issued'),
-            self::readString($data, 'template')
+            self::readString($data, 'template'),
+            self::readString($data, 'reference')
         );
     }
 
@@ -83,6 +103,7 @@ final readonly class CertificateIssue
             'context' => $this->contextId,
             'issued' => $this->issuedOn,
             'template' => $this->templateName,
+            'reference' => $this->reference,
         ];
     }
 
@@ -124,6 +145,48 @@ final readonly class CertificateIssue
     public function getTemplateName(): string
     {
         return $this->templateName;
+    }
+
+    /**
+     * The unguessable reference used in links to this award.
+     *
+     * @return string The reference
+     */
+    public function getReference(): string
+    {
+        return $this->reference;
+    }
+
+    /**
+     * Whether this award can be reached by a link.
+     *
+     * An award recorded before references existed has none, so it is offered
+     * through the dashboard but cannot be sent as a link until reissued.
+     *
+     * @return bool True when the award has a reference
+     */
+    public function isLinkable(): bool
+    {
+        return $this->reference !== '';
+    }
+
+    /**
+     * This award with a freshly generated reference.
+     *
+     * Every link previously sent for this award stops working, which is what
+     * makes reissuing a link a meaningful action rather than a duplicate one.
+     *
+     * @return self The award with a new reference
+     */
+    public function withNewReference(): self
+    {
+        return new self(
+            $this->recipientId,
+            $this->contextId,
+            $this->issuedOn,
+            $this->templateName,
+            self::generateReference()
+        );
     }
 
     /**
