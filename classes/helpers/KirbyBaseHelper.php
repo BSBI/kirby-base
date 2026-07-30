@@ -2389,6 +2389,30 @@ abstract class KirbyBaseHelper
         return $this->userService->isCurrentUserAdminOrEditor();
     }
 
+    /**
+     * Whether the signed-in user is an administrator.
+     *
+     * The set already offered isCurrentUserAdminOrEditor() and
+     * isCurrentUserAdminOrEditorOrHasRoles() but no plain admin check, so a consumer
+     * wanting an admin-only route had to reach for the protected
+     * getCurrentUserRole() and compare strings. This closes that gap.
+     *
+     * @return bool True when an administrator is signed in
+     */
+    public function isCurrentUserAdmin(): bool
+    {
+        return $this->userService->isCurrentUserAdmin();
+    }
+
+    /**
+     * @param \Kirby\Cms\User|null $user The user to check, or null
+     * @return bool True when the user is a real administrator
+     */
+    public function isUserAdmin(\Kirby\Cms\User|null $user): bool
+    {
+        return $this->userService->isUserAdmin($user);
+    }
+
     public function isCurrentUserAdminOrEditorOrHasRoles(array $roles): bool
     {
         return $this->userService->isCurrentUserAdminOrEditorOrHasRoles($roles);

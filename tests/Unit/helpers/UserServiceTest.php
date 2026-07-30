@@ -119,6 +119,34 @@ final class UserServiceTest extends TestCase
     }
 
     // =========================================================================
+    // isUserAdmin
+    // =========================================================================
+
+    public function testIsUserAdminReturnsFalseForNull(): void
+    {
+        $this->assertFalse($this->makeService()->isUserAdmin(null));
+    }
+
+    public function testIsUserAdminReturnsTrueForAdmin(): void
+    {
+        $this->assertTrue($this->makeService()->isUserAdmin($this->makeKirbyUser('admin')));
+    }
+
+    /**
+     * Editors are admins for isUserAdminOrEditor but must not be here — that is the
+     * whole point of the narrower predicate.
+     */
+    public function testIsUserAdminReturnsFalseForEditor(): void
+    {
+        $this->assertFalse($this->makeService()->isUserAdmin($this->makeKirbyUser('editor')));
+    }
+
+    public function testIsUserAdminReturnsFalseForMember(): void
+    {
+        $this->assertFalse($this->makeService()->isUserAdmin($this->makeKirbyUser('member')));
+    }
+
+    // =========================================================================
     // isCurrentUserAdminOrEditor
     // =========================================================================
 

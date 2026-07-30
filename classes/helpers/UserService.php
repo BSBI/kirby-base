@@ -214,6 +214,35 @@ final readonly class UserService
     }
 
     /**
+     * Whether the given user is an administrator.
+     *
+     * Narrower than isUserAdminOrEditor(): some actions are for admins alone, and
+     * a consumer should not have to compare role strings itself to express that.
+     *
+     * @param \Kirby\Cms\User|null $user The user to check, or null
+     * @return bool True when the user is a real administrator
+     */
+    public function isUserAdmin(\Kirby\Cms\User|null $user): bool
+    {
+        return $user
+            && !$user->isKirby()
+            && $user->role()->name() === 'admin';
+    }
+
+    /**
+     * Whether the signed-in user is an administrator.
+     *
+     * @return bool True when an administrator is signed in
+     */
+    public function isCurrentUserAdmin(): bool
+    {
+        if (!($this->hasSessionCookieFn)()) {
+            return false;
+        }
+        return $this->isUserAdmin($this->kirby->user());
+    }
+
+    /**
      * @param string $role
      * @return bool
      */
