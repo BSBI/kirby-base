@@ -1,5 +1,19 @@
 <?php /** @noinspection PhpUnhandledExceptionInspection */
 
+// This plugin is consumed two ways at the same path: installed by Composer, and
+// checked out as a git submodule for development. Installed, Composer flattens
+// this package's own requirements (fpdi, tcpdf) into the SITE's vendor directory
+// and they autoload with everything else. As a submodule they sit in this
+// directory's own vendor/, which nothing else knows about — so a certificate
+// render fails locally with "Class setasign\Fpdi\... not found" while working
+// perfectly on a server.
+//
+// Guarded because that path exists only in the submodule case: /vendor is
+// gitignored here and Composer never creates it inside an installed plugin.
+if (is_file(__DIR__ . '/vendor/autoload.php')) {
+    require_once __DIR__ . '/vendor/autoload.php';
+}
+
 use BSBI\WebBase\helpers\ContentIndexDefinition;
 use BSBI\WebBase\helpers\ContentIndexRegistry;
 use BSBI\WebBase\helpers\ErrorNotificationThrottle;
