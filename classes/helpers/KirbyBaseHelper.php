@@ -2436,7 +2436,16 @@ abstract class KirbyBaseHelper
      * @return bool
      * @noinspection PhpUnused
      */
-    protected function isUserLoggedIn(): bool
+    /**
+     * Whether anyone is signed in.
+     *
+     * Public because routes need it: a route has no $this to inherit from, so a
+     * protected accessor left them reaching for a bare kirby()->user(), which is
+     * exactly what the helper exists to avoid.
+     *
+     * @return bool True when a user is signed in
+     */
+    public function isUserLoggedIn(): bool
     {
         return $this->userService->isUserLoggedIn();
     }
