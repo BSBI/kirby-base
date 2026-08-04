@@ -90,6 +90,30 @@ class SearchIndexHelper
     private static ?PDO $staticDb = null;
 
     /**
+     * Open connections, keyed by database file.
+     *
+     * The delete hook constructs one of these per page, so without this a bulk
+     * operation opened a fresh SQLite connection for every page it touched —
+     * along with a schema-version query and two table-existence checks. Keyed by
+     * file rather than held as a single connection because the path is
+     * overridable, and a subclass or test pointing elsewhere must not silently
+     * receive somebody else's database.
+     *
+     * @var array<string, PDO>
+     */
+    private static array $connections = [];
+
+    /**
+     * Connections whose one-off table migrations have already run this request.
+     *
+     * Keyed by the PDO object rather than by table name: two databases must not
+     * share a memo, or a second file would skip a migration it never had.
+     *
+     * @var array<int, true>
+     */
+    private static array $migrated = [];
+
+    /**
      * Constructor - initializes database connection
      *
      * @throws Exception If database cannot be initialized
@@ -301,9 +325,33 @@ class SearchIndexHelper
             $this->createDatabase($file);
         }
 
+        if (isset(self::$connections[$file])) {
+            // Already open, and its schema already checked this request.
+            $this->database = self::$connections[$file];
+
+            return;
+        }
+
         $this->database = new PDO('sqlite:' . $file);
         $this->database->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $this->ensureCurrentSchema();
+
+        self::$connections[$file] = $this->database;
+    }
+
+    /**
+     * Forget any open connections.
+     *
+     * For tests, which must not inherit a connection to a temporary database
+     * that another test has since removed.
+     *
+     * @return void
+     */
+    public static function resetConnections(): void
+    {
+        self::$connections = [];
+        self::$migrated = [];
+        self::$staticDb = null;
     }
 
     /**
@@ -597,6 +645,12 @@ class SearchIndexHelper
      */
     private function ensurePageLookupTable(): void
     {
+        $memo = spl_object_id($this->database);
+        if (isset(self::$migrated[$memo])) {
+            return;
+        }
+        self::$migrated[$memo] = true;
+
         $result = $this->database->query("SELECT name FROM sqlite_master WHERE type='table' AND name='page_lookup'");
         if ($result->fetch() === false) {
             $this->database->exec('
