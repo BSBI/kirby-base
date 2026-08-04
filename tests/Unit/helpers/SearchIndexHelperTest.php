@@ -207,6 +207,110 @@ final class SearchIndexHelperTest extends TestCase
         $this->assertNotEmpty($results['results']);
         $this->assertSame('pages/orchids', $results['results'][0]['page_id']);
     }
+
+    // --- removePage on a database predating page_lookup (issue #6) ---
+
+    /**
+     * Build a database with the schema as it was before page_lookup existed.
+     *
+     * Just the FTS5 table and search_meta — which is what an established install
+     * actually has. A freshly created database has every table and so cannot
+     * reproduce this at all, which is why it went unnoticed.
+     *
+     * @return PDO the legacy-schema database
+     */
+    private function legacyDatabase(): PDO
+    {
+        $database = new PDO('sqlite::memory:');
+        $database->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $database->exec('CREATE VIRTUAL TABLE search_index USING fts5(page_id, title, url)');
+        $database->exec('CREATE TABLE search_meta (key TEXT PRIMARY KEY, value TEXT)');
+        $database->exec("INSERT INTO search_index (page_id, title, url) VALUES ('some/page', 'T', '/u')");
+
+        return $database;
+    }
+
+    /**
+     * @param PDO $database the database to inspect
+     * @param string $table the table name
+     * @return bool whether the table exists
+     */
+    private function tableExists(PDO $database, string $table): bool
+    {
+        $stmt = $database->prepare("SELECT name FROM sqlite_master WHERE type='table' AND name = :name");
+        $stmt->execute(['name' => $table]);
+
+        return $stmt->fetch() !== false;
+    }
+
+    /**
+     * Verify removePage() does not throw when page_lookup is absent.
+     *
+     * It used to. Every page deletion on an established install threw, was
+     * swallowed by the page.delete:before hook, and wrote a line to
+     * search-index.log — a million and a half bytes of it on one site.
+     */
+    public function testRemovePageDoesNotThrowWithoutPageLookup(): void
+    {
+        $helper = new SearchIndexHelperTestDouble($this->legacyDatabase());
+
+        $this->assertTrue($helper->removePage('some/page'));
+    }
+
+    /**
+     * Verify the FTS5 row is actually removed.
+     */
+    public function testRemovePageRemovesTheIndexedRow(): void
+    {
+        $database = $this->legacyDatabase();
+        $helper = new SearchIndexHelperTestDouble($database);
+
+        $helper->removePage('some/page');
+
+        $stmt = $database->query("SELECT COUNT(*) FROM search_index WHERE page_id = 'some/page'");
+        $this->assertSame(0, (int)$stmt->fetchColumn());
+    }
+
+    /**
+     * Verify the cleanup after the throwing statement now runs.
+     *
+     * This is the part that made the bug worse than a missing table. The
+     * exception landed *between* the page_lookup delete and removeAllPagesEntry(),
+     * which is correctly guarded and simply never got to run — so all_pages
+     * retained a row for every page ever deleted.
+     */
+    public function testRemovePageReachesTheAllPagesCleanup(): void
+    {
+        $database = $this->legacyDatabase();
+        $helper = new SearchIndexHelperTestDouble($database);
+
+        $helper->removePage('some/page');
+
+        $this->assertTrue($this->tableExists($database, 'all_pages'));
+    }
+
+    /**
+     * Verify the missing table is created rather than merely tolerated.
+     */
+    public function testRemovePageCreatesPageLookup(): void
+    {
+        $database = $this->legacyDatabase();
+        $helper = new SearchIndexHelperTestDouble($database);
+
+        $helper->removePage('some/page');
+
+        $this->assertTrue($this->tableExists($database, 'page_lookup'));
+    }
+
+    /**
+     * Verify the insert side is guarded too.
+     */
+    public function testAddPageLookupDoesNotThrowWithoutPageLookup(): void
+    {
+        $helper = new SearchIndexHelperTestDouble($this->legacyDatabase());
+
+        $this->assertTrue($helper->addPageLookup('ddb-1', 'some/page'));
+    }
 }
 
 /**

@@ -544,7 +544,13 @@ class SearchIndexHelper
         $stmt = $this->database->prepare('DELETE FROM search_index WHERE page_id = :page_id');
         $result = $stmt->execute(['page_id' => $pageId]);
 
-        // Also remove from page_lookup
+        // Also remove from page_lookup. The ensure call matters on databases
+        // created before page_lookup existed — established installs, in other
+        // words, which is the case that actually occurs. Without it this
+        // statement threw on every single page deletion, and because the throw
+        // landed *between* here and the correctly-guarded removeAllPagesEntry()
+        // below, that cleanup never ran either.
+        $this->ensurePageLookupTable();
         $lookupStmt = $this->database->prepare('DELETE FROM page_lookup WHERE page_id = :page_id');
         $lookupStmt->execute(['page_id' => $pageId]);
 
@@ -566,6 +572,7 @@ class SearchIndexHelper
         if (empty($ddbId)) {
             return false;
         }
+        $this->ensurePageLookupTable();
         $stmt = $this->database->prepare('INSERT OR REPLACE INTO page_lookup (ddb_id, page_id) VALUES (:ddb_id, :page_id)');
         return $stmt->execute(['ddb_id' => $ddbId, 'page_id' => $pageId]);
     }
