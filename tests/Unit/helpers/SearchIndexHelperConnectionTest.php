@@ -1,5 +1,7 @@
 <?php
+
 declare(strict_types=1);
+
 namespace BSBI\WebBase\Tests\Unit\helpers;
 
 use BSBI\WebBase\helpers\SearchIndexHelper;
@@ -48,5 +50,28 @@ final class SearchIndexHelperConnectionTest extends TestCase
         $second = $this->connectionOf(new SearchIndexHelper());
 
         $this->assertNotSame($first, $second, 'reset did not drop the cached connection');
+    }
+
+    /**
+     * A cached connection is only valid while it points at the same database.
+     *
+     * If the file goes and is recreated, the old handle still works — SQLite keeps
+     * writing to the unlinked inode — so reusing it would send writes somewhere
+     * nothing can read them back from.
+     */
+    public function testARecreatedDatabaseFileIsNotServedFromTheCache(): void
+    {
+        $first = $this->connectionOf(new SearchIndexHelper());
+
+        unlink($this->databaseFile());
+
+        $second = $this->connectionOf(new SearchIndexHelper());
+
+        $this->assertNotSame($first, $second, 'a recreated database was served from the cache');
+    }
+
+    private function databaseFile(): string
+    {
+        return kirby()->root('site') . option('search.databasePath', '/logs/search/search.sqlite');
     }
 }
