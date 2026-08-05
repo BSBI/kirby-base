@@ -12,6 +12,7 @@ use Kirby\Filesystem\Dir;
 use Kirby\Filesystem\F;
 use PDO;
 use Throwable;
+use WeakMap;
 
 /**
  * SQLite FTS5-based search index manager
@@ -107,11 +108,15 @@ class SearchIndexHelper
      * Connections whose one-off table migrations have already run this request.
      *
      * Keyed by the PDO object rather than by table name: two databases must not
-     * share a memo, or a second file would skip a migration it never had.
+     * share a memo, or a second file would skip a migration it never had. A
+     * WeakMap rather than an spl_object_id() array because PHP hands the freed id
+     * straight to the next object — a subclass supplying its own connection would
+     * inherit the memo of one that had already gone, and skip a migration on a
+     * database that never had it.
      *
-     * @var array<int, true>
+     * @var WeakMap<PDO, true>|null
      */
-    private static array $migrated = [];
+    private static ?WeakMap $migrated = null;
 
     /**
      * Constructor - initializes database connection
@@ -323,6 +328,11 @@ class SearchIndexHelper
                 }
             }
             $this->createDatabase($file);
+
+            // Any handle cached for this path belongs to the file that has just
+            // gone. SQLite keeps writing to an unlinked inode quite happily, so
+            // reusing it would put writes somewhere nothing can read back.
+            unset(self::$connections[$file]);
         }
 
         if (isset(self::$connections[$file])) {
@@ -344,14 +354,24 @@ class SearchIndexHelper
      *
      * For tests, which must not inherit a connection to a temporary database
      * that another test has since removed.
-     *
-     * @return void
      */
     public static function resetConnections(): void
     {
         self::$connections = [];
-        self::$migrated = [];
+        self::$migrated = null;
         self::$staticDb = null;
+    }
+
+    /**
+     * The migration memo, created on first use.
+     *
+     * A static property cannot be initialised with an object, so it is built lazily.
+     *
+     * @return WeakMap<PDO, true> the connections already migrated
+     */
+    private static function migrated(): WeakMap
+    {
+        return self::$migrated ??= new WeakMap();
     }
 
     /**
@@ -645,11 +665,10 @@ class SearchIndexHelper
      */
     private function ensurePageLookupTable(): void
     {
-        $memo = spl_object_id($this->database);
-        if (isset(self::$migrated[$memo])) {
+        $migrated = self::migrated();
+        if (isset($migrated[$this->database])) {
             return;
         }
-        self::$migrated[$memo] = true;
 
         $result = $this->database->query("SELECT name FROM sqlite_master WHERE type='table' AND name='page_lookup'");
         if ($result->fetch() === false) {
@@ -661,6 +680,12 @@ class SearchIndexHelper
                 CREATE INDEX idx_page_lookup_page_id ON page_lookup(page_id);
             ');
         }
+
+        // Recorded only once the table is genuinely there. Set before the attempt,
+        // a single transient failure — a locked or read-only database — would
+        // disable the guard for the rest of the request, and every later deletion
+        // would throw at the statement this exists to protect.
+        $migrated[$this->database] = true;
     }
 
     /**

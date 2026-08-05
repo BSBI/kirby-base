@@ -7,6 +7,7 @@ namespace BSBI\WebBase\Tests\Unit\helpers;
 use BSBI\WebBase\helpers\SearchIndexHelper;
 use PDO;
 use PHPUnit\Framework\TestCase;
+use Throwable;
 
 /**
  * Tests for SearchIndexHelper.
@@ -310,6 +311,62 @@ final class SearchIndexHelperTest extends TestCase
         $helper = new SearchIndexHelperTestDouble($this->legacyDatabase());
 
         $this->assertTrue($helper->addPageLookup('ddb-1', 'some/page'));
+    }
+
+    /**
+     * Verify a failed creation is attempted again rather than assumed done.
+     *
+     * The once-per-request memo exists to save a repeated table check, not to
+     * record an intention. If it is set before the table is actually there, one
+     * transient failure — a locked or read-only database — disables the guard for
+     * the rest of the request, and every later deletion throws at the statement
+     * the guard exists to protect.
+     *
+     * A view of the same name reproduces that deterministically: it is not a
+     * table, so the existence check misses it, and it blocks CREATE TABLE.
+     */
+    public function testAFailedPageLookupCreationIsAttemptedAgain(): void
+    {
+        $database = $this->legacyDatabase();
+        $database->exec('CREATE VIEW page_lookup AS SELECT page_id AS ddb_id, page_id FROM search_index');
+        $helper = new SearchIndexHelperTestDouble($database);
+
+        try {
+            $helper->addPageLookup('ddb-1', 'some/page');
+            $this->fail('the blocked creation should have thrown');
+        } catch (Throwable) {
+            // Expected — the obstacle is still in place.
+        }
+
+        $database->exec('DROP VIEW page_lookup');
+
+        $this->assertTrue($helper->addPageLookup('ddb-1', 'some/page'));
+        $this->assertTrue($this->tableExists($database, 'page_lookup'));
+    }
+
+    /**
+     * Verify the memo cannot outlive the connection it was recorded against.
+     *
+     * PHP reuses an object id as soon as the object is freed, so a memo keyed by
+     * spl_object_id() can be inherited by an unrelated connection opened later —
+     * which would skip the migration on a database that never had it, silently
+     * restoring the bug this guard was written to fix.
+     */
+    public function testTheMigrationMemoDoesNotOutliveItsConnection(): void
+    {
+        $first = $this->legacyDatabase();
+        $firstId = spl_object_id($first);
+        (new SearchIndexHelperTestDouble($first))->removePage('some/page');
+        unset($first);
+
+        $second = $this->legacyDatabase();
+        if (spl_object_id($second) !== $firstId) {
+            $this->markTestSkipped('this PHP build did not recycle the object id, so nothing is being proven');
+        }
+
+        (new SearchIndexHelperTestDouble($second))->removePage('some/page');
+
+        $this->assertTrue($this->tableExists($second, 'page_lookup'));
     }
 }
 
