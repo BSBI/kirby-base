@@ -150,6 +150,85 @@ final class CertificateIssueListTest extends TestCase
     }
 
     /**
+     * Verify removing a context drops that record and keeps the others.
+     */
+    public function testRemovingAContextKeepsTheOtherRecords(): void
+    {
+        $list = (new CertificateIssueList([
+            $this->makeIssue('course-foundations'),
+            $this->makeIssue('course-100-plants'),
+        ]))->without('course-100-plants');
+
+        $this->assertSame(1, $list->count());
+        $this->assertTrue($list->hasForContext('course-foundations'));
+        $this->assertFalse($list->hasForContext('course-100-plants'));
+    }
+
+    /**
+     * Verify removing the only record leaves an empty list.
+     *
+     * This is the common case rather than the edge one — most students hold a
+     * certificate for a single course — and it is the case where a removal that
+     * silently did nothing would be least likely to be noticed.
+     */
+    public function testRemovingTheOnlyRecordLeavesAnEmptyList(): void
+    {
+        $list = (new CertificateIssueList([$this->makeIssue('course-1')]))->without('course-1');
+
+        $this->assertSame(0, $list->count());
+        $this->assertSame([], $list->toArray());
+    }
+
+    /**
+     * Verify removing a context that holds no record changes nothing.
+     */
+    public function testRemovingAnUnknownContextChangesNothing(): void
+    {
+        $list = (new CertificateIssueList([$this->makeIssue('course-foundations')]))
+            ->without('course-100-plants');
+
+        $this->assertSame(1, $list->count());
+        $this->assertTrue($list->hasForContext('course-foundations'));
+    }
+
+    /**
+     * Verify an empty context removes nothing.
+     *
+     * The mirror of testEmptyContextNeverMatches, and the more dangerous
+     * direction: if an empty context matched, removing a certificate for a course
+     * whose id failed to resolve would silently wipe every award the student
+     * holds rather than none.
+     */
+    public function testEmptyContextRemovesNothing(): void
+    {
+        $list = (new CertificateIssueList([
+            $this->makeIssue('course-foundations'),
+            $this->makeIssue('course-100-plants'),
+        ]))->without('');
+
+        $this->assertSame(2, $list->count());
+    }
+
+    /**
+     * Verify removal leaves the list stored as a list, not as a map.
+     *
+     * Dropping a record from the middle must not leave a gap in the keys: the
+     * stored shape is a sequential array, and a gap would round-trip through YAML
+     * as something Kirby reads back differently.
+     */
+    public function testRemovalLeavesSequentiallyKeyedStoredData(): void
+    {
+        $list = (new CertificateIssueList([
+            $this->makeIssue('course-1'),
+            $this->makeIssue('course-2'),
+            $this->makeIssue('course-3'),
+        ]))->without('course-2');
+
+        $this->assertSame([0, 1], array_keys($list->toArray()));
+        $this->assertSame([0, 1], array_keys($list->all()));
+    }
+
+    /**
      * Verify a list survives being stored and read back.
      */
     public function testListRoundTripsThroughItsStoredShape(): void

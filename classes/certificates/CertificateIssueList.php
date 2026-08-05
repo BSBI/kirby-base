@@ -129,4 +129,28 @@ final readonly class CertificateIssueList
 
         return new self([...array_values($kept), $issue]);
     }
+
+    /**
+     * This list with any record for the given context removed.
+     *
+     * The mirror of with(), and used to undo an award made in error. Removal is
+     * silent by design: the record is the only thing that persists, so taking it
+     * away leaves nothing behind that says it was ever here. Callers that need to
+     * know what went should read the record before calling this.
+     *
+     * An empty context id removes nothing, because isForContext() refuses to
+     * match one. That matters more here than it does for lookups: a course id
+     * that failed to resolve would otherwise wipe every award the person holds
+     * instead of none.
+     *
+     * @param string $contextId The context to remove the record for
+     * @return self A new list without that record
+     */
+    public function without(string $contextId): self
+    {
+        return new self(array_values(array_filter(
+            $this->issues,
+            static fn(CertificateIssue $issue): bool => !$issue->isForContext($contextId)
+        )));
+    }
 }
