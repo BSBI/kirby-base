@@ -8,6 +8,7 @@ use BSBI\WebBase\models\User;
 use Closure;
 use Exception;
 use Kirby\Cms\App;
+use Kirby\Content\ImmutableMemoryStorage;
 use Kirby\Cms\Page;
 use Throwable;
 
@@ -295,6 +296,8 @@ final readonly class UserService
      */
     public function updateUser(\Kirby\Cms\User $user, array $updateData): \Kirby\Cms\User
     {
+        $user = self::latestVersionOf($user);
+
         try {
             return $this->kirby->impersonate('kirby', function () use ($user, $updateData) {
                 return $user->update($updateData);
@@ -302,6 +305,50 @@ final readonly class UserService
         } catch (Throwable $e) {
             throw new KirbyRetrievalException($e->getMessage());
         }
+    }
+
+    /**
+     * The most recent instance of a user, following any updates already made.
+     *
+     * Kirby models are immutable: `$user->update()` returns a *new* object and
+     * puts the old one into ImmutableMemoryStorage, which refuses every further
+     * write with "Storage for the user is immutable and cannot be updated. Make
+     * sure to use the last alteration of the object."
+     *
+     * That makes two updates to one user in a single request fail unless every
+     * caller threads the returned object through by hand — and the second write
+     * is often in a different method from the first, so the object that reaches
+     * it is whatever the original caller was holding. Doing it here means
+     * updating a user twice in a request behaves the way a caller expects,
+     * rather than throwing at the second write.
+     *
+     * The immutable storage keeps a pointer to the instance that replaced it, so
+     * this walks that chain to whatever is current. The step limit is a guard
+     * against a cycle rather than an expected case: in practice the chain is one
+     * or two links long.
+     *
+     * @param \Kirby\Cms\User $user The user, possibly superseded by an update
+     * @return \Kirby\Cms\User The most recent instance of the same user
+     */
+    private static function latestVersionOf(\Kirby\Cms\User $user): \Kirby\Cms\User
+    {
+        for ($step = 0; $step < 10; $step++) {
+            $storage = $user->storage();
+
+            if (!$storage instanceof ImmutableMemoryStorage) {
+                break;
+            }
+
+            $next = $storage->nextModel();
+
+            if (!$next instanceof \Kirby\Cms\User) {
+                break;
+            }
+
+            $user = $next;
+        }
+
+        return $user;
     }
 
     /**
