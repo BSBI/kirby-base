@@ -141,6 +141,30 @@ final class CertificateIssueListTest extends TestCase
     }
 
     /**
+     * Verify re-awarding keeps the reference and the emailed date together.
+     *
+     * Awarding again for the same context is how an administrator corrects a
+     * date, and it deliberately keeps the existing reference so a link already
+     * sent goes on working. The emailed date belongs to that reference, so it
+     * has to travel with it: keeping the link alive while forgetting that it was
+     * sent would report the student as never told while they hold a working
+     * link, and a later "email everyone not yet emailed" would write to them
+     * again.
+     */
+    public function testReawardingKeepsTheReferenceAndItsEmailedDate(): void
+    {
+        $reawarded = (new CertificateIssue('student-1', 'course-1', '2026-07-01', 'Old design', 'ref123', '2026-07-02'))
+            ->reawarded('2026-08-05', 'New design');
+
+        $this->assertSame('ref123', $reawarded->getReference());
+        $this->assertSame('2026-07-02', $reawarded->getEmailedOn());
+        $this->assertSame('2026-08-05', $reawarded->getIssuedOn());
+        $this->assertSame('New design', $reawarded->getTemplateName());
+        $this->assertSame('student-1', $reawarded->getRecipientId());
+        $this->assertSame('course-1', $reawarded->getContextId());
+    }
+
+    /**
      * Verify a record with no recipient or context is treated as unusable.
      */
     public function testRecordWithoutRecipientOrContextIsInvalid(): void

@@ -46,6 +46,20 @@ final readonly class CertificateAccessLink
     }
 
     /**
+     * How long a newly built link stays valid.
+     *
+     * Exposed so a message telling somebody about their link can say how long
+     * they have, without a second copy of the number in the email code that
+     * could disagree with the one actually enforced here.
+     *
+     * @return int The lifetime in days
+     */
+    public function getLifetimeDays(): int
+    {
+        return $this->lifetimeDays;
+    }
+
+    /**
      * Build the token half of a link for an award.
      *
      * @param CertificateIssue $issue The award to build a link for

@@ -218,6 +218,35 @@ final readonly class CertificateIssue
     }
 
     /**
+     * This award, granted again with a new date and design.
+     *
+     * Awarding again for the same context is how a date gets corrected, so it
+     * keeps the existing reference and every link already sent goes on working.
+     * The emailed date travels with the reference for the same reason: forgetting
+     * it while keeping the link alive would report the recipient as never told
+     * when they are holding something that still works, and a later "send to
+     * everyone not yet emailed" would write to them a second time.
+     *
+     * The counterpart of withNewReference(), which does the opposite in both
+     * respects because it deliberately breaks the old link.
+     *
+     * @param string $issuedOn The new award date, as 'YYYY-MM-DD'
+     * @param string $templateName The design used this time
+     * @return self The award, re-granted
+     */
+    public function reawarded(string $issuedOn, string $templateName): self
+    {
+        return new self(
+            $this->recipientId,
+            $this->contextId,
+            $issuedOn,
+            $templateName,
+            $this->reference,
+            $this->emailedOn
+        );
+    }
+
+    /**
      * This award with a freshly generated reference.
      *
      * Every link previously sent for this award stops working, which is what
