@@ -29,13 +29,19 @@ final readonly class CertificateIssue
      *                          links sent to the recipient. Replacing it revokes
      *                          every link previously issued for this award and
      *                          nobody else's.
+     * @param string $emailedOn The date the recipient was last successfully sent
+     *                          their link, as 'YYYY-MM-DD', or '' if never. This
+     *                          is the only thing that can answer "who still needs
+     *                          telling?" — the award itself says nothing about
+     *                          whether anybody heard about it.
      */
     public function __construct(
         private string $recipientId,
         private string $contextId,
         private string $issuedOn,
         private string $templateName = '',
-        private string $reference = ''
+        private string $reference = '',
+        private string $emailedOn = ''
     ) {
     }
 
@@ -69,7 +75,8 @@ final readonly class CertificateIssue
             self::readString($data, 'context'),
             self::readString($data, 'issued'),
             self::readString($data, 'template'),
-            self::readString($data, 'reference')
+            self::readString($data, 'reference'),
+            self::readString($data, 'emailed')
         );
     }
 
@@ -104,6 +111,7 @@ final readonly class CertificateIssue
             'issued' => $this->issuedOn,
             'template' => $this->templateName,
             'reference' => $this->reference,
+            'emailed' => $this->emailedOn,
         ];
     }
 
@@ -171,12 +179,56 @@ final readonly class CertificateIssue
     }
 
     /**
+     * The date the recipient was last successfully sent their link.
+     *
+     * @return string The date as 'YYYY-MM-DD', or '' if never
+     */
+    public function getEmailedOn(): string
+    {
+        return $this->emailedOn;
+    }
+
+    /**
+     * Whether the recipient has been sent a link that still works.
+     *
+     * @return bool True when they have been emailed since the current reference
+     *              was issued
+     */
+    public function hasBeenEmailed(): bool
+    {
+        return $this->emailedOn !== '';
+    }
+
+    /**
+     * This award, recorded as emailed on the given date.
+     *
+     * @param string $emailedOn The date sent, as 'YYYY-MM-DD'
+     * @return self The award with the send recorded
+     */
+    public function withEmailedOn(string $emailedOn): self
+    {
+        return new self(
+            $this->recipientId,
+            $this->contextId,
+            $this->issuedOn,
+            $this->templateName,
+            $this->reference,
+            $emailedOn
+        );
+    }
+
+    /**
      * This award with a freshly generated reference.
      *
      * Every link previously sent for this award stops working, which is what
      * makes reissuing a link a meaningful action rather than a duplicate one.
      *
-     * @return self The award with a new reference
+     * The emailed date is cleared with it, deliberately. It answers "who still
+     * needs telling?", and a recipient whose only link has just been revoked
+     * needs telling again — keeping the old date would report them as informed
+     * while leaving them holding something that no longer works.
+     *
+     * @return self The award with a new reference and no send recorded
      */
     public function withNewReference(): self
     {

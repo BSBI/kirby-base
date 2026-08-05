@@ -64,6 +64,83 @@ final class CertificateIssueListTest extends TestCase
     }
 
     /**
+     * Verify the emailed date survives being stored and read back.
+     */
+    public function testEmailedDateRoundTripsThroughItsStoredShape(): void
+    {
+        $issue = new CertificateIssue('student-1', 'course-1', '2026-07-28', 'Design', 'ref123', '2026-08-01');
+
+        $restored = CertificateIssue::fromArray($issue->toArray());
+
+        $this->assertSame('2026-08-01', $restored->getEmailedOn());
+        $this->assertTrue($restored->hasBeenEmailed());
+    }
+
+    /**
+     * Verify an award nobody has been emailed about reports so.
+     */
+    public function testAnAwardNotYetEmailedReportsThat(): void
+    {
+        $issue = $this->makeIssue();
+
+        $this->assertSame('', $issue->getEmailedOn());
+        $this->assertFalse($issue->hasBeenEmailed());
+    }
+
+    /**
+     * Verify a record stored before emailedOn existed still loads.
+     *
+     * Every certificate awarded so far was written without this field, so the
+     * absence of it must read as "not emailed" rather than breaking the record.
+     */
+    public function testARecordStoredBeforeEmailedOnExistedStillLoads(): void
+    {
+        $issue = CertificateIssue::fromArray([
+            'recipient' => 'student-1',
+            'context'   => 'course-1',
+            'issued'    => '2026-07-28',
+            'reference' => 'ref123',
+        ]);
+
+        $this->assertTrue($issue->isValid());
+        $this->assertFalse($issue->hasBeenEmailed());
+    }
+
+    /**
+     * Verify recording an email leaves everything else alone.
+     */
+    public function testRecordingAnEmailKeepsTheRestOfTheRecord(): void
+    {
+        $issue = (new CertificateIssue('student-1', 'course-1', '2026-07-28', 'Design', 'ref123'))
+            ->withEmailedOn('2026-08-05');
+
+        $this->assertSame('2026-08-05', $issue->getEmailedOn());
+        $this->assertSame('student-1', $issue->getRecipientId());
+        $this->assertSame('course-1', $issue->getContextId());
+        $this->assertSame('2026-07-28', $issue->getIssuedOn());
+        $this->assertSame('ref123', $issue->getReference());
+    }
+
+    /**
+     * Verify reissuing clears the emailed date.
+     *
+     * This is the one non-obvious rule here. A new reference kills every link
+     * already sent, so the email the student holds now points at nothing. The
+     * question emailedOn exists to answer is "who still needs telling?", and
+     * after a reissue the answer for that student is "they do" — keeping the old
+     * date would report them as told while leaving them with a dead link.
+     */
+    public function testReissuingClearsTheEmailedDate(): void
+    {
+        $issue = (new CertificateIssue('student-1', 'course-1', '2026-07-28', 'Design', 'ref123', '2026-08-01'))
+            ->withNewReference();
+
+        $this->assertSame('', $issue->getEmailedOn());
+        $this->assertFalse($issue->hasBeenEmailed());
+        $this->assertNotSame('ref123', $issue->getReference());
+    }
+
+    /**
      * Verify a record with no recipient or context is treated as unusable.
      */
     public function testRecordWithoutRecipientOrContextIsInvalid(): void
