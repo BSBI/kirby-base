@@ -3644,15 +3644,18 @@ abstract class KirbyBaseHelper
     /**
      * Send one templated email.
      *
-     * Returns whether the message was handed to the mailer, so a caller sending
-     * in a loop can report which recipients failed rather than discovering it in
-     * a log afterwards. Failures are still logged here; the return value is in
-     * addition to that, not instead of it.
+     * Returns whether the message actually reached the mailer, so a caller
+     * sending in a loop can report which recipients missed out rather than
+     * discovering it in a log afterwards. Failures are still logged here; the
+     * return value is in addition to that, not instead of it.
      *
-     * A send suppressed by the environment counts as success: nothing went
-     * wrong, the environment simply does not send. A caller that needs to tell
-     * the two apart should check the environment itself rather than inferring it
-     * from a failure.
+     * **False covers both a rejection and a send suppressed by the environment**,
+     * because the question a caller is asking is "did this person receive it?"
+     * and the answer in both cases is no. Reporting suppression as success would
+     * let a caller record somebody as notified when nothing was sent — which is
+     * exactly the kind of quiet wrong answer this return value exists to
+     * prevent. A caller that wants to explain *why* nothing went should check
+     * the environment before calling, where it can say so precisely.
      *
      * @param string $template The email template name
      * @param string $from The sender address
@@ -3660,8 +3663,8 @@ abstract class KirbyBaseHelper
      * @param string $to One address, or several separated by commas
      * @param string $subject The subject line
      * @param array<string, mixed> $data Values the template renders from
-     * @return bool True when the message was sent or deliberately suppressed,
-     *              false when the mailer threw
+     * @return bool True only when the message reached the mailer; false when it
+     *              was rejected or suppressed by the environment
      */
     protected function sendEmail(string $template,
                                  string $from,
@@ -3671,7 +3674,7 @@ abstract class KirbyBaseHelper
                                  array  $data): bool
     {
         if (!self::environmentSendsEmail()) {
-            return true;
+            return false;
         }
 
         $recipients = str_contains($to, ',') ? Str::split($to) : $to;
