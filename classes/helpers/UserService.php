@@ -300,7 +300,34 @@ final readonly class UserService
 
         try {
             return $this->kirby->impersonate('kirby', function () use ($user, $updateData) {
-                return $user->update($updateData);
+                // save(), not update(). ModelWithContent::update() builds a Form
+                // from the WHOLE blueprint, submits the input into it and writes
+                // every field back — so a field is rewritten as whatever it
+                // resolves to now, not what it said before.
+                //
+                // For a pages or users field that is silent destruction: the
+                // reference is resolved on the way through, and if its target no
+                // longer exists it resolves to nothing and is stored as empty. A
+                // helper asked to set one field would quietly empty another.
+                //
+                // Observed as a student's `courses` emptying when a certificate
+                // was recorded against them on a server whose content did not
+                // include the referenced course. Nothing about certificates
+                // caused it — every caller of this method had the same effect,
+                // including the login and page-render hooks that stamp lastLogin
+                // and lastAccess on every student.
+                //
+                // save() with overwrite:false merges the given keys into the
+                // stored content and leaves every other field's stored value
+                // exactly as it was.
+                //
+                // The cost: save() does not fire the user.update hooks and does
+                // not validate. Neither this plugin nor the sites it was written
+                // for hook user.update, and the writes made through here are
+                // programmatic field updates rather than user input. A consuming
+                // site that does hook user.update will stop seeing it fire for
+                // updates made through this method.
+                return $user->save($updateData, null, false);
             });
         } catch (Throwable $e) {
             throw new KirbyRetrievalException($e->getMessage());
