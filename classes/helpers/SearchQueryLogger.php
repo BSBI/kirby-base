@@ -4,44 +4,55 @@ declare(strict_types=1);
 
 namespace BSBI\WebBase\helpers;
 
-use Kirby\Cms\App;
-use Kirby\Cms\Site;
-
 /**
- * Writes search queries to the site's search log as `search_log_item` pages.
+ * Writes search queries to the SQLite-backed search log.
  *
  * The logger is the config kill-switch for search logging: when constructed
  * with `enabled = false` (from `option('search.logQueries')`), logging is a
- * no-op, so searches on large sites avoid the cost of creating a content page
- * per query. All Kirby collaborators are injected; no global state is used.
+ * no-op. All collaborators are injected; no global state is used.
  *
- * Throwables from page creation are deliberately allowed to propagate — the
+ * Replaces the earlier page-based logger, which created a `search_log_item`
+ * content page per search — an O(n) write against a directory that had grown
+ * to tens of thousands of siblings. A SQLite insert is O(1) regardless of log
+ * size.
+ *
+ * Throwables from the store are deliberately allowed to propagate — the
  * caller decides how logging failures are reported.
  */
 final readonly class SearchQueryLogger
 {
     /**
-     * @param App $kirby The Kirby application, used to impersonate for page creation
-     * @param Site $site The site whose `search_log` page receives log entries
+     * Maximum stored query length, in characters. Search queries are free text
+     * typed by visitors with no client-side length limit; without a cap here, a
+     * handful of repeated max-length queries could bloat the log file for no
+     * analytical benefit — nothing meaningful is lost by truncating, since top
+     * terms/keywords are short words and phrases anyway.
+     */
+    private const int MAX_QUERY_LENGTH = 1000;
+
+    /**
+     * @param SearchLogStore $store The store to write log entries to
      * @param bool $enabled Whether search logging is enabled (the kill-switch)
+     * @param int $retentionMonths Rows older than this are purged on every log()
+     *        call; 0 disables the purge (keep forever)
      */
     public function __construct(
-        private App $kirby,
-        private Site $site,
+        private SearchLogStore $store,
         private bool $enabled,
+        private int $retentionMonths,
     ) {
     }
 
     /**
-     * Logs a search query as a listed `search_log_item` child of the site's
-     * `search_log` page.
+     * Logs a search query, then purges rows older than the retention window.
      *
-     * Returns false without writing anything when logging is disabled or when
-     * the site has no `search_log` page.
+     * Returns false without writing anything when logging is disabled. The
+     * query is truncated to {@see self::MAX_QUERY_LENGTH} characters before
+     * being stored.
      *
      * @param string $query The search query to log
      * @return bool True when a log entry was written, false otherwise
-     * @throws \Throwable If creating or listing the log entry page fails
+     * @throws \Throwable If the insert or purge fails
      */
     public function log(string $query): bool
     {
@@ -49,25 +60,17 @@ final readonly class SearchQueryLogger
             return false;
         }
 
-        /** @var \Kirby\Cms\Page|null $searchLog first() returns null when no page matches */
-        $searchLog = $this->site->children()->template('search_log')->first();
+        $query = mb_substr($query, 0, self::MAX_QUERY_LENGTH);
 
-        if ($searchLog === null) {
-            return false;
+        $now = date('Y-m-d H:i:s');
+        $this->store->insert($query, $now);
+
+        if ($this->retentionMonths > 0) {
+            $cutoffTimestamp = strtotime("-{$this->retentionMonths} months");
+            if ($cutoffTimestamp !== false) {
+                $this->store->purgeOlderThan(date('Y-m-d H:i:s', $cutoffTimestamp));
+            }
         }
-
-        $this->kirby->impersonate('kirby', function () use ($searchLog, $query) {
-            $logItem = $searchLog->createChild([
-                'template' => 'search_log_item',
-                'slug' => date('Y-m-d H:i:s'),
-                'content' => [
-                    'title' => $query . ' (' . date('Y-m-d H:i:s') . ')',
-                    'searchQuery' => $query,
-                    'searchDate' => date('Y-m-d H:i:s')
-                ]
-            ]);
-            return $logItem->changeStatus('listed');
-        });
 
         return true;
     }

@@ -1290,7 +1290,9 @@ panel.plugin('open-foundations/kirby-base', {
           headline: null,
           topTerms: [],
           topKeywords: [],
-          summary: { totalSearches: 0, uniqueTerms: 0, dateRange: { from: null, to: null } }
+          summary: { totalSearches: 0, uniqueTerms: 0, dateRange: { from: null, to: null } },
+          canClearSearchLog: false,
+          clearingSearchLog: false
         }
       },
       created: async function() {
@@ -1300,6 +1302,7 @@ panel.plugin('open-foundations/kirby-base', {
           this.topTerms = response.topTerms || [];
           this.topKeywords = response.topKeywords || [];
           this.summary = response.summary || this.summary;
+          this.canClearSearchLog = response.canClearSearchLog || false;
         } catch (error) {
           console.error("Failed to load search analytics section:", error);
         }
@@ -1314,10 +1317,62 @@ panel.plugin('open-foundations/kirby-base', {
           return from === to ? from : `${from} to ${to}`;
         }
       },
+      methods: {
+        clearSearchLog: async function () {
+          if (!window.confirm('Delete all logged search queries? This cannot be undone.')) {
+            return;
+          }
+          this.clearingSearchLog = true;
+          try {
+            const response = await this.$api.post('search-log/clear', {});
+            if (response.error) {
+              throw new Error(response.error);
+            }
+            const deleted = response.deleted || 0;
+            const response2 = await this.load();
+            this.topTerms = response2.topTerms || [];
+            this.topKeywords = response2.topKeywords || [];
+            this.summary = response2.summary || this.summary;
+            // Re-read alongside the rest of the section data, same as created()'s
+            // initial load, rather than assuming a role can't change mid-session.
+            this.canClearSearchLog = response2.canClearSearchLog || false;
+            if (this.$panel && this.$panel.notification) {
+              this.$panel.notification.success(
+                deleted + ' logged search ' + (deleted === 1 ? 'query' : 'queries') + ' deleted.'
+              );
+            }
+          } catch (error) {
+            // Kirby's $api client (see Rc/Hc in the compiled panel bundle) throws an
+            // Error whose .message is already set from the parsed JSON body
+            // (response.json.message ?? response.json.error) for any non-2xx response
+            // — e.g. the 403 PermissionException this route throws for a non-admin.
+            // error.response.json is read directly too, in case that construction
+            // ever fails to populate .message (e.g. a non-JSON error response).
+            const fromBody = error.response && error.response.json
+              && (error.response.json.message || error.response.json.error);
+            const message = fromBody || error.message || 'Clearing the search log failed';
+            if (this.$panel && this.$panel.notification) {
+              this.$panel.notification.error(message);
+            } else {
+              console.error(message);
+            }
+          } finally {
+            this.clearingSearchLog = false;
+          }
+        }
+      },
       template: `
         <section class="k-section k-searchanalytics-section">
-          <header class="k-section-header">
+          <header class="k-section-header" style="display:flex;align-items:center;justify-content:space-between;">
             <h2 class="k-headline">{{ headline }}</h2>
+            <k-button
+              v-if="canClearSearchLog"
+              icon="trash"
+              :disabled="clearingSearchLog"
+              @click="clearSearchLog"
+            >
+              {{ clearingSearchLog ? 'Clearing…' : 'Clear search log' }}
+            </k-button>
           </header>
 
           <div v-if="topTerms.length > 0 || topKeywords.length > 0" class="k-searchanalytics-content">

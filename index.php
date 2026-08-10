@@ -14,6 +14,7 @@ use BSBI\WebBase\helpers\GlossaryService;
 use BSBI\WebBase\helpers\KirbyBaseHelper;
 use BSBI\WebBase\helpers\KirbyInternalHelper;
 use BSBI\WebBase\helpers\SearchIndexHelper;
+use BSBI\WebBase\helpers\SearchService;
 use BSBI\WebBase\helpers\StyleGuideService;
 use BSBI\WebBase\helpers\maintenance\CacheClearTask;
 use BSBI\WebBase\helpers\maintenance\LogRetentionTask;
@@ -21,6 +22,7 @@ use BSBI\WebBase\helpers\maintenance\MaintenancePanel;
 use BSBI\WebBase\helpers\maintenance\MaintenanceRegistry;
 use BSBI\WebBase\helpers\maintenance\MediaCleanupTask;
 use Kirby\Cms\App as Kirby;
+use Kirby\Exception\PermissionException;
 use Kirby\Panel\Ui\Item\PageItem;
 use Kirby\Toolkit\I18n;
 use Kirby\Toolkit\Tpl;
@@ -60,7 +62,6 @@ $pluginConfig = [
         'emails/form-notification.html' => __DIR__ . '/templates/emails/form-notification.html.php',
         'emails/form-notification.text' => __DIR__ . '/templates/emails/form-notification.text.php',
         'search_log' => __DIR__ . '/templates/search_log.php',
-        'search_log_item' => __DIR__ . '/templates/search_log_item.php',
     ],
     'controllers' => [
         'image_bank' =>  require __DIR__ . '/controllers/image_bank.php',
@@ -444,6 +445,48 @@ $pluginConfig = [
                         $page,
                         $pageSize
                     );
+                },
+            ],
+            [
+                'pattern' => 'search-log/clear',
+                'method'  => 'POST',
+                /**
+                 * Delete every row in the SQLite-backed search query log.
+                 *
+                 * Search queries are potentially personal data, and the log
+                 * file is carried along by full-site restores (e.g. onto
+                 * staging) — so this gives admins a Panel-side way to wipe it
+                 * without shelling in. Restricted to admins: authorisation is
+                 * signalled by throwing Kirby's own PermissionException
+                 * (rather than the `['error' => ...]` array a few other
+                 * routes in this file return) because that is what actually
+                 * produces an HTTP 403 — Api::render() reads the exception's
+                 * httpCode when building the JSON response, where a plain
+                 * array leaves the response at 200. The store is resolved by
+                 * SearchService, the same way every other analytics method
+                 * reads it, so this always clears the file the "Search
+                 * Analytics" section is displaying.
+                 *
+                 * @return array{status: string, deleted: int}|array{error: string}
+                 * @throws PermissionException If no admin user is authenticated
+                 */
+                'action'  => function (): array {
+                    if (!(new KirbyInternalHelper())->doesCurrentUserHaveRole('admin')) {
+                        throw new PermissionException('Not authorised');
+                    }
+
+                    try {
+                        $service = new SearchService(kirby()->site(), kirby());
+                        $deleted = $service->clearSearchLog();
+
+                        return ['status' => 'ok', 'deleted' => $deleted];
+                    } catch (Throwable $e) {
+                        KirbyBaseHelper::writeToLogFile(
+                            'search-log-errors',
+                            'Clearing search log failed: ' . $e->getMessage()
+                        );
+                        return ['error' => 'Clearing the search log failed'];
+                    }
                 },
             ],
         ],

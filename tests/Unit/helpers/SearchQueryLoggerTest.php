@@ -4,86 +4,110 @@ declare(strict_types=1);
 
 namespace BSBI\WebBase\Tests\Unit\helpers;
 
+use BSBI\WebBase\helpers\SearchLogStore;
 use BSBI\WebBase\helpers\SearchQueryLogger;
-use BSBI\WebBase\Testing\KirbyTestEnvironment;
-use Kirby\Cms\App;
+use PDO;
 use PHPUnit\Framework\TestCase;
 
 /**
  * Tests for SearchQueryLogger.
  *
- * Boots a Kirby App against a copy of the search-log fixture content tree
- * (a single `search-log` page with the `search_log` template) so the logger
- * can create real child pages in a writable temp dir.
- *
- * Booted in setUpBeforeClass so the global-handler registration stays out of
- * the per-test risky-handler window, and so this App is the current Kirby
- * singleton for all fixture-based tests.
+ * The logger is now a thin wrapper around SearchLogStore: it no longer
+ * touches Kirby content pages at all, so it is exercised entirely against an
+ * in-memory SQLite store with no Kirby App involved.
  */
 final class SearchQueryLoggerTest extends TestCase
 {
-    private static App $kirby;
-
-    public static function setUpBeforeClass(): void
+    private function makeStore(): SearchLogStore
     {
-        parent::setUpBeforeClass();
-        self::$kirby = KirbyTestEnvironment::bootWithContent(
-            __DIR__ . '/../../fixtures/search-log-content',
-            'search-query-logger'
-        );
+        $pdo = new PDO('sqlite::memory:');
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+        return new SearchLogStore($pdo);
     }
 
     public function testDisabledLoggerWritesNothing(): void
     {
-        $logger = new SearchQueryLogger(self::$kirby, self::$kirby->site(), false);
+        $store = $this->makeStore();
+        $logger = new SearchQueryLogger($store, false, 24);
 
         $this->assertFalse($logger->log('orchid'));
-
-        $searchLog = self::$kirby->site()->children()->template('search_log')->first();
-        $this->assertNotNull($searchLog);
-        $this->assertCount(0, $searchLog->children());
+        $this->assertSame(0, $store->count());
     }
 
-    public function testEnabledLoggerWritesListedLogItem(): void
+    public function testEnabledLoggerWritesARow(): void
     {
-        $logger = new SearchQueryLogger(self::$kirby, self::$kirby->site(), true);
+        $store = $this->makeStore();
+        $logger = new SearchQueryLogger($store, true, 24);
 
         $this->assertTrue($logger->log('bluebell'));
 
-        $searchLog = self::$kirby->site()->children()->template('search_log')->first();
-        $this->assertNotNull($searchLog);
-
-        $children = $searchLog->children();
-        $this->assertCount(1, $children);
-
-        $logItem = $children->first();
-        $this->assertNotNull($logItem);
-        $this->assertSame('search_log_item', $logItem->intendedTemplate()->name());
-        $this->assertSame('bluebell', $logItem->content()->get('searchQuery')->value());
-        $this->assertNotEmpty($logItem->content()->get('searchDate')->value());
-        $this->assertTrue($logItem->isListed());
+        $this->assertSame(1, $store->count());
+        $topTerms = $store->topTerms(1);
+        $this->assertSame('bluebell', $topTerms[0]['term']);
+        $this->assertSame(1, $topTerms[0]['count']);
     }
 
     /**
-     * Booting a new App replaces the Kirby singleton, so this must be the LAST
-     * test in the class: PHPUnit runs methods in declaration order, and any
-     * fixture-based test declared after this one would resolve pages against
-     * the wrong (empty) App.
+     * Retention greater than zero purges rows older than the cutoff on every log() call.
      */
-    public function testNoSearchLogPageMeansNothingIsWritten(): void
+    public function testLoggingPurgesRowsOlderThanRetention(): void
     {
-        $emptyKirby = KirbyTestEnvironment::boot('search-query-logger-empty');
+        $store = $this->makeStore();
+        // Insert a row well outside any real retention window.
+        $store->insert('ancient query', '2000-01-01 00:00:00');
 
-        try {
-            $logger = new SearchQueryLogger($emptyKirby, $emptyKirby->site(), true);
+        $logger = new SearchQueryLogger($store, true, 24);
+        $this->assertTrue($logger->log('fresh query'));
 
-            $this->assertFalse($logger->log('orchid'));
-            $this->assertCount(0, $emptyKirby->site()->children());
-        } finally {
-            // Booting inside a test registers global error/exception handlers,
-            // which PHPUnit 12 reports as risky; unwind them before the test ends.
-            restore_error_handler();
-            restore_exception_handler();
-        }
+        // Only the fresh query (from this log() call) should remain.
+        $this->assertSame(1, $store->count());
+        $this->assertSame(['fresh query' => 1], $store->queryCounts());
+    }
+
+    /**
+     * A retention of zero months means "keep forever" — no purge happens.
+     */
+    public function testZeroRetentionMonthsDisablesPurge(): void
+    {
+        $store = $this->makeStore();
+        $store->insert('ancient query', '2000-01-01 00:00:00');
+
+        $logger = new SearchQueryLogger($store, true, 0);
+        $this->assertTrue($logger->log('fresh query'));
+
+        $this->assertSame(2, $store->count());
+    }
+
+    /**
+     * A query longer than the 1000-character cap is truncated before insert,
+     * so a repeated max-length query string can't be used to bloat the log file.
+     */
+    public function testLongQueryIsTruncatedTo1000Characters(): void
+    {
+        $store = $this->makeStore();
+        $logger = new SearchQueryLogger($store, true, 24);
+
+        $longQuery = str_repeat('a', 1500);
+        $this->assertTrue($logger->log($longQuery));
+
+        $counts = $store->queryCounts();
+        $this->assertCount(1, $counts);
+        $storedQuery = array_key_first($counts);
+        $this->assertSame(1000, mb_strlen($storedQuery));
+        $this->assertSame(str_repeat('a', 1000), $storedQuery);
+    }
+
+    /**
+     * A query at or under the cap is stored unchanged.
+     */
+    public function testNormalLengthQueryIsStoredUnchanged(): void
+    {
+        $store = $this->makeStore();
+        $logger = new SearchQueryLogger($store, true, 24);
+
+        $this->assertTrue($logger->log('bluebell'));
+
+        $this->assertSame(['bluebell' => 1], $store->queryCounts());
     }
 }
