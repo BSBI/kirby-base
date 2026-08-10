@@ -121,4 +121,38 @@ final class SearchServiceAnalyticsTest extends TestCase
             $summary
         );
     }
+
+    /**
+     * Backs the Panel "Clear search log" action: deletes every row and
+     * reports how many were removed, reading from the same
+     * `search.logDatabasePath`-resolved store as every other analytics method.
+     */
+    public function testClearSearchLogDeletesEverythingAndReturnsCount(): void
+    {
+        $store = $this->makeStore();
+        $store->insert('daisy', '2026-01-01 10:00:00');
+        $store->insert('orchid', '2026-01-01 11:00:00');
+
+        $service = new SearchService(self::$kirby->site(), self::$kirby);
+        $deleted = $service->clearSearchLog();
+
+        $this->assertSame(2, $deleted);
+        $this->assertSame(
+            [
+                'totalSearches' => 0,
+                'uniqueTerms' => 0,
+                'dateRange' => ['from' => null, 'to' => null],
+            ],
+            $service->getSearchAnalyticsSummary()
+        );
+    }
+
+    public function testClearSearchLogOnEmptyLogReturnsZero(): void
+    {
+        $this->makeStore();
+
+        $service = new SearchService(self::$kirby->site(), self::$kirby);
+
+        $this->assertSame(0, $service->clearSearchLog());
+    }
 }

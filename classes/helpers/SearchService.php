@@ -255,6 +255,23 @@ final readonly class SearchService
         return $this->store()->summary();
     }
 
+    /**
+     * Delete every row in the search query log.
+     *
+     * Used by the "Clear search log" Panel action: the SQLite log file is
+     * carried along by full-site restores (e.g. onto staging), and search
+     * queries are potentially personal data, so admins need a way to wipe it
+     * without shelling in. Resolves the store the same way every other
+     * analytics method here does — same `search.logDatabasePath` option,
+     * same default — so it always clears the file the Panel is displaying.
+     *
+     * @return int Number of rows deleted
+     */
+    public function clearSearchLog(): int
+    {
+        return $this->store()->deleteAll();
+    }
+
     // endregion
 
     // region OPTIONS

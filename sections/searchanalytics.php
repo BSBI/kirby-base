@@ -10,6 +10,7 @@
  * duplicated here as a second, separately-maintained implementation.
  */
 
+use BSBI\WebBase\helpers\KirbyInternalHelper;
 use BSBI\WebBase\helpers\SearchService;
 
 return [
@@ -35,6 +36,14 @@ return [
         'summary' => function () {
             $searchService = new SearchService($this->kirby()->site(), $this->kirby());
             return $searchService->getSearchAnalyticsSummary();
+        },
+
+        // Gates the "Clear search log" button: search queries are potentially
+        // personal data, so wiping the whole log is restricted to admins.
+        // Same admin check the API route uses, and the same helper
+        // MaintenancePanel::isAdmin() uses for its own admin-only actions.
+        'canClearSearchLog' => function () {
+            return (new KirbyInternalHelper())->doesCurrentUserHaveRole('admin');
         }
     ],
 ];
