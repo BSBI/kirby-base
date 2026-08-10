@@ -46,12 +46,12 @@ class SearchIndexHelper
 
     /** @var array<string> Default templates to exclude from the search index */
     private const array DEFAULT_EXCLUDED_TEMPLATES = [
-        'error', 'error-500', 'login', 'search_log', 'search_log_item', 'file_archive', 'form_submission', 'image_bank'
+        'error', 'error-500', 'login', 'search_log', 'file_archive', 'form_submission', 'image_bank'
     ];
 
     /** @var array<string> Templates to exclude from panel search (all_pages table) */
     private const array PANEL_EXCLUDED_TEMPLATES = [
-        'search_log', 'search_log_item'
+        'search_log'
     ];
 
     /** @var array<string, float> Default BM25 field weights */

@@ -4313,7 +4313,7 @@ abstract class KirbyBaseHelper
     /**
      * if $specialSearchType is supplied, the function will look for a getWebPageLinksFor{$specialSearchType} function
      * if not, or if not matching function is provided, it will use getWebPageLinks
-     * Will create a log entry (of type search_log_item) if there is a page of type search_log in the site root
+     * Will record a log entry in the SQLite-backed search log store, if enabled
      * @param string $query
      * @param Collection|null $collection
      * @param string $specialSearchType
@@ -5138,8 +5138,7 @@ abstract class KirbyBaseHelper
             'login',
             'reset_password',
             'reset_password_verification',
-            'search_log',
-            'search_log_item'
+            'search_log'
         ]);
 
         // Don't cache login/auth related pages or config-excluded templates
