@@ -89,6 +89,43 @@ final class SearchServiceAnalyticsTest extends TestCase
         $this->assertSame(2, $flowersEntry['count']);
     }
 
+    /**
+     * A purely numeric query (e.g. "2024") comes back from
+     * SearchLogStore::queryCounts() with its array key coerced from string to
+     * int by PHP's normal array-key rules. getTopSearchKeywords() must not
+     * fatal when it hands that key to
+     * SearchTextHelper::extractKeywordCounts(), which calls trim() on each
+     * query under strict_types.
+     */
+    public function testGetTopSearchKeywordsSurvivesAPurelyNumericQuery(): void
+    {
+        $store = $this->makeStore();
+        $store->insert('2024', '2026-01-01 10:00:00');
+        $store->insert('2024', '2026-01-01 11:00:00');
+        $store->insert('spring flowers', '2026-01-01 12:00:00');
+
+        $service = new SearchService(self::$kirby->site(), self::$kirby);
+
+        $keywords = $service->getTopSearchKeywords(20);
+        // The tokeniser's own keyword-array keys are subject to the same
+        // string->int coercion for numeric words, independently of this
+        // hotfix — so compare as strings rather than assert a specific type.
+        $keywordWords = array_map('strval', array_column($keywords, 'keyword'));
+        $this->assertContains('2024', $keywordWords);
+        $this->assertContains('flowers', $keywordWords);
+        $this->assertContains('spring', $keywordWords);
+
+        $numericEntry = array_values(array_filter($keywords, fn ($k) => (string) $k['keyword'] === '2024'))[0];
+        $this->assertSame(2, $numericEntry['count']);
+
+        // getTopSearchTerms() is unaffected (its keys were never coerced),
+        // but assert it too so a regression there would also be caught here.
+        $topTerms = $service->getTopSearchTerms(20);
+        $terms = array_column($topTerms, 'term');
+        $this->assertContains('2024', $terms);
+        $this->assertIsString($terms[array_search('2024', $terms, true)]);
+    }
+
     public function testGetSearchAnalyticsSummaryReadsFromTheStore(): void
     {
         $store = $this->makeStore();

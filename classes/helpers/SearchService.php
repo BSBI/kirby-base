@@ -237,6 +237,11 @@ final readonly class SearchService
     {
         $queries = [];
         foreach ($this->store()->queryCounts() as $term => $count) {
+            // PHP coerces numeric-string array keys to int, so a purely
+            // numeric logged query (e.g. "2024") arrives here as an int.
+            // Cast back to string — extractKeywordCounts() calls trim() on
+            // each entry, which fatals on a non-string under strict_types.
+            $term = (string) $term;
             for ($i = 0; $i < $count; $i++) {
                 $queries[] = $term;
             }
