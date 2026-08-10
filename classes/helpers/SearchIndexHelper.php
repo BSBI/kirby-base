@@ -796,58 +796,162 @@ class SearchIndexHelper
     /**
      * Search and return all matching page IDs sorted by relevance
      *
-     * Returns all matching page IDs without pagination, suitable for use with
-     * Kirby's built-in pagination system.
+     * Returns every matching page ID with no limit. On a large site a broad query can
+     * match thousands of pages, and turning each one into a Kirby page object is
+     * expensive enough to exhaust the request's memory — so prefer
+     * {@see searchIdsPage()} whenever the caller only needs one page of results.
      *
      * @param string $query Search query string
      * @param bool $includeMembersContent Whether to include members-only content
-     * @param string|null $templates Optional array of template names to filter results
-     * @return array Array of page IDs sorted by relevance
+     * @param string|null $templates Optional comma-delimited template names to filter results
+     * @return array<int, string> Array of page IDs sorted by relevance
      */
     public function searchAllIds(string $query, bool $includeMembersContent = false, ?string $templates = null): array
     {
+        return $this->searchIds($query, $includeMembersContent, $templates, null, 0);
+    }
+
+    /**
+     * One page of matching IDs plus the total number of matches.
+     *
+     * The pairing is the point: the total drives the pagination while only the
+     * requested slice is ever materialised by the caller.
+     *
+     * @param string $query Search query string
+     * @param bool $includeMembersContent Whether to include members-only content
+     * @param string|null $templates Optional comma-delimited template names to filter results
+     * @param int $limit Maximum IDs to return
+     * @param int $offset How many matches to skip
+     * @return array{ids: array<int, string>, total: int}
+     */
+    public function searchIdsPage(
+        string  $query,
+        bool    $includeMembersContent = false,
+        ?string $templates = null,
+        int     $limit = 10,
+        int     $offset = 0
+    ): array {
+        return [
+            'ids'   => $this->searchIds($query, $includeMembersContent, $templates, $limit, $offset),
+            'total' => $this->countSearchMatches($query, $includeMembersContent, $templates),
+        ];
+    }
+
+    /**
+     * Matching page IDs sorted by relevance, optionally limited to a slice.
+     *
+     * @param string $query Search query string
+     * @param bool $includeMembersContent Whether to include members-only content
+     * @param string|null $templates Optional comma-delimited template names to filter results
+     * @param int|null $limit Maximum IDs to return, or null for no limit
+     * @param int $offset How many matches to skip
+     * @return array<int, string> Array of page IDs sorted by relevance
+     */
+    public function searchIds(
+        string  $query,
+        bool    $includeMembersContent = false,
+        ?string $templates = null,
+        ?int    $limit = null,
+        int     $offset = 0
+    ): array {
         $ftsQuery = $this->prepareQuery($query);
 
         if (empty($ftsQuery)) {
             return [];
         }
 
-        $membersClause = $includeMembersContent ? '' : "AND is_members_only = '0'";
+        $filter = $this->buildSearchFilter($includeMembersContent, $templates);
 
-        // Build template filter clause if templates specified
-        $templateClause = '';
-        $templateParams = [];
+        // Sort by BM25 relevance with exact-match boost
+        $bm25Call = $this->buildBm25Call();
+        $exactMatchClause = $this->buildExactMatchClause();
+        $limitClause = $limit === null ? '' : 'LIMIT :limit OFFSET :offset';
+        $sql = "
+            SELECT page_id
+            FROM search_index
+            WHERE search_index MATCH :query {$filter['where']}
+            ORDER BY
+                {$bm25Call}{$exactMatchClause}
+            {$limitClause}
+        ";
+
+        $stmt = $this->database->prepare($sql);
+        $stmt->bindValue(':query', $ftsQuery, PDO::PARAM_STR);
+        $stmt->bindValue(':exact_query', trim($query), PDO::PARAM_STR);
+        foreach ($filter['params'] as $placeholder => $value) {
+            $stmt->bindValue($placeholder, $value, PDO::PARAM_STR);
+        }
+        if ($limit !== null) {
+            $stmt->bindValue(':limit', max(0, $limit), PDO::PARAM_INT);
+            $stmt->bindValue(':offset', max(0, $offset), PDO::PARAM_INT);
+        }
+        $stmt->execute();
+
+        return $stmt->fetchAll(PDO::FETCH_COLUMN, 0);
+    }
+
+    /**
+     * How many pages match, without fetching any of them.
+     *
+     * @param string $query Search query string
+     * @param bool $includeMembersContent Whether to include members-only content
+     * @param string|null $templates Optional comma-delimited template names to filter results
+     * @return int Number of matching pages
+     */
+    public function countSearchMatches(
+        string  $query,
+        bool    $includeMembersContent = false,
+        ?string $templates = null
+    ): int {
+        $ftsQuery = $this->prepareQuery($query);
+
+        if (empty($ftsQuery)) {
+            return 0;
+        }
+
+        $filter = $this->buildSearchFilter($includeMembersContent, $templates);
+
+        // No ORDER BY, so :exact_query is deliberately not bound — PDO rejects a bound
+        // parameter that does not appear in the statement.
+        $stmt = $this->database->prepare("
+            SELECT COUNT(*)
+            FROM search_index
+            WHERE search_index MATCH :query {$filter['where']}
+        ");
+        $stmt->bindValue(':query', $ftsQuery, PDO::PARAM_STR);
+        foreach ($filter['params'] as $placeholder => $value) {
+            $stmt->bindValue($placeholder, $value, PDO::PARAM_STR);
+        }
+        $stmt->execute();
+
+        return (int) $stmt->fetchColumn();
+    }
+
+    /**
+     * The members-only and template restrictions shared by every search query, so the
+     * count and the fetch can never drift apart and disagree on what matches.
+     *
+     * @param bool $includeMembersContent Whether to include members-only content
+     * @param string|null $templates Optional comma-delimited template names to filter results
+     * @return array{where: string, params: array<string, string>} SQL fragment and its bindings
+     */
+    private function buildSearchFilter(bool $includeMembersContent, ?string $templates): array
+    {
+        $where = $includeMembersContent ? '' : "AND is_members_only = '0'";
+
+        $params = [];
         $templatesAsArray = $templates ? explode(',', $templates) : [];
         if (count($templatesAsArray) > 0) {
             $placeholders = [];
             foreach ($templatesAsArray as $i => $template) {
                 $placeholder = ':template' . $i;
                 $placeholders[] = $placeholder;
-                $templateParams[$placeholder] = $template;
+                $params[$placeholder] = $template;
             }
-            $templateClause = 'AND template IN (' . implode(', ', $placeholders) . ')';
+            $where .= ' AND template IN (' . implode(', ', $placeholders) . ')';
         }
 
-        // Get all page IDs sorted by BM25 relevance with exact-match boost
-        $bm25Call = $this->buildBm25Call();
-        $exactMatchClause = $this->buildExactMatchClause();
-        $sql = "
-            SELECT page_id
-            FROM search_index
-            WHERE search_index MATCH :query $membersClause $templateClause
-            ORDER BY
-                {$bm25Call}{$exactMatchClause}
-        ";
-
-        $stmt = $this->database->prepare($sql);
-        $stmt->bindValue(':query', $ftsQuery, PDO::PARAM_STR);
-        $stmt->bindValue(':exact_query', trim($query), PDO::PARAM_STR);
-        foreach ($templateParams as $placeholder => $value) {
-            $stmt->bindValue($placeholder, $value, PDO::PARAM_STR);
-        }
-        $stmt->execute();
-
-        return $stmt->fetchAll(PDO::FETCH_COLUMN, 0);
+        return ['where' => $where, 'params' => $params];
     }
 
     /**
@@ -865,28 +969,83 @@ class SearchIndexHelper
             return '';
         }
 
-        // Extract quoted phrases
-        preg_match_all('/"([^"]+)"/', $query, $phraseMatches);
-        $phrases = $phraseMatches[0] ?? [];
+        // Honour quoted phrases, but only complete pairs — an unterminated quote is
+        // treated as ordinary text rather than handed to FTS5, which would reject the
+        // whole query with "unterminated string".
+        preg_match_all('/"([^"]*)"/', $query, $phraseMatches);
+        $phrases = $phraseMatches[1];
 
         // Get remaining words after removing quoted phrases
-        $remaining = preg_replace('/"[^"]+"/', '', $query);
+        $remaining = preg_replace('/"[^"]*"/', ' ', $query);
         $words = preg_split('/\s+/', trim($remaining ?? ''));
 
         if ($words === false) {
             $words = [];
         }
 
-        // Filter stop words and empty strings
         $stopWords = $this->getStopWords();
-        $filteredWords = array_filter($words, fn($word) =>
-            strlen((string) $word) > 2 && !in_array(strtolower((string) $word), $stopWords)
-        );
 
-        // Build FTS5 query with prefix matching for individual words
-        $parts = array_merge($phrases, array_map(fn($w) => $w . '*', $filteredWords));
+        $parts = [];
+
+        foreach ($phrases as $phrase) {
+            $cleaned = self::stripToTokens($phrase);
+            if ($cleaned !== '') {
+                $parts[] = self::quoteForFts5($cleaned);
+            }
+        }
+
+        foreach ($words as $word) {
+            // Strip before filtering, not after: the length and stop-word tests are about
+            // the searchable content of the word, and "the." is as much a stop word as
+            // "the". A word that is nothing but punctuation strips to nothing and is
+            // dropped here — which is what keeps a query like "..." from reaching FTS5 as
+            // an empty expression.
+            $cleaned = self::stripToTokens((string) $word);
+            if (strlen($cleaned) <= 2 || in_array(strtolower($cleaned), $stopWords, true)) {
+                continue;
+            }
+            $parts[] = self::quoteForFts5($cleaned) . '*';
+        }
 
         return implode(' ', $parts);
+    }
+
+    /**
+     * Reduce arbitrary user input to the searchable text inside it: letters and digits,
+     * with everything else collapsed to a space. Returns '' when nothing is left.
+     *
+     * FTS5's MATCH argument is a *query language*, not a search term: `filetype:pdf` is a
+     * column filter, `.` and `?` are syntax errors, `#` starts a special query, and a lone
+     * `"` is an unterminated string. Any of those aborts the search with an exception.
+     * Because the input is whatever a visitor — or a scanner probing for Google dorks —
+     * typed into the search box, this has to be an allowlist rather than a denylist of the
+     * characters that have been seen misbehaving so far.
+     *
+     * The character class is the one the `unicode61` tokenizer applies to the indexed text
+     * as well, so nothing matchable is lost: `orchid.` still finds Orchid, and
+     * `shepherd's` still finds Shepherd's Purse.
+     *
+     * @param string $text Raw user input (one word, or the inside of a quoted phrase)
+     * @return string The searchable text, or '' when none remains
+     */
+    private static function stripToTokens(string $text): string
+    {
+        return trim((string) preg_replace('/[^\p{L}\p{N}]+/u', ' ', $text));
+    }
+
+    /**
+     * Wrap already-stripped text as an FTS5 string literal, inside which FTS5 treats the
+     * content as a literal phrase rather than as syntax.
+     *
+     * Only ever called on {@see stripToTokens()} output, which guarantees no `"` remains
+     * to close the quote early.
+     *
+     * @param string $cleaned Text that has been through stripToTokens()
+     * @return string The quoted FTS5 string
+     */
+    private static function quoteForFts5(string $cleaned): string
+    {
+        return '"' . $cleaned . '"';
     }
 
     /**
