@@ -192,6 +192,24 @@ final readonly class SearchService
 
     // region ANALYTICS
 
+    /** @var string Default search log database path, relative to the `logs` root */
+    private const string DEFAULT_LOG_DATABASE_PATH = '/search/search-log.sqlite';
+
+    /**
+     * Open the SQLite-backed search log store.
+     *
+     * Resolves `search.logDatabasePath` the same way SearchIndexHelper resolves
+     * `search.databasePath` — relative to a Kirby root, with a default that
+     * lands the file alongside the search index (`site/logs/search/`), but in
+     * its own file: the index is regenerable from content, the log is not.
+     */
+    private function store(): SearchLogStore
+    {
+        $logDatabasePath = (string)option('search.logDatabasePath', self::DEFAULT_LOG_DATABASE_PATH);
+
+        return SearchLogStore::open($this->kirby->root('logs') . $logDatabasePath);
+    }
+
     /**
      * Get top search terms by frequency.
      *
@@ -200,52 +218,27 @@ final readonly class SearchService
      */
     public function getTopSearchTerms(int $limit = 20): array
     {
-        $searchLog = $this->site->children()->template('search_log')->first();
-        if (!$searchLog) {
-            return [];
-        }
-
-        $logEntries = $searchLog->children()->template('search_log_item');
-        $termCounts = [];
-
-        foreach ($logEntries as $entry) {
-            $query = strtolower(trim($entry->searchQuery()->value() ?? ''));
-            if ($query !== '') {
-                $termCounts[$query] = ($termCounts[$query] ?? 0) + 1;
-            }
-        }
-
-        arsort($termCounts);
-        $topTerms = array_slice($termCounts, 0, $limit, true);
-
-        $result = [];
-        foreach ($topTerms as $term => $count) {
-            $result[] = ['term' => $term, 'count' => $count];
-        }
-
-        return $result;
+        return $this->store()->topTerms($limit);
     }
 
     /**
      * Get top search keywords by frequency (parsed from queries, stop words removed).
+     *
+     * Expands the store's per-query counts back into a repeated query list so
+     * the existing tokenisation/stop-word logic in
+     * {@see SearchTextHelper::extractKeywordCounts()} can be reused unchanged —
+     * each search event still contributes its keywords exactly once, matching
+     * the weighting the previous per-page-loop version produced.
      *
      * @param int $limit Number of results to return
      * @return array<array{keyword: string, count: int}>
      */
     public function getTopSearchKeywords(int $limit = 20): array
     {
-        $searchLog = $this->site->children()->template('search_log')->first();
-        if (!$searchLog) {
-            return [];
-        }
-
-        $logEntries = $searchLog->children()->template('search_log_item');
         $queries = [];
-
-        foreach ($logEntries as $entry) {
-            $query = $entry->searchQuery()->value() ?? '';
-            if (trim($query) !== '') {
-                $queries[] = $query;
+        foreach ($this->store()->queryCounts() as $term => $count) {
+            for ($i = 0; $i < $count; $i++) {
+                $queries[] = $term;
             }
         }
 
@@ -259,38 +252,7 @@ final readonly class SearchService
      */
     public function getSearchAnalyticsSummary(): array
     {
-        $searchLog = $this->site->children()->template('search_log')->first();
-        if (!$searchLog) {
-            return [
-                'totalSearches' => 0,
-                'uniqueTerms' => 0,
-                'dateRange' => ['from' => null, 'to' => null]
-            ];
-        }
-
-        $logEntries = $searchLog->children()->template('search_log_item')->sortBy('searchDate', 'asc');
-        $totalSearches = $logEntries->count();
-        $uniqueTerms = [];
-        $firstDate = null;
-        $lastDate = null;
-
-        foreach ($logEntries as $entry) {
-            $query = strtolower(trim($entry->searchQuery()->value() ?? ''));
-            if ($query !== '') {
-                $uniqueTerms[$query] = true;
-            }
-            $date = $entry->searchDate()->value();
-            if ($firstDate === null) {
-                $firstDate = $date;
-            }
-            $lastDate = $date;
-        }
-
-        return [
-            'totalSearches' => $totalSearches,
-            'uniqueTerms' => count($uniqueTerms),
-            'dateRange' => ['from' => $firstDate, 'to' => $lastDate]
-        ];
+        return $this->store()->summary();
     }
 
     // endregion

@@ -4365,9 +4365,17 @@ abstract class KirbyBaseHelper
         return $searchResults;
     }
 
+    /** @var string Default search log database path, relative to the `logs` root */
+    private const string DEFAULT_SEARCH_LOG_DATABASE_PATH = '/search/search-log.sqlite';
+
     /**
      * Logs a search query via SearchQueryLogger, honouring the
      * `search.logQueries` config option (default true) as a kill-switch.
+     *
+     * The kill-switch is checked before the SQLite store is opened at all,
+     * not just passed through to the logger, so a disabled site never even
+     * creates the log database file.
+     *
      * Any failure is written to the error log so that logging problems
      * never break the search itself.
      *
@@ -4377,11 +4385,14 @@ abstract class KirbyBaseHelper
     private function logSearchQuery(string $query): void
     {
         try {
-            $logger = new SearchQueryLogger(
-                $this->kirby,
-                $this->site,
-                (bool)option('search.logQueries', true)
-            );
+            $logQueries = (bool)option('search.logQueries', true);
+            if (!$logQueries) {
+                return;
+            }
+
+            $logDatabasePath = (string)option('search.logDatabasePath', self::DEFAULT_SEARCH_LOG_DATABASE_PATH);
+            $store = SearchLogStore::open($this->kirby->root('logs') . $logDatabasePath);
+            $logger = new SearchQueryLogger($store, $logQueries, (int)option('search.logRetentionMonths', 24));
             $logger->log($query);
         } catch (Throwable $e) {
             $this->writeToErrorLog($e->getMessage());

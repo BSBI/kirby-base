@@ -843,13 +843,13 @@ parameters:
 		-
 			message: '#^Cannot cast mixed to int\.$#'
 			identifier: cast.int
-			count: 1
+			count: 2
 			path: classes/helpers/KirbyBaseHelper.php
 
 		-
 			message: '#^Cannot cast mixed to string\.$#'
 			identifier: cast.string
-			count: 7
+			count: 8
 			path: classes/helpers/KirbyBaseHelper.php
 
 		-
@@ -1879,6 +1879,12 @@ parameters:
 			path: classes/helpers/SearchService.php
 
 		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 1
+			path: classes/helpers/SearchService.php
+
+		-
 			message: '#^Method BSBI\\WebBase\\helpers\\SearchService\:\:getSearchCollection\(\) has parameter \$collection with generic class Kirby\\Toolkit\\Collection but does not specify its types\: TValue$#'
 			identifier: missingType.generics
 			count: 1
@@ -1900,12 +1906,6 @@ parameters:
 			message: '#^Method BSBI\\WebBase\\helpers\\SearchService\:\:getSearchContentTypeOptions\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
-			path: classes/helpers/SearchService.php
-
-		-
-			message: '#^Negated boolean expression is always false\.$#'
-			identifier: booleanNot.alwaysFalse
-			count: 3
 			path: classes/helpers/SearchService.php
 
 		-
@@ -2515,15 +2515,9 @@ parameters:
 			path: sections/quicklinks.php
 
 		-
-			message: '#^Argument of an invalid type list\<string\>\|false supplied for foreach, only iterables are supported\.$#'
-			identifier: foreach.nonIterable
-			count: 1
-			path: sections/searchanalytics.php
-
-		-
 			message: '#^Undefined variable\: \$this$#'
 			identifier: variable.undefined
-			count: 5
+			count: 8
 			path: sections/searchanalytics.php
 
 		-
