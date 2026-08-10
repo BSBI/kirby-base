@@ -6,12 +6,3 @@ sections:
     type: searchanalytics
     headline: Search Analytics
     limit: 20
-  log:
-    label: Log
-    type: pages
-    template: search_log_item
-    sortBy: searchDate desc
-
-
-
-
