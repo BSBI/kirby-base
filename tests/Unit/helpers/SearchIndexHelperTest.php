@@ -6,6 +6,7 @@ namespace BSBI\WebBase\Tests\Unit\helpers;
 
 use BSBI\WebBase\helpers\SearchIndexHelper;
 use PDO;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -206,6 +207,290 @@ final class SearchIndexHelperTest extends TestCase
         $results = $helper->searchPublic('orchids');
         $this->assertNotEmpty($results['results']);
         $this->assertSame('pages/orchids', $results['results'][0]['page_id']);
+    }
+
+    // --- FTS5 query escaping ---
+
+    /**
+     * Real queries taken from the live `content-index` log, where each one threw an
+     * FTS5 error. Scanner and dork traffic supplies most of them; ordinary visitors
+     * supply the rest (a full stop, an apostrophe, a question mark).
+     *
+     * Every one has to be answerable — with results or without — rather than throwing,
+     * because the caller's failure path is far more expensive than the search itself.
+     *
+     * @return array<string, array{string}>
+     */
+    public static function hostileQueryProvider(): array
+    {
+        return [
+            'column filter (filetype:)' => ['filetype:pdf'],
+            'column filter (inurl:)'    => ['inurl:admin'],
+            'column filter (word:)'     => ['word:orchid'],
+            'column filter (today:)'    => ['today:events'],
+            'bare colon'                => [':'],
+            'apostrophe'                => ["shepherd's purse"],
+            'sql probe'                 => ["' OR 1=1"],
+            'unterminated quote'        => ['"unclosed phrase'],
+            'trailing full stop'        => ['orchid.'],
+            'domain name'               => ['bsbi.org'],
+            'question mark'             => ['what is a vice county?'],
+            'email address'             => ['someone@example.com'],
+            'dollar sign'               => ['$100 grant'],
+            'equals sign'               => ['taxon=species'],
+            'semicolon'                 => ['plants; drop table'],
+            'fts special query'         => ['143#*'],
+            'bare asterisks'            => ['**'],
+            'punctuation only'          => ['...'],
+            'fts NEAR operator'         => ['NEAR(orchid bee)'],
+            'fts boolean operators'     => ['orchid AND NOT bee OR fly'],
+            'caret column filter'       => ['^title'],
+            'braces'                    => ['{title} : orchid'],
+            'mixed rubbish'             => ['<>?@~#|\\`'],
+        ];
+    }
+
+    /**
+     * @throws \Exception
+     */
+    #[DataProvider('hostileQueryProvider')]
+    public function testSearchAllIdsAnswersHostileQueriesInsteadOfThrowing(string $query): void
+    {
+        $helper = $this->makeHelper();
+        $this->insertPage($helper->getDatabase(), 'plants/orchid', 'Orchid');
+
+        $this->assertIsArray($helper->searchAllIds($query, true));
+    }
+
+    /**
+     * @throws \Exception
+     */
+    #[DataProvider('hostileQueryProvider')]
+    public function testSearchIdsPageAnswersHostileQueriesInsteadOfThrowing(string $query): void
+    {
+        $helper = $this->makeHelper();
+        $this->insertPage($helper->getDatabase(), 'plants/orchid', 'Orchid');
+
+        $result = $helper->searchIdsPage($query, true, null, 10, 0);
+
+        $this->assertIsArray($result['ids']);
+        $this->assertIsInt($result['total']);
+    }
+
+    /**
+     * Escaping must not cost ordinary searches their results.
+     *
+     * @throws \Exception
+     */
+    public function testPlainWordStillMatches(): void
+    {
+        $helper = $this->makeHelper();
+        $this->insertPage($helper->getDatabase(), 'plants/orchid', 'Orchid');
+
+        $this->assertSame(['plants/orchid'], $helper->searchAllIds('orchid', true));
+    }
+
+    /**
+     * @throws \Exception
+     */
+    public function testPrefixMatchingStillWorks(): void
+    {
+        $helper = $this->makeHelper();
+        $this->insertPage($helper->getDatabase(), 'plants/orchid', 'Orchid');
+
+        $this->assertSame(['plants/orchid'], $helper->searchAllIds('orch', true));
+    }
+
+    /**
+     * @throws \Exception
+     */
+    public function testQuotedPhraseStillWorks(): void
+    {
+        $helper = $this->makeHelper();
+        $this->insertPage($helper->getDatabase(), 'plants/rpr', 'Rare Plant Register');
+        $this->insertPage($helper->getDatabase(), 'plants/other', 'Plant Rare Nonsense Register');
+
+        $this->assertSame(['plants/rpr'], $helper->searchAllIds('"rare plant"', true));
+    }
+
+    /**
+     * A word carrying punctuation must still find the page, rather than erroring or
+     * silently matching nothing — "shepherd's purse" is an ordinary thing to search for.
+     *
+     * @throws \Exception
+     */
+    public function testWordWithAnApostropheStillMatches(): void
+    {
+        $helper = $this->makeHelper();
+        $this->insertPage($helper->getDatabase(), 'plants/purse', "Shepherd's Purse");
+
+        $this->assertSame(['plants/purse'], $helper->searchAllIds("shepherd's", true));
+    }
+
+    /**
+     * @throws \Exception
+     */
+    public function testTrailingFullStopStillMatches(): void
+    {
+        $helper = $this->makeHelper();
+        $this->insertPage($helper->getDatabase(), 'plants/orchid', 'Orchid');
+
+        $this->assertSame(['plants/orchid'], $helper->searchAllIds('orchid.', true));
+    }
+
+    /**
+     * A query that is nothing but punctuation has no searchable token in it, so it
+     * finds nothing — but it must do so without reaching FTS5 at all.
+     *
+     * @throws \Exception
+     */
+    public function testPunctuationOnlyQueryFindsNothing(): void
+    {
+        $helper = $this->makeHelper();
+        $this->insertPage($helper->getDatabase(), 'plants/orchid', 'Orchid');
+
+        $this->assertSame([], $helper->searchAllIds('...', true));
+    }
+
+    /**
+     * Punctuation must not smuggle a stop word past the filter: "the." is as much a
+     * stop word as "the", so stripping happens before the filters, not after.
+     *
+     * @throws \Exception
+     */
+    public function testAStopWordCarryingPunctuationIsStillFiltered(): void
+    {
+        $helper = $this->makeHelper();
+        $this->insertPage($helper->getDatabase(), 'plants/orchid', 'Orchid');
+
+        // "the." contributes nothing, so this is a search for "orchid" alone. Were it
+        // kept, the page would have to contain "the" as well and would not match.
+        $this->assertSame(['plants/orchid'], $helper->searchAllIds('the. orchid', true));
+    }
+
+    /**
+     * @throws \Exception
+     */
+    public function testAccentedCharactersAreKept(): void
+    {
+        $helper = $this->makeHelper();
+        $this->insertPage($helper->getDatabase(), 'plants/aren', 'Ærenpris');
+
+        $this->assertSame(['plants/aren'], $helper->searchAllIds('Ærenpris', true));
+    }
+
+    // --- searchIdsPage: bounded result sets ---
+
+    /**
+     * @param SearchIndexHelperTestDouble $helper the helper to seed
+     * @param int $count how many matching pages to insert
+     */
+    private function seedMatchingPages(SearchIndexHelperTestDouble $helper, int $count): void
+    {
+        for ($i = 1; $i <= $count; $i++) {
+            $this->insertPage($helper->getDatabase(), 'plants/orchid-' . $i, 'Orchid ' . $i);
+        }
+    }
+
+    /**
+     * The whole point: a broad query must return only the page asked for, however many
+     * pages match. Returning every id is what exhausted memory on live, because the
+     * caller turned each one into a Kirby page object before paginating.
+     *
+     * @throws \Exception
+     */
+    public function testSearchIdsPageReturnsOnlyTheRequestedSlice(): void
+    {
+        $helper = $this->makeHelper();
+        $this->seedMatchingPages($helper, 50);
+
+        $result = $helper->searchIdsPage('orchid', true, null, 10, 0);
+
+        $this->assertCount(10, $result['ids']);
+    }
+
+    /**
+     * @throws \Exception
+     */
+    public function testSearchIdsPageReportsTheFullTotalNotTheSliceSize(): void
+    {
+        $helper = $this->makeHelper();
+        $this->seedMatchingPages($helper, 50);
+
+        $this->assertSame(50, $helper->searchIdsPage('orchid', true, null, 10, 0)['total']);
+    }
+
+    /**
+     * @throws \Exception
+     */
+    public function testSearchIdsPageOffsetMovesThroughTheResults(): void
+    {
+        $helper = $this->makeHelper();
+        $this->seedMatchingPages($helper, 50);
+
+        $first  = $helper->searchIdsPage('orchid', true, null, 10, 0)['ids'];
+        $second = $helper->searchIdsPage('orchid', true, null, 10, 10)['ids'];
+
+        $this->assertCount(10, $second);
+        $this->assertSame([], array_intersect($first, $second));
+    }
+
+    /**
+     * @throws \Exception
+     */
+    public function testSearchIdsPagePastTheEndReturnsNoIdsButKeepsTheTotal(): void
+    {
+        $helper = $this->makeHelper();
+        $this->seedMatchingPages($helper, 5);
+
+        $result = $helper->searchIdsPage('orchid', true, null, 10, 100);
+
+        $this->assertSame([], $result['ids']);
+        $this->assertSame(5, $result['total']);
+    }
+
+    /**
+     * @throws \Exception
+     */
+    public function testSearchIdsPageOrdersTheSameWayAsSearchAllIds(): void
+    {
+        $helper = $this->makeHelper();
+        $this->insertPage($helper->getDatabase(), 'plants/a', 'Orchid', '', 'orchid orchid orchid');
+        $this->insertPage($helper->getDatabase(), 'plants/b', 'Bee Orchid');
+        $this->insertPage($helper->getDatabase(), 'plants/c', 'Orchid Meadow');
+
+        $all  = $helper->searchAllIds('orchid', true);
+        $page = $helper->searchIdsPage('orchid', true, null, 3, 0)['ids'];
+
+        $this->assertSame(array_slice($all, 0, 3), $page);
+    }
+
+    /**
+     * @throws \Exception
+     */
+    public function testSearchIdsPageAppliesTheTemplateFilter(): void
+    {
+        $helper = $this->makeHelper();
+        $this->insertPage($helper->getDatabase(), 'plants/orchid', 'Orchid');
+
+        $this->assertSame(0, $helper->searchIdsPage('orchid', true, 'species', 10, 0)['total']);
+        $this->assertSame(1, $helper->searchIdsPage('orchid', true, 'page', 10, 0)['total']);
+    }
+
+    /**
+     * A query with no searchable token must not reach FTS5 or count anything.
+     *
+     * @throws \Exception
+     */
+    public function testSearchIdsPageWithAnEmptyQueryReturnsNothing(): void
+    {
+        $helper = $this->makeHelper();
+        $this->seedMatchingPages($helper, 5);
+
+        $result = $helper->searchIdsPage('...', true, null, 10, 0);
+
+        $this->assertSame([], $result['ids']);
+        $this->assertSame(0, $result['total']);
     }
 }
 

@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace BSBI\WebBase\helpers;
 
 use BSBI\WebBase\models\BaseWebPage;
+use BSBI\WebBase\models\PaginatedPages;
 use Closure;
 use Kirby\Cms\App;
+use Kirby\Cms\Pages;
+use Kirby\Cms\Pagination;
 use Kirby\Cms\Site;
 use Kirby\Toolkit\Collection;
 use Kirby\Toolkit\Str;
@@ -158,8 +161,10 @@ final readonly class SearchService
         int     $perPage = 10,
         ?string $templates = null
     ): Collection {
-        if (empty(trim($query ?? ''))) {
-            return $this->site->index()->limit(0);
+        $query = trim($query ?? '');
+
+        if ($query === '') {
+            return self::noResults();
         }
 
         if (!option('search.useSqlite', false)) {
@@ -173,19 +178,47 @@ final readonly class SearchService
             $isMemberOrAdmin = $user &&
                 in_array($user->role()->name(), ['member', 'vice_county', 'admin', 'editor']);
 
-            $pageIds = $searchIndex->searchAllIds($query, $isMemberOrAdmin, $templates);
+            // Count first, then fetch only the page being displayed. Fetching every
+            // matching ID and paginating afterwards means Kirby resolves each one into a
+            // page object — on a large site a broad query matches thousands, which is
+            // enough to exhaust the request's memory to show ten results.
+            $total = $searchIndex->countSearchMatches($query, $isMemberOrAdmin, $templates);
 
-            if (empty($pageIds)) {
-                return $this->site->index()->limit(0);
+            if ($total === 0) {
+                return self::noResults();
             }
 
-            return pages($pageIds)->paginate($perPage);
+            $pagination = new Pagination(['limit' => $perPage, 'total' => $total]);
+            $pageIds = $searchIndex->searchIds(
+                $query,
+                $isMemberOrAdmin,
+                $templates,
+                $pagination->limit(),
+                $pagination->offset()
+            );
+
+            return PaginatedPages::from(pages($pageIds) ?? new Pages([]), $pagination);
         } catch (Throwable $e) {
             KirbyBaseHelper::writeToLogFile('content-index', 'SQLite search failed: ' . $e->getMessage());
             // Never fall back to an unfiltered search — return empty results to avoid leaking
             // restricted content types (e.g. form_submission) through the fallback path.
-            return $this->site->index()->limit(0);
+            return self::noResults();
         }
+    }
+
+    /**
+     * An empty result set.
+     *
+     * Deliberately not `$this->site->index()->limit(0)`: that builds the entire page
+     * index — every page on the site — purely to throw it away, so on a large site the
+     * cheapest possible outcome became the most expensive one. Any failed or empty
+     * search took that path, which made a malformed query a way to exhaust memory.
+     *
+     * @return Pages
+     */
+    private static function noResults(): Pages
+    {
+        return new Pages([]);
     }
 
     // endregion
