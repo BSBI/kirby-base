@@ -155,22 +155,3 @@ run `composer update --lock` to refresh the hash without touching resolved versi
 ## Agent usage
 
 We want to use agents for basic tasks, because as a charity we need to minimise token usage.  Use simpler models for simpler tasks.
-
-Use the agents at /Users/jamesdrever/Websites/bsbi-web/.claude/agents
-
-Before spawning a subagent, briefly state which agent you're using and why.
-After it returns, summarise what it found in one sentence.
-Use agents for any task where it is possible to do so.  For example:
-
-- syntax-checker after editing PHP files
-- test-runner after adding/running tests
-- code-reviewer over `git diff main...<branch>` at the end of the branch work, **before the PR
-  is opened** — that is the same diff GitHub computes for the PR, and it is available earlier.
-  PRs here are created and merged in one sitting, so a review scheduled after the PR runs
-  against something already on `main`.
-- security-reviewer whenever code-reviewer ends with "Security escalation: recommended" (it must always end with a Security escalation verdict), or when the change obviously touches auth/sessions, request/cookie/file handling, SQL/query construction, payments, or form endpoints
-- accessibility-reviewer per branch, whenever it touches snippets, templates, or front-end
-  JS/CSS (see Accessibility above)
-- **Re-run all of them after any later change to the branch** — not only after fixing review
-  findings. Feedback from localhost or staging is new commits the reviews have not seen.
-  Without a re-run, what gets merged is not what was reviewed.
