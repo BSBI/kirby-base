@@ -1,49 +1,51 @@
 {
-  "name": "open-foundations/kirby-base",
-  "description": "A set of base classes and blueprint for web development in a plugin format using Kirby CMS",
-  "type": "kirby-plugin",
-  "license": "MIT",
-  "autoload": {
-    "psr-4": {
-      "BSBI\\WebBase\\": "classes/"
-    }
-  },
-  "autoload-dev": {
-    "psr-4": {
-      "BSBI\\WebBase\\Tests\\": "tests/"
-    }
-  },
-  "authors": [
-    {
-      "name": "James Drever",
-      "email": "james.drever@bsbi.org"
-    }
-  ],
-  "config": {
-    "optimize-autoloader": true,
-    "allow-plugins": {
-      "getkirby/composer-installer": true,
-      "dealerdirect/phpcodesniffer-composer-installer": true
-    }
-  },
-  "require": {
-    "php": ">=8.3.0 <8.5.0",
-    "ext-pdo": "*",
-    "getkirby/composer-installer": "^1.2",
-    "setasign/fpdi": "^2.6",
-    "tecnickcom/tcpdf": "^6.11"
-  },
-  "require-dev": {
-    "getkirby/cms": "^5.0.0",
-    "squizlabs/php_codesniffer": "*",
-    "slevomat/coding-standard": "^8.0",
-    "dealerdirect/phpcodesniffer-composer-installer": "^1.1",
-    "phpunit/phpunit": "^12.5",
-    "rector/rector": "^2.3"
-  },
-  "suggest": {
-    "ext-imagick": "Required for BMP to PNG conversion (supports all BMP variants including RLE-compressed)",
-    "ext-gd": "Required for BMP to PNG conversion when Imagick is unavailable (uncompressed BMP only)"
-  },
-  "minimum-stability": "stable"
+    "name": "open-foundations/kirby-base",
+    "description": "A set of base classes and blueprint for web development in a plugin format using Kirby CMS",
+    "type": "kirby-plugin",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "BSBI\\WebBase\\": "classes/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "BSBI\\WebBase\\Tests\\": "tests/"
+        }
+    },
+    "authors": [
+        {
+            "name": "James Drever",
+            "email": "james.drever@bsbi.org"
+        }
+    ],
+    "config": {
+        "optimize-autoloader": true,
+        "allow-plugins": {
+            "getkirby/composer-installer": true,
+            "dealerdirect/phpcodesniffer-composer-installer": true
+        }
+    },
+    "require": {
+        "php": ">=8.3.0 <8.5.0",
+        "ext-pdo": "*",
+        "getkirby/composer-installer": "^1.2"
+    },
+    "require-dev": {
+        "getkirby/cms": "^5.0.0",
+        "squizlabs/php_codesniffer": "*",
+        "slevomat/coding-standard": "^8.0",
+        "dealerdirect/phpcodesniffer-composer-installer": "^1.1",
+        "phpunit/phpunit": "^12.5",
+        "rector/rector": "^2.3",
+        "setasign/fpdi": "^2.6",
+        "tecnickcom/tcpdf": "^6.11"
+    },
+    "suggest": {
+        "ext-imagick": "Required for BMP to PNG conversion (supports all BMP variants including RLE-compressed)",
+        "ext-gd": "Required for BMP to PNG conversion when Imagick is unavailable (uncompressed BMP only)",
+        "setasign/fpdi": "Required only to render certificates (BSBI\\WebBase\\certificates). Install alongside tecnickcom/tcpdf.",
+        "tecnickcom/tcpdf": "Required only to render certificates (BSBI\\WebBase\\certificates). Install alongside setasign/fpdi."
+    },
+    "minimum-stability": "stable"
 }

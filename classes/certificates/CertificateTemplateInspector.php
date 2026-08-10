@@ -94,6 +94,8 @@ final readonly class CertificateTemplateInspector
      */
     public function getPageCount(string $path): int
     {
+        CertificatePdfSupport::assertAvailable();
+
         if ($path === '' || !is_readable($path)) {
             throw new CertificateException('Certificate design could not be read: ' . $path);
         }

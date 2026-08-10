@@ -52,6 +52,10 @@ final readonly class PdfCertificateRenderer implements CertificateRendererInterf
      */
     public function render(CertificateTemplate $template, array $mergeData, string $filename): CertificateResult
     {
+        // Before anything touches CertificateDocument, which extends FPDI and so
+        // cannot even be autoloaded without the libraries present.
+        CertificatePdfSupport::assertAvailable();
+
         if (!$template->sourceExists()) {
             throw new CertificateException(
                 'Certificate design could not be read: ' . $template->getSourcePath()
