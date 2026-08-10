@@ -4366,25 +4366,24 @@ abstract class KirbyBaseHelper
     }
 
     /**
-     * @param string $query
+     * Logs a search query via SearchQueryLogger, honouring the
+     * `search.logQueries` config option (default true) as a kill-switch.
+     * Any failure is written to the error log so that logging problems
+     * never break the search itself.
+     *
+     * @param string $query The search query to log
      * @return void
      */
     private function logSearchQuery(string $query): void
     {
         try {
-            $searchLog = $this->site->children()->template('search_log')->first();
-            if ($searchLog) {
-                $this->createPage($searchLog, [
-                    'template' => 'search_log_item',
-                    'slug' => date('Y-m-d H:i:s'),
-                    'content' => [
-                        'title' => $query . ' (' . date('Y-m-d H:i:s') . ')',
-                        'searchQuery' => $query,
-                        'searchDate' => date('Y-m-d H:i:s')
-                    ]
-                ], true);
-            }
-        } catch (KirbyRetrievalException $e) {
+            $logger = new SearchQueryLogger(
+                $this->kirby,
+                $this->site,
+                (bool)option('search.logQueries', true)
+            );
+            $logger->log($query);
+        } catch (Throwable $e) {
             $this->writeToErrorLog($e->getMessage());
         }
     }
