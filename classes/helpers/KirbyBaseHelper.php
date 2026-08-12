@@ -21,6 +21,7 @@ use BSBI\WebBase\models\Language;
 use BSBI\WebBase\models\Languages;
 use BSBI\WebBase\models\LoginDetails;
 use BSBI\WebBase\models\OnThisPageLink;
+use BSBI\WebBase\models\PageCreationResult;
 use BSBI\WebBase\models\OnThisPageLinks;
 use BSBI\WebBase\models\Pagination;
 use BSBI\WebBase\models\PrevNextPageNavigation;
@@ -571,6 +572,44 @@ abstract class KirbyBaseHelper
             throw new KirbyRetrievalException($e->getMessage());
         }
         return $createdPage;
+    }
+
+    /**
+     * Creates a child page, recovering the winning page when the create loses
+     * a race against a concurrent request creating the same slug.
+     *
+     * Kirby's createChild()/changeStatus() pair is not atomic: two overlapping
+     * requests (e.g. a double-submitted form) can both take the create path and
+     * the loser fails with "The page directory cannot be moved". By then the
+     * page exists — this method hands it back instead of failing, flagged as
+     * recovered so the caller can run its update path.
+     *
+     * @param Page $parentPage The parent to create the child under
+     * @param array<string, mixed> $pageData Page data (slug, template, content, etc.)
+     * @param bool $createAsListed Whether to publish the page immediately as listed
+     * @return PageCreationResult The created or recovered page, with a recovered flag
+     * @throws KirbyRetrievalException If creation failed and no page exists for the slug
+     */
+    protected function createOrRecoverPage(Page $parentPage, array $pageData, bool $createAsListed = false): PageCreationResult
+    {
+        try {
+            return new PageCreationResult($this->createPage($parentPage, $pageData, $createAsListed), false);
+        } catch (KirbyRetrievalException $createFailure) {
+            $slug = isset($pageData['slug']) && is_string($pageData['slug']) ? $pageData['slug'] : '';
+            if ($slug === '') {
+                throw $createFailure;
+            }
+            try {
+                $recovered = (new PageCreateRecovery($this->kirby))->recover($parentPage, $slug, $createAsListed);
+            } catch (Throwable) {
+                // Recovery is best-effort; the original failure is the story.
+                throw $createFailure;
+            }
+            if ($recovered === null) {
+                throw $createFailure;
+            }
+            return new PageCreationResult($recovered, true);
+        }
     }
 
     /**
@@ -4148,10 +4187,17 @@ abstract class KirbyBaseHelper
             "Line:" . $e->getLine() . "\n" .
             "Trace:" . $e->getTraceAsString();
         $this->writeToLog('errors', $exceptionAsString);
+        $from = option('defaultEmail');
+        $to = option('adminEmail');
+        if (!is_string($from) || $from === '' || !is_string($to) || $to === '') {
+            // Without notification addresses the log entry above is the record;
+            // the error path must never itself throw.
+            return;
+        }
         $this->sendEmail('error-notification',
-            option('defaultEmail'),
-            option('defaultEmail'),
-            option('adminEmail'),
+            $from,
+            $from,
+            $to,
             'Website Exception: ' .$e->getMessage(),
             [
                 'errorMessage' => $this->getExceptionDetails($e),
