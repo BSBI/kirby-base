@@ -55,7 +55,6 @@ use Kirby\Content\Field;
 use Kirby\Exception\Exception;
 use Kirby\Exception\InvalidArgumentException;
 use Kirby\Http\Cookie;
-use Kirby\Http\Remote;
 use Kirby\Toolkit\Str;
 use Throwable;
 
@@ -4521,8 +4520,6 @@ abstract class KirbyBaseHelper
         $feedbackForm->setTurnstileSiteKey($this->getTurnstileSiteKey());
         if ($this->kirby->request()->is('POST') && get('submit')) {
 
-            $this->getTurnstileResponse();
-
             $name = get('name', '');
             $email = get('email', '');
             $feedback = get('feedback', '');
@@ -4534,6 +4531,17 @@ abstract class KirbyBaseHelper
                 'feedback' => is_string($feedback) ? $feedback : '',
                 'feedbackPage' => is_string($fromPage) ? $fromPage : '',
             ];
+
+            $turnstileStatus = $this->verifyTurnstile();
+
+            if (!$turnstileStatus->getStatus()) {
+                return $feedbackForm
+                    ->setNameValue($data['name'])
+                    ->setEmailValue($data['email'])
+                    ->setFeedbackValue($data['feedback'])
+                    ->setStatus(false)
+                    ->addFriendlyMessage($turnstileStatus->getFirstFriendlyMessage());
+            }
 
             $rules = [
                 'name' => ['required', 'minLength' => 3],
@@ -5426,44 +5434,38 @@ abstract class KirbyBaseHelper
     }
 
     /**
+     * Verifies the Turnstile challenge token on the current request.
+     *
+     * A missing or rejected token is an everyday event (bots POSTing the form
+     * directly, or a user whose Turnstile widget failed to load), so it is
+     * returned as a failed ActionStatus for the form to display — only a
+     * missing secret key (a configuration error) throws.
+     *
+     * @return ActionStatus success, or failure with a user-facing friendly message
+     * @throws KirbyRetrievalException if the Turnstile secret key is not configured
+     */
+    protected function verifyTurnstile(): ActionStatus {
+        $secretKey = option('turnstile.secretKey');
+        $challenge = $this->kirby->request()->get(TurnstileVerifier::FIELD_NAME);
+
+        $verifier = new TurnstileVerifier(is_string($secretKey) ? $secretKey : null);
+
+        return $verifier->verify(is_string($challenge) ? $challenge : null);
+    }
+
+    /**
+     * Verifies the Turnstile challenge token, throwing on any failure.
+     *
+     * Prefer verifyTurnstile(), which lets the form report the failure to the
+     * user instead of surfacing an exception page.
+     *
      * @throws KirbyRetrievalException
      */
     protected function getTurnstileResponse(): void {
+        $status = $this->verifyTurnstile();
 
-        // Turnstile HTML input field name
-        $fieldName = 'cf-turnstile-response';
-
-        // URL for the Turnstile verification
-        $verificationUrl = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
-
-        $turnstileChallenge = $this->kirby->request()->get($fieldName);
-
-        if (empty($turnstileChallenge)) {
-            throw new KirbyRetrievalException('The Turnstile secret key is not configured');
-        }
-
-        $secretKey = option('turnstile.secretKey');
-
-        if (empty($secretKey)) {
-            throw new KirbyRetrievalException('The Turnstile secret key is not configured');
-        }
-
-        try {
-            $response = Remote::request($verificationUrl, [
-                'method' => 'POST',
-                'data' => [
-                    'secret' => $secretKey,
-                    'response' => $turnstileChallenge,
-                ],
-            ]);
-        } catch (\Exception) {
-            throw new KirbyRetrievalException('Error when trying to verify the Turnstile secret key');
-        }
-
-        $jsonResponse = $response->json();
-
-        if ($response->code() !== 200 || !isset($jsonResponse['success']) || $jsonResponse['success'] !== true) {
-            throw new KirbyRetrievalException('Turnstile rejected this input');
+        if (!$status->getStatus()) {
+            throw new KirbyRetrievalException($status->getFirstErrorMessage());
         }
     }
 
