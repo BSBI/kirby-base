@@ -28,6 +28,15 @@ class BaseWebPage extends BaseModel
      */
     protected string $htmlTitle = '';
 
+    /** @var string The public site name (og:site_name / homepage JSON-LD) */
+    protected string $siteName = '';
+
+    /** @var bool Whether this page is the site's homepage */
+    protected bool $isHomePage = false;
+
+    /** @var array<string, string> WebSite JSON-LD properties (homepage only; empty elsewhere) */
+    protected array $websiteJsonLd = [];
+
     /**
      * @var string
      */
@@ -184,6 +193,66 @@ class BaseWebPage extends BaseModel
     public function setHtmlTitle(string $htmlTitle): self
     {
         $this->htmlTitle = $htmlTitle;
+        return $this;
+    }
+
+    /**
+     * Get the public site name (feeds og:site_name and the homepage JSON-LD)
+     * @return string
+     */
+    public function getSiteName(): string
+    {
+        return $this->siteName;
+    }
+
+    /**
+     * Set the public site name
+     * @param string $siteName
+     * @return self
+     */
+    public function setSiteName(string $siteName): self
+    {
+        $this->siteName = $siteName;
+        return $this;
+    }
+
+    /**
+     * Is this page the site's homepage?
+     * @return bool
+     */
+    public function isHomePage(): bool
+    {
+        return $this->isHomePage;
+    }
+
+    /**
+     * Record whether this page is the site's homepage
+     * @param bool $isHomePage
+     * @return self
+     */
+    public function setIsHomePage(bool $isHomePage): self
+    {
+        $this->isHomePage = $isHomePage;
+        return $this;
+    }
+
+    /**
+     * Get the WebSite JSON-LD properties (empty except on the homepage)
+     * @return array<string, string>
+     */
+    public function getWebsiteJsonLd(): array
+    {
+        return $this->websiteJsonLd;
+    }
+
+    /**
+     * Set the WebSite JSON-LD properties
+     * @param array<string, string> $websiteJsonLd
+     * @return self
+     */
+    public function setWebsiteJsonLd(array $websiteJsonLd): self
+    {
+        $this->websiteJsonLd = $websiteJsonLd;
         return $this;
     }
 

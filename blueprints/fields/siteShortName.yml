@@ -1,0 +1,5 @@
+label: Site Short Name
+type: text
+help: >
+  A short form of the site name (e.g. an acronym), offered to search engines as an
+  alternate name in the homepage structured data. Leave empty to offer none.

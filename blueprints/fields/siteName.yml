@@ -1,0 +1,7 @@
+label: Site Name
+type: text
+help: >
+  The public name of the organisation, used for search-engine signals (page-title
+  suffix, og:site_name, and the homepage structured data). When empty, the Kirby
+  site title above is used instead — setting this frees the site title to be a
+  purely editor-facing label.

@@ -11,6 +11,7 @@ return [
     'glossary/glossary-link' => __DIR__ . '/snippets/glossary/glossary-link.php',
 
     'base/robots-meta-tag' => __DIR__ . '/snippets/robots-meta-tag.php',
+    'base/website-jsonld' => __DIR__ . '/snippets/website-jsonld.php',
     'base/on-this-page' => __DIR__ . '/snippets/on-this-page.php',
     'base/fathom-analytics' => __DIR__ . '/snippets/fathom-analytics.php',
     'base/related-content' => __DIR__ . '/snippets/related-content.php',

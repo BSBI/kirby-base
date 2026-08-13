@@ -47,6 +47,8 @@ return [
     'blocks/form-select' => __DIR__ . '/blueprints/blocks/form-select.yml',
 
     //field blueprints
+    'fields/siteName' => __DIR__ . '/blueprints/fields/siteName.yml',
+    'fields/siteShortName' => __DIR__ . '/blueprints/fields/siteShortName.yml',
     'fields/mainContent' => __DIR__ . '/blueprints/fields/mainContent.yml',
     'fields/simpleContent' => __DIR__ . '/blueprints/fields/simpleContent.yml',
     'fields/image' => __DIR__ . '/blueprints/fields/image.yml',

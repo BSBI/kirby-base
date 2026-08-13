@@ -226,7 +226,14 @@ abstract class KirbyBaseHelper
                 $page->template()->name()
             );
 
-            $webPage->setHtmlTitle($pageTitle . ' - ' . site()->title()->toString());
+            $siteIdentity = new SiteIdentity($this->fieldReader, $this->site);
+            $webPage->setHtmlTitle($siteIdentity->buildHtmlTitle($pageTitle, $page->isHomePage()));
+            $webPage->setSiteName($siteIdentity->getSiteName());
+            $webPage->setIsHomePage($page->isHomePage());
+            if ($page->isHomePage()) {
+                // Google reads WebSite structured data from the homepage only
+                $webPage->setWebsiteJsonLd($siteIdentity->getWebsiteJsonLd());
+            }
 
             $webPage->setPageId($page->id());
 

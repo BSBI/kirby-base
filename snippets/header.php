@@ -29,6 +29,10 @@ endif;
     <meta property="og:image" content="<?= $currentPage->getOpenGraphImage() ?>" />
     <meta property="og:url" content="<?= $currentPage->getUrl() ?>" />
     <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="<?= esc($currentPage->getSiteName(), 'attr') ?>" />
+    <?php if ($currentPage->isHomePage()) : ?>
+    <?php snippet('base/website-jsonld', ['currentPage' => $currentPage]) ?>
+    <?php endif ?>
     <?php snippet('base/favicon') ?>
     <?php snippet('base/robots-meta-tag') ?>
     <meta name="kirby-page-id" content="<?= $currentPage->getPageId() ?>">
