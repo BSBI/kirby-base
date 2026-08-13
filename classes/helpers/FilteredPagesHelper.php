@@ -132,6 +132,28 @@ class FilteredPagesHelper
     }
 
     /**
+     * Decodes a JSON-encoded query parameter, distinguishing corruption from absence.
+     *
+     * Returns null when the parameter is present but cannot be decoded to an
+     * array, so callers can log the problem rather than silently treating it as
+     * "nothing selected" — which, for the filter parameters, means listing
+     * everything. An empty string is treated as absence and returns [].
+     *
+     * @param string $raw Raw parameter value.
+     * @return array<mixed>|null Decoded array, or null if the value was malformed.
+     */
+    public static function decodeJsonParam(string $raw): ?array
+    {
+        if ($raw === '') {
+            return [];
+        }
+
+        $decoded = json_decode($raw, true);
+
+        return is_array($decoded) ? $decoded : null;
+    }
+
+    /**
      * Slices a flat array of pages into a single paginated result set.
      *
      * @param array<int, array<string, mixed>> $pages    Full (pre-filtered) pages array.

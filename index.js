@@ -1,3 +1,29 @@
+/**
+ * Builds a percent-encoded query string for a Panel API GET request.
+ *
+ * Kirby's own $api.get() assembles its query string by plain concatenation
+ * (`key + "=" + value`, joined with "&") without encoding anything, so any
+ * value containing "&", "#", "+" or "=" corrupts the request. That silently
+ * broke the filtered sections: selecting a filter value such as
+ * "Events & Communications" truncated the JSON `active` parameter at the
+ * ampersand, the server failed to decode it, and every page was listed as if
+ * no filter had been applied.
+ *
+ * Callers pass the result as part of the path and omit $api.get()'s own query
+ * argument, so this encoding is the only one applied.
+ *
+ * @param {Object} params Query parameters; undefined and null values are skipped.
+ * @returns {string} Encoded query string, without the leading "?".
+ */
+function kbBuildQuery(params) {
+  return Object.keys(params)
+    .filter(function (key) { return params[key] !== undefined && params[key] !== null; })
+    .map(function (key) {
+      return encodeURIComponent(key) + '=' + encodeURIComponent(params[key]);
+    })
+    .join('&');
+}
+
 panel.plugin('open-foundations/kirby-base', {
   writerMarks: {
     /**
@@ -1548,11 +1574,11 @@ panel.plugin('open-foundations/kirby-base', {
 
         loadOptions: async function () {
           try {
-            this.options = await this.$api.get('filtered-pages/options', {
+            this.options = await this.$api.get('filtered-pages/options?' + kbBuildQuery({
               model_id: this.modelId,
               template: this.template,
               filters:  JSON.stringify(this.filterDefs)
-            });
+            }));
           } catch (e) {
             console.error('Failed to load filter options:', e);
           }
@@ -1562,7 +1588,7 @@ panel.plugin('open-foundations/kirby-base', {
           if (!this.modelId) return;
           this.loading = true;
           try {
-            var result = await this.$api.get('filtered-pages/results', {
+            var result = await this.$api.get('filtered-pages/results?' + kbBuildQuery({
               model_id:  this.modelId,
               template:  this.template,
               filters:   JSON.stringify(this.filterDefs),
@@ -1572,7 +1598,7 @@ panel.plugin('open-foundations/kirby-base', {
               sort:      this.currentSort,
               page:      this.currentPage,
               page_size: this.pageSize
-            });
+            }));
             this.items      = result.items      || [];
             this.total      = result.total      || 0;
             this.totalPages = result.totalPages || 0;
@@ -1878,10 +1904,10 @@ panel.plugin('open-foundations/kirby-base', {
 
         loadOptions: async function () {
           try {
-            this.options = await this.$api.get(this.apiEndpoint + '/options', {
+            this.options = await this.$api.get(this.apiEndpoint + '/options?' + kbBuildQuery({
               model_id: this.modelId,
               filters:  JSON.stringify(this.filterDefs)
-            });
+            }));
           } catch (e) {
             console.error('Failed to load filter options:', e);
           }
@@ -1891,7 +1917,7 @@ panel.plugin('open-foundations/kirby-base', {
           if (!this.modelId) return;
           this.loading = true;
           try {
-            var result = await this.$api.get(this.apiEndpoint + '/results', {
+            var result = await this.$api.get(this.apiEndpoint + '/results?' + kbBuildQuery({
               model_id:  this.modelId,
               filters:   JSON.stringify(this.filterDefs),
               columns:   JSON.stringify(this.columnDefs),
@@ -1900,7 +1926,7 @@ panel.plugin('open-foundations/kirby-base', {
               sort:      this.currentSort,
               page:      this.currentPage,
               page_size: this.pageSize
-            });
+            }));
             this.items      = result.items      || [];
             this.total      = result.total      || 0;
             this.totalPages = result.totalPages || 0;

@@ -525,4 +525,59 @@ final class FilteredPagesHelperTest extends TestCase
         $this->assertSame(1, $result['total']);
         $this->assertSame('Mountain Walk', $result['items'][0]['title']);
     }
+
+    // ── decodeJsonParam ───────────────────────────────────────────────────
+
+    public function testDecodeJsonParam_validObject_returnsArray(): void
+    {
+        $this->assertSame(
+            ['committeeMeetingType' => 'Board of Trustees'],
+            FilteredPagesHelper::decodeJsonParam('{"committeeMeetingType":"Board of Trustees"}')
+        );
+    }
+
+    public function testDecodeJsonParam_valueContainingAmpersand_returnsArray(): void
+    {
+        $this->assertSame(
+            ['committeeMeetingType' => 'Events & Communications'],
+            FilteredPagesHelper::decodeJsonParam('{"committeeMeetingType":"Events & Communications"}')
+        );
+    }
+
+    public function testDecodeJsonParam_emptyObject_returnsEmptyArray(): void
+    {
+        $this->assertSame([], FilteredPagesHelper::decodeJsonParam('{}'));
+    }
+
+    public function testDecodeJsonParam_emptyArray_returnsEmptyArray(): void
+    {
+        $this->assertSame([], FilteredPagesHelper::decodeJsonParam('[]'));
+    }
+
+    /**
+     * An unencoded '&' in a filter value used to split the query string, so the
+     * server saw a truncated 'active' parameter. json_decode() returned null and
+     * the old '?? []' fallback turned that into "no filters", silently listing
+     * every page. Corrupt input must be distinguishable from "nothing selected".
+     */
+    public function testDecodeJsonParam_truncatedAtUnencodedAmpersand_returnsNull(): void
+    {
+        $this->assertNull(FilteredPagesHelper::decodeJsonParam('{"committeeMeetingType":"Events '));
+    }
+
+    public function testDecodeJsonParam_malformedJson_returnsNull(): void
+    {
+        $this->assertNull(FilteredPagesHelper::decodeJsonParam('not json at all'));
+    }
+
+    public function testDecodeJsonParam_scalarJson_returnsNull(): void
+    {
+        $this->assertNull(FilteredPagesHelper::decodeJsonParam('"a string"'));
+    }
+
+    public function testDecodeJsonParam_emptyString_returnsEmptyArray(): void
+    {
+        // A missing parameter is "nothing selected", not corruption.
+        $this->assertSame([], FilteredPagesHelper::decodeJsonParam(''));
+    }
 }

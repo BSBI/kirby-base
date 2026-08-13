@@ -174,6 +174,33 @@ class FilteredFilesHelper
     // ── Kirby-dependent methods ────────────────────────────────────────────
 
     /**
+     * Reads a JSON-encoded query parameter, logging anything malformed.
+     *
+     * A corrupt value is otherwise indistinguishable from "no filter selected",
+     * which makes the route return every row instead of reporting a problem.
+     *
+     * @param string $route Route pattern, for the log entry.
+     * @param string $param Query parameter name.
+     * @param string $default Default raw JSON when the parameter is absent.
+     * @return array<mixed>
+     */
+    private static function decodeParam(string $route, string $param, string $default): array
+    {
+        $raw     = get($param, $default);
+        $decoded = FilteredPagesHelper::decodeJsonParam(is_string($raw) ? $raw : $default);
+
+        if ($decoded === null) {
+            KirbyBaseHelper::writeToLogFile(
+                'errors',
+                $route . ': could not decode the "' . $param . '" parameter; ignoring it'
+            );
+            return [];
+        }
+
+        return $decoded;
+    }
+
+    /**
      * Parses standard API route parameters for an options request.
      *
      * Reads filterDefs and model_id from the current HTTP request using Kirby's
@@ -183,8 +210,11 @@ class FilteredFilesHelper
      */
     public static function parseOptionsParams(): array
     {
+        /** @var array<string, array<string, mixed>> $filterDefs */
+        $filterDefs = self::decodeParam('filtered-files/options', 'filters', '{}');
+
         return [
-            'filterDefs' => json_decode(get('filters', '{}'), true) ?? [],
+            'filterDefs' => $filterDefs,
             'modelId'    => (string)get('model_id', ''),
         ];
     }
@@ -211,11 +241,19 @@ class FilteredFilesHelper
     public static function parseResultsParams(): array
     {
         $sortParts = explode(' ', (string)get('sort', 'filename asc'), 2);
+
+        /** @var array<string, array<string, mixed>> $filterDefs */
+        $filterDefs = self::decodeParam('filtered-files/results', 'filters', '{}');
+        /** @var array<int, array<string, mixed>> $columnDefs */
+        $columnDefs = self::decodeParam('filtered-files/results', 'columns', '[]');
+        /** @var array<string, string> $active */
+        $active = self::decodeParam('filtered-files/results', 'active', '{}');
+
         return [
             'modelId'    => (string)get('model_id', ''),
-            'filterDefs' => json_decode(get('filters', '{}'), true) ?? [],
-            'columnDefs' => json_decode(get('columns', '[]'), true) ?? [],
-            'active'     => json_decode(get('active', '{}'), true) ?? [],
+            'filterDefs' => $filterDefs,
+            'columnDefs' => $columnDefs,
+            'active'     => $active,
             'search'     => (string)get('search', ''),
             'sortField'  => $sortParts[0] ?? 'filename',
             'sortDir'    => strtolower($sortParts[1] ?? 'asc') === 'desc' ? 'desc' : 'asc',

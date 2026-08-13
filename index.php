@@ -27,6 +27,37 @@ use Kirby\Panel\Ui\Item\PageItem;
 use Kirby\Toolkit\I18n;
 use Kirby\Toolkit\Tpl;
 
+if (!function_exists('decodeFilteredSectionParam')) {
+    /**
+     * Reads a JSON-encoded query parameter for a filtered* section API route.
+     *
+     * A malformed value is logged and treated as empty. Without the log, a
+     * corrupt `active` parameter is indistinguishable from "no filter selected",
+     * so the route quietly returns every row — which is how an unencoded "&" in
+     * a filter value went unnoticed.
+     *
+     * @param string $route Route pattern, for the log entry.
+     * @param string $param Query parameter name.
+     * @param string $default Default raw JSON when the parameter is absent.
+     * @return array<mixed>
+     */
+    function decodeFilteredSectionParam(string $route, string $param, string $default): array
+    {
+        $raw     = get($param, $default);
+        $decoded = FilteredPagesHelper::decodeJsonParam(is_string($raw) ? $raw : $default);
+
+        if ($decoded === null) {
+            KirbyBaseHelper::writeToLogFile(
+                'errors',
+                $route . ': could not decode the "' . $param . '" parameter; ignoring it'
+            );
+            return [];
+        }
+
+        return $decoded;
+    }
+}
+
 $pluginConfig = [
     'fields' => [
         'maplocation' => [
@@ -119,7 +150,8 @@ $pluginConfig = [
                 'pattern' => 'filtered-pages/options',
                 'method'  => 'GET',
                 'action'  => function (): array {
-                    $filterDefs = json_decode(get('filters', '{}'), true) ?? [];
+                    /** @var array<string, array<string, mixed>> $filterDefs */
+                    $filterDefs = decodeFilteredSectionParam('filtered-pages/options', 'filters', '{}');
                     $modelId    = (string)get('model_id', '');
                     $template   = (string)get('template', '');
                     return FilteredPagesHelper::getOptions($filterDefs, $modelId, $template);
@@ -423,9 +455,12 @@ $pluginConfig = [
                 'action'  => function (): array {
                     $modelId    = (string)get('model_id', '');
                     $template   = (string)get('template', '');
-                    $filterDefs = json_decode(get('filters', '{}'), true) ?? [];
-                    $columnDefs = json_decode(get('columns', '[]'), true) ?? [];
-                    $active     = json_decode(get('active', '{}'), true) ?? [];
+                    /** @var array<string, array<string, mixed>> $filterDefs */
+                    $filterDefs = decodeFilteredSectionParam('filtered-pages/results', 'filters', '{}');
+                    /** @var array<int, array<string, mixed>> $columnDefs */
+                    $columnDefs = decodeFilteredSectionParam('filtered-pages/results', 'columns', '[]');
+                    /** @var array<string, string> $active */
+                    $active     = decodeFilteredSectionParam('filtered-pages/results', 'active', '{}');
                     $search     = (string)get('search', '');
                     $sortParts  = explode(' ', (string)get('sort', 'title asc'), 2);
                     $sortField  = $sortParts[0] ?? 'title';
