@@ -87,6 +87,32 @@ final class FilterCookiePolicyTest extends TestCase
         ]));
     }
 
+    public function testNumericCookieNamesDoNotCrashTheCheck(): void
+    {
+        // PHP casts a numeric-string array key to an int, so a request carrying
+        // a cookie literally named "123" reaches this method as an int key. Such
+        // a name can never carry the prefix, but it must not raise a TypeError
+        // and take down every page render (a live 500 on every page, because
+        // the cache 'ignore' closure runs this check on every render).
+        $policy = new FilterCookiePolicy();
+
+        $this->assertFalse($policy->requestCarriesActiveFilter(['123' => 'abc']));
+        $this->assertFalse($policy->requestCarriesActiveFilter([0 => 'abc']));
+        $this->assertFalse($policy->requestCarriesActiveFilter(['-7' => 'abc']));
+    }
+
+    public function testNumericCookieNameBeforeAFilterCookieStillDetectsTheFilter(): void
+    {
+        // Cookie order is the client's; a numeric name arriving first must not
+        // stop the scan from reaching a genuine filter cookie behind it.
+        $policy = new FilterCookiePolicy();
+
+        $this->assertTrue($policy->requestCarriesActiveFilter([
+            '123'              => 'abc',
+            'flt_blogKeywords' => 'Whitebeam',
+        ]));
+    }
+
     public function testCustomPrefix(): void
     {
         $policy = new FilterCookiePolicy('x_');

@@ -65,13 +65,19 @@ final readonly class FilterCookiePolicy
      * explicitly cleared) leave the page identical to a fresh visitor's, so they
      * do not count and the page stays cacheable.
      *
-     * @param array<string, mixed> $cookies The request cookies (typically $_COOKIE)
+     * Cookie names arrive from the client, so this must tolerate anything a
+     * request can put in $_COOKIE. In particular PHP casts numeric-string array
+     * keys to int, so a cookie literally named '123' reaches here as an int key
+     * — which raised a TypeError inside {@see self::isFilterCookie()} and, since
+     * the cacheability check runs on every render, took the page down.
+     *
+     * @param array<array-key, mixed> $cookies The request cookies (typically $_COOKIE)
      * @return bool True when at least one filter cookie holds a non-empty value
      */
     public function requestCarriesActiveFilter(array $cookies): bool
     {
         foreach ($cookies as $name => $value) {
-            if ($this->isFilterCookie($name) && $value !== '' && $value !== null) {
+            if ($this->isFilterCookie((string)$name) && $value !== '' && $value !== null) {
                 return true;
             }
         }
