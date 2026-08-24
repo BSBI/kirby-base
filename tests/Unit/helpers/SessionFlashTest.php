@@ -28,7 +28,7 @@ final class SessionFlashTest extends TestCase
     public function testReturnsNullAndNeverWritesWhenTheKeyIsAbsent(): void
     {
         $data = $this->createMock(SessionData::class);
-        $data->method('get')->with('actionStatus')->willReturn(null);
+        $data->method('get')->willReturn([]);
         $data->expects($this->never())->method('remove');
 
         self::assertNull((new SessionFlash($data))->pull('actionStatus'));
@@ -37,7 +37,7 @@ final class SessionFlashTest extends TestCase
     public function testReturnsTheValueAndClearsItWhenTheKeyIsPresent(): void
     {
         $data = $this->createMock(SessionData::class);
-        $data->method('get')->with('actionStatus')->willReturn('saved');
+        $data->method('get')->willReturn(['actionStatus' => 'saved']);
         $data->expects($this->once())->method('remove')->with('actionStatus');
 
         self::assertSame('saved', (new SessionFlash($data))->pull('actionStatus'));
@@ -52,7 +52,7 @@ final class SessionFlashTest extends TestCase
     public function testFalsyStoredValuesAreStillReturnedAndCleared(): void
     {
         $data = $this->createMock(SessionData::class);
-        $data->method('get')->with('count')->willReturn(0);
+        $data->method('get')->willReturn(['count' => 0]);
         $data->expects($this->once())->method('remove')->with('count');
 
         self::assertSame(0, (new SessionFlash($data))->pull('count'));
@@ -63,9 +63,26 @@ final class SessionFlashTest extends TestCase
         $value = new \stdClass();
 
         $data = $this->createMock(SessionData::class);
-        $data->method('get')->with('exception')->willReturn($value);
+        $data->method('get')->willReturn(['exception' => $value]);
         $data->expects($this->once())->method('remove')->with('exception');
 
         self::assertSame($value, (new SessionFlash($data))->pull('exception'));
+    }
+
+    /**
+     * A key whose stored value is literally null is *present*, and the read-once
+     * contract says a present key gets cleared. Kirby's SessionData::get($key)
+     * cannot tell that apart from an absent key — `$this->data[$key] ?? $default`
+     * collapses both to the default — so the distinction is made against the data
+     * array itself. Without this, a null-valued key would survive every pull and
+     * sit in the session for its whole life.
+     */
+    public function testANullStoredValueIsPresentAndIsCleared(): void
+    {
+        $data = $this->createMock(SessionData::class);
+        $data->method('get')->willReturn(['actionStatus' => null]);
+        $data->expects($this->once())->method('remove')->with('actionStatus');
+
+        self::assertNull((new SessionFlash($data))->pull('actionStatus'));
     }
 }

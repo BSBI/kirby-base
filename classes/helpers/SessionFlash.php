@@ -37,19 +37,26 @@ final readonly class SessionFlash
      * read once. Returns null — without writing to the session — when the key is
      * not set.
      *
+     * Presence is decided against the data array rather than against the value,
+     * because SessionData::get($key) cannot tell the two apart: it resolves to
+     * `$this->data[$key] ?? $default`, so a key stored with a literal null looks
+     * exactly like a key that was never set. Testing the value would leave such a
+     * key uncleared for the life of the session, which is the one way this could
+     * quietly break the read-once contract.
+     *
      * @param string $key The session key to read and clear
      * @return mixed The stored value, or null when the key is absent
      */
     public function pull(string $key): mixed
     {
-        $value = $this->data->get($key);
+        $data = $this->data->get();
 
-        if ($value === null) {
+        if (is_array($data) === false || array_key_exists($key, $data) === false) {
             return null;
         }
 
         $this->data->remove($key);
 
-        return $value;
+        return $data[$key];
     }
 }
