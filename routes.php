@@ -3,6 +3,7 @@
 use BSBI\WebBase\helpers\ContentIndexRegistry;
 use BSBI\WebBase\helpers\KirbyInternalHelper;
 use BSBI\WebBase\helpers\SearchIndexHelper;
+use BSBI\WebBase\helpers\SessionFlash;
 use Kirby\Http\Response;
 use Kirby\Toolkit\Tpl;
 
@@ -225,7 +226,12 @@ return [
     [
         'pattern' => '500',
         'action' => function () {
-            $exceptionAsString = kirby()->session()->pull('exceptionAsString');
+            // Read-then-clear rather than pull(), which would enter session write
+            // mode unconditionally. This is the error route: a second fatal here,
+            // from a session commit that races a token regeneration, has nowhere
+            // left to go. See SessionFlash.
+            $exceptionAsString = (new SessionFlash(kirby()->session()->data()))
+                ->pull('exceptionAsString');
 
             echo Tpl::load(__DIR__ . '/templates/error-500.php', [
                 'userRole' => kirby()->user() ? kirby()->user()->role()->name() : '',

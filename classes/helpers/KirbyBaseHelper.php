@@ -361,8 +361,11 @@ abstract class KirbyBaseHelper
             $sessionCookieName = $this->kirby->option('session')['cookieName'] ?? 'kirby_session';
             if (isset($_COOKIE[$sessionCookieName])) {
                 $session = $this->kirby->session();
-                /** @noinspection PhpUndefinedMethodInspection */
-                if ($actionStatus = $session->pull('actionStatus')) {
+                // Read-then-clear rather than pull(): Kirby's pull() enters write
+                // mode before checking whether the key is set, so a speculative pull
+                // here would lock and rewrite the session file on every single page
+                // render. See SessionFlash.
+                if ($actionStatus = (new SessionFlash($session->data()))->pull('actionStatus')) {
                     /** @var ActionStatus $actionStatus */
                     $webPage->setStatus($actionStatus->getStatus());
                     $webPage->addFriendlyMessage($actionStatus->getFirstFriendlyMessage());
