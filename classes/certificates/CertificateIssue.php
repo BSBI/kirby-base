@@ -34,6 +34,12 @@ final readonly class CertificateIssue
      *                          is the only thing that can answer "who still needs
      *                          telling?" — the award itself says nothing about
      *                          whether anybody heard about it.
+     * @param string $certificateId The printable, permanent identity of this
+     *                              award, or '' for awards made before ids
+     *                              existed. The deliberate opposite of the
+     *                              reference: public rather than secret, and
+     *                              never replaced, so a printed certificate goes
+     *                              on matching the stored record for ever.
      */
     public function __construct(
         private string $recipientId,
@@ -41,7 +47,8 @@ final readonly class CertificateIssue
         private string $issuedOn,
         private string $templateName = '',
         private string $reference = '',
-        private string $emailedOn = ''
+        private string $emailedOn = '',
+        private string $certificateId = ''
     ) {
     }
 
@@ -57,6 +64,32 @@ final readonly class CertificateIssue
     public static function generateReference(): string
     {
         return bin2hex(random_bytes(16));
+    }
+
+    /**
+     * Generate a certificate id for a new award.
+     *
+     * A GUID rather than anything sequential, so ids can be minted anywhere —
+     * a batch run, a single award, another consuming site — without a counter
+     * to coordinate or to leak how many certificates have been issued.
+     *
+     * @return string The id, as a lowercase v4-format GUID
+     */
+    public static function generateCertificateId(): string
+    {
+        $bytes = random_bytes(16);
+        // Stamp the version and variant bits so the result reads as a
+        // well-formed v4 GUID to anything that validates one.
+        $bytes[6] = chr((ord($bytes[6]) & 0x0f) | 0x40);
+        $bytes[8] = chr((ord($bytes[8]) & 0x3f) | 0x80);
+
+        return implode('-', [
+            bin2hex(substr($bytes, 0, 4)),
+            bin2hex(substr($bytes, 4, 2)),
+            bin2hex(substr($bytes, 6, 2)),
+            bin2hex(substr($bytes, 8, 2)),
+            bin2hex(substr($bytes, 10, 6)),
+        ]);
     }
 
     /**
@@ -76,7 +109,8 @@ final readonly class CertificateIssue
             self::readString($data, 'issued'),
             self::readString($data, 'template'),
             self::readString($data, 'reference'),
-            self::readString($data, 'emailed')
+            self::readString($data, 'emailed'),
+            self::readString($data, 'certificateid')
         );
     }
 
@@ -112,6 +146,7 @@ final readonly class CertificateIssue
             'template' => $this->templateName,
             'reference' => $this->reference,
             'emailed' => $this->emailedOn,
+            'certificateid' => $this->certificateId,
         ];
     }
 
@@ -179,6 +214,16 @@ final readonly class CertificateIssue
     }
 
     /**
+     * The printable, permanent identity of this award.
+     *
+     * @return string The certificate id, or '' for awards made before ids existed
+     */
+    public function getCertificateId(): string
+    {
+        return $this->certificateId;
+    }
+
+    /**
      * The date the recipient was last successfully sent their link.
      *
      * @return string The date as 'YYYY-MM-DD', or '' if never
@@ -213,7 +258,8 @@ final readonly class CertificateIssue
             $this->issuedOn,
             $this->templateName,
             $this->reference,
-            $emailedOn
+            $emailedOn,
+            $this->certificateId
         );
     }
 
@@ -242,7 +288,8 @@ final readonly class CertificateIssue
             $issuedOn,
             $templateName,
             $this->reference,
-            $this->emailedOn
+            $this->emailedOn,
+            $this->certificateId
         );
     }
 
@@ -257,6 +304,9 @@ final readonly class CertificateIssue
      * needs telling again — keeping the old date would report them as informed
      * while leaving them holding something that no longer works.
      *
+     * The certificate id is untouched: revocation is about links, and a
+     * certificate already printed with its id must still match this record.
+     *
      * @return self The award with a new reference and no send recorded
      */
     public function withNewReference(): self
@@ -266,7 +316,9 @@ final readonly class CertificateIssue
             $this->contextId,
             $this->issuedOn,
             $this->templateName,
-            self::generateReference()
+            self::generateReference(),
+            '',
+            $this->certificateId
         );
     }
 
