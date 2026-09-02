@@ -96,6 +96,42 @@ final class PdfCertificateRendererTest extends TestCase
     }
 
     /**
+     * Verify a bundled font family renders, embedding the committed definition.
+     *
+     * This is the proof the committed conversion files actually load: a broken
+     * or missing definition throws inside TCPDF, and nothing else exercises
+     * that before a real certificate is generated.
+     */
+    public function testRendersWithABundledFontFamily(): void
+    {
+        $template = new CertificateTemplate(
+            'Test Certificate',
+            $this->makeBackground(),
+            [new CertificateField(
+                'studentName',
+                179.0,
+                325.0,
+                508.5,
+                CertificateTextAlign::Centre,
+                'gentiumbookplus',
+                40.0,
+                '#0d3b26',
+                '',
+                18.0
+            )]
+        );
+
+        $result = (new PdfCertificateRenderer())->render(
+            $template,
+            ['studentName' => 'Alex Exàmple'],
+            'certificate.pdf'
+        );
+
+        $this->assertSame(CertificateOutputFormat::Pdf, $result->getFormat());
+        $this->assertStringContainsString('GentiumBookPlus', $result->getContents());
+    }
+
+    /**
      * Verify the renderer produces a PDF.
      */
     public function testRendersAPdf(): void

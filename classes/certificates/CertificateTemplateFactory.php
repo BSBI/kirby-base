@@ -37,6 +37,13 @@ final readonly class CertificateTemplateFactory
         $fields = [];
 
         foreach ($rows as $row) {
+            // Kirby lowercases every content key, so Panel-edited rows arrive
+            // as 'fontsize'/'minfontsize'/'fontfamily'/'fontstyle'. Reading
+            // camelCase here silently defaulted all four on every certificate
+            // rendered from stored content — while hand-built camelCase test
+            // rows kept passing. Normalising makes both spellings one case.
+            $row = array_change_key_case($row, CASE_LOWER);
+
             $key = trim($this->readString($row, 'key'));
             if ($key === '') {
                 continue;
@@ -48,11 +55,11 @@ final readonly class CertificateTemplateFactory
                 $this->readFloat($row, 'y'),
                 $this->readFloat($row, 'width'),
                 $this->readAlign($row),
-                $this->readString($row, 'fontFamily'),
-                $this->readFloat($row, 'fontSize', self::DEFAULT_FONT_SIZE),
+                $this->readString($row, 'fontfamily'),
+                $this->readFloat($row, 'fontsize', self::DEFAULT_FONT_SIZE),
                 $this->readColour($row),
-                $this->readString($row, 'fontStyle'),
-                $this->readFloat($row, 'minFontSize')
+                $this->readString($row, 'fontstyle'),
+                $this->readFloat($row, 'minfontsize')
             );
         }
 

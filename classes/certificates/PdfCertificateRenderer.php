@@ -133,6 +133,13 @@ final readonly class PdfCertificateRenderer implements CertificateRendererInterf
         }
 
         $family = $field->getFontFamily() !== '' ? $field->getFontFamily() : self::DEFAULT_FONT_FAMILY;
+
+        // Register the family before anything measures with it. Bundled fonts
+        // live outside TCPDF's own directory, so the first SetFont must name
+        // the definition file — after that the family is known and both the
+        // measuring in fitFontSize() and the final SetFont find it by name.
+        $pdf->SetFont($family, $field->getFontStyle(), $field->getFontSize(), CertificateFontLibrary::fontFile($family));
+
         $size = $this->fitFontSize($pdf, $field, $value, $family);
 
         $pdf->SetFont($family, $field->getFontStyle(), $size);

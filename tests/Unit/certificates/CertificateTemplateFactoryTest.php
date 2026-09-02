@@ -56,6 +56,31 @@ final class CertificateTemplateFactoryTest extends TestCase
     }
 
     /**
+     * Verify rows with lowercased keys — as Kirby actually supplies them — work.
+     *
+     * Kirby lowercases every content key, so a Panel-edited structure row
+     * arrives as 'fontsize', 'minfontsize', 'fontfamily', 'fontstyle'. The
+     * factory read camelCase only, which is why configured sizes silently fell
+     * back to the 24pt default on every certificate ever rendered from Panel
+     * content while the camelCase-keyed tests stayed green (#100 testing).
+     */
+    public function testLowercasedKirbyKeysAreReadTheSameAsCamelCase(): void
+    {
+        $fields = $this->build([[
+            'key' => 'studentName',
+            'fontsize' => 46.7,
+            'minfontsize' => 20,
+            'fontfamily' => 'gentiumbookplus',
+            'fontstyle' => 'I',
+        ]])->getFields();
+
+        $this->assertSame(46.7, $fields[0]->getFontSize());
+        $this->assertSame(20.0, $fields[0]->getMinFontSize());
+        $this->assertSame('gentiumbookplus', $fields[0]->getFontFamily());
+        $this->assertSame('I', $fields[0]->getFontStyle());
+    }
+
+    /**
      * Verify numbers entered as strings are accepted.
      *
      * Panel number fields hand back strings often enough that rejecting them
