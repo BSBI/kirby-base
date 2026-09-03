@@ -193,7 +193,12 @@ return [
             $token = null;
             $header = kirby()->request()->header('Authorization');
             if (is_string($header) && str_starts_with($header, 'Bearer ')) {
-                $token = substr($header, strlen('Bearer '));
+                $bearer = trim(substr($header, strlen('Bearer ')));
+                // An empty Bearer value counts as absent, so a stray empty
+                // header can't shadow a correct ?token= fallback.
+                if ($bearer !== '') {
+                    $token = $bearer;
+                }
             }
             if ($token === null) {
                 $query = get('token');

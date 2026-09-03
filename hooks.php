@@ -148,7 +148,9 @@ function syncScheduledPublishQueue(Kirby\Cms\Page $page): void
         // Scheduling causes publication, so it demands the same permission:
         // a user who cannot change the page's status must not be able to
         // touch its queue entry. (The cron's own field-clearing updates run
-        // impersonated as kirby, which always passes.)
+        // impersonated as kirby, which always passes — this hook fires
+        // synchronously inside that update call, within the impersonation
+        // closure's scope.)
         if (!$page->permissions()->can('changeStatus')) {
             KirbyBaseHelper::writeToLogFile(
                 'scheduledPublish',

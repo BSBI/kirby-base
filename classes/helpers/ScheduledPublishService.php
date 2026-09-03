@@ -256,7 +256,10 @@ final readonly class ScheduledPublishService
         $rows = [];
         foreach ($entries as $entry) {
             $row = $entry->content()->toArray();
-            if (in_array($row, $resolved)) {
+            // Strict: both sides come from the same toArray() parse, so key
+            // order and types agree; loose == would let numeric-ish strings
+            // ("0" == "00") conflate distinct rows.
+            if (in_array($row, $resolved, true)) {
                 continue;
             }
             $rows[] = $row;
