@@ -296,6 +296,34 @@ final class ScheduledPublishServiceTest extends TestCase
         $this->assertSame('editor-a', $this->rowValue($this->queueRows()[0], 'scheduledBy'));
     }
 
+    public function testDueEntryPublishesWhenSchedulerIsStoredAsAUserReferenceList(): void
+    {
+        // Regression: once a row's scheduledBy is touched through the
+        // Panel's `users` field widget, Kirby re-serialises it as a YAML
+        // list of `user://` references rather than the bare id this
+        // service writes — reading that as a plain string used to throw
+        // ("Array to string conversion"), silently stranding the whole
+        // entry (never published) rather than just losing the scheduler.
+        $page = $this->createDraft('scheduler-as-reference-list');
+        self::$kirby->impersonate('kirby', fn () => self::$kirby->site()->update([
+            'scheduled' => Yaml::encode([[
+                'page' => [$page->uuid()->toString()],
+                'scheduledPublishDate' => '2026-09-03',
+                'scheduledPublishTime' => '11:00:00',
+                'scheduledBy' => [self::$kirby->users()->findByKey('editor-a')->uuid()->toString()],
+            ]]),
+        ]));
+
+        $emailService = $this->createMock(EmailSender::class);
+        $emailService->expects($this->once())->method('send')->willReturn(true);
+
+        $result = $this->service($emailService)->run(self::$now);
+
+        $this->assertTrue($this->refreshed($page)->isListed());
+        $this->assertStringContainsString('Published 1', $result);
+        $this->assertSame('editor-a', $this->rowValue($this->historyRows()[0], 'scheduledBy'));
+    }
+
     public function testManuallyAddedEntryWithNoSchedulerStillPublishes(): void
     {
         $page = $this->createDraft('no-scheduler-page');

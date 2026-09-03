@@ -120,7 +120,7 @@ final readonly class ScheduledPublishService
                     $pages = $this->entryPages($entry);
                     $date = $this->fieldValue($entry->content(), self::DATE_FIELD);
                     $time = $this->fieldValue($entry->content(), self::TIME_FIELD);
-                    $scheduledBy = $this->fieldValue($entry->content(), self::SCHEDULED_BY_FIELD);
+                    $scheduledBy = $this->schedulerId($entry);
 
                     if ($pages->count() === 0 || $date === '') {
                         // Half-filled row — an editor is still working on it.
@@ -473,6 +473,29 @@ final readonly class ScheduledPublishService
             return new Pages([]);
         }
         return $field->toPages();
+    }
+
+    /**
+     * Resolves an entry's `scheduledBy` field to a user id, tolerant of
+     * both storage shapes: a bare id (as this service's own rowFor()
+     * writes) and a `user://` reference — a plain-string field value can
+     * round-trip into the latter once touched through the Panel's `users`
+     * field widget (confirmed against a live entry: the widget re-serialises
+     * even a single selection as a YAML list of references). Reading that
+     * shape as a scalar throws ("Array to string conversion"), which used
+     * to strand the whole entry — never published, not just missing its
+     * scheduler — since the read happened before the due-check.
+     *
+     * @param StructureObject $entry The queue entry
+     * @return string The scheduler's user id ('' when none recorded/resolvable)
+     */
+    private function schedulerId(StructureObject $entry): string
+    {
+        $field = $entry->content()->get(self::SCHEDULED_BY_FIELD);
+        if (!$field instanceof Field) {
+            return '';
+        }
+        return $field->toUser()?->id() ?? '';
     }
 
     /**
