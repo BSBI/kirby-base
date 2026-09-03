@@ -34,6 +34,8 @@ sections:
         label: Last Tag Sync
         type: date
         time: true
+      scheduledPublish:
+        extends: fields/scheduledPublish
 
 
 

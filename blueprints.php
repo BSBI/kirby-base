@@ -47,6 +47,7 @@ return [
     'blocks/form-select' => __DIR__ . '/blueprints/blocks/form-select.yml',
 
     //field blueprints
+    'fields/scheduledPublish' => __DIR__ . '/blueprints/fields/scheduledPublish.yml',
     'fields/siteName' => __DIR__ . '/blueprints/fields/siteName.yml',
     'fields/siteShortName' => __DIR__ . '/blueprints/fields/siteShortName.yml',
     'fields/mainContent' => __DIR__ . '/blueprints/fields/mainContent.yml',

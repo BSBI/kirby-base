@@ -125,6 +125,60 @@ function handlePageChange($newPage, $oldPage) {
     }
 }
 
+/**
+ * Keeps the site's scheduled-publication queue in step with a page's own
+ * scheduledPublishDate/Time fields (present when its blueprint includes the
+ * Info tab or the scheduled-publish field group).
+ *
+ * Best-effort: a queue failure is logged and never blocks the editor's save.
+ *
+ * @param Kirby\Cms\Page $page The page as saved.
+ * @return void
+ */
+function syncScheduledPublishQueue(Kirby\Cms\Page $page): void
+{
+    try {
+        $content = $page->content();
+        // keys() are lowercase (Kirby normalises content keys); get() below is
+        // case-insensitive, so the camelCase names still resolve.
+        if (!in_array('scheduledpublishdate', $content->keys(), true)) {
+            return;
+        }
+
+        // Scheduling causes publication, so it demands the same permission:
+        // a user who cannot change the page's status must not be able to
+        // touch its queue entry. (The cron's own field-clearing updates run
+        // impersonated as kirby, which always passes — this hook fires
+        // synchronously inside that update call, within the impersonation
+        // closure's scope.)
+        if (!$page->permissions()->can('changeStatus')) {
+            KirbyBaseHelper::writeToLogFile(
+                'scheduledPublish',
+                'Ignored schedule fields on ' . $page->id() . ': user lacks changeStatus permission'
+            );
+            return;
+        }
+
+        $service = new BSBI\WebBase\helpers\ScheduledPublishService(kirby());
+        $dateField = $content->get('scheduledPublishDate');
+        $date = $dateField instanceof Kirby\Content\Field ? trim($dateField->toString()) : '';
+
+        if ($date === '' || $page->isListed()) {
+            $service->remove($page);
+            return;
+        }
+
+        $timeField = $content->get('scheduledPublishTime');
+        $time = $timeField instanceof Kirby\Content\Field ? trim($timeField->toString()) : '';
+        $service->queue($page, $date, $time);
+    } catch (Throwable $e) {
+        KirbyBaseHelper::writeToLogFile(
+            'scheduledPublish',
+            'Failed to sync scheduled-publish queue for page ' . $page->id() . ': ' . $e->getMessage()
+        );
+    }
+}
+
 return [
     'file.create:after' => function (Kirby\Cms\File $file) {
         $filename = $file->filename();
@@ -164,7 +218,9 @@ return [
     },
 
     'page.update:after' => function ($newPage, $oldPage) {
-        return handlePageChange($newPage, $oldPage);
+        $result = handlePageChange($newPage, $oldPage);
+        syncScheduledPublishQueue($result instanceof Kirby\Cms\Page ? $result : $newPage);
+        return $result;
     },
 
     'page.changeTitle:after' => function ($newPage, $oldPage) {
@@ -267,6 +323,18 @@ return [
 
         // Remove from file-link (reverse-link) index
         removeFromFileLinkIndex($page->id());
+
+        // Remove any scheduled-publication queue entry, so the queue never
+        // holds a dangling reference (unresolvable entries are kept forever
+        // by design — see ScheduledPublishService).
+        try {
+            (new BSBI\WebBase\helpers\ScheduledPublishService(kirby()))->remove($page);
+        } catch (Throwable $e) {
+            KirbyBaseHelper::writeToLogFile(
+                'scheduledPublish',
+                'Failed to remove deleted page from scheduled-publish queue: ' . $page->id() . ': ' . $e->getMessage()
+            );
+        }
     },
 
     'page.changeTemplate:after' => function (Kirby\Cms\Page $newPage, Kirby\Cms\Page $oldPage) {

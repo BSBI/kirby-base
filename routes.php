@@ -187,10 +187,28 @@ return [
         'pattern' => 'scheduled-publish',
         'method'  => 'GET|POST',
         'action'  => function () {
-            $helper = new KirbyInternalHelper();
-            $output = $helper->publishScheduledPages();
+            $service = new BSBI\WebBase\helpers\ScheduledPublishService(kirby());
+            // Prefer the Authorization header (query strings end up in access
+            // logs); ?token= stays supported for crons that can only hit a URL.
+            $token = null;
+            $header = kirby()->request()->header('Authorization');
+            if (is_string($header) && str_starts_with($header, 'Bearer ')) {
+                $bearer = trim(substr($header, strlen('Bearer ')));
+                // An empty Bearer value counts as absent, so a stray empty
+                // header can't shadow a correct ?token= fallback.
+                if ($bearer !== '') {
+                    $token = $bearer;
+                }
+            }
+            if ($token === null) {
+                $query = get('token');
+                $token = is_string($query) ? $query : null;
+            }
+            if (!$service->authorise($token)) {
+                return new Kirby\Cms\Response('Forbidden', 'text/plain', 403);
+            }
             return new Kirby\Cms\Response(
-                $output,
+                $service->run(),
                 'text/plain',
                 200
             );

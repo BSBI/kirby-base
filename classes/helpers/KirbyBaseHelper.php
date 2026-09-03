@@ -3721,27 +3721,7 @@ abstract class KirbyBaseHelper
                                  string $subject,
                                  array  $data): bool
     {
-        if (!self::environmentSendsEmail()) {
-            return false;
-        }
-
-        $recipients = str_contains($to, ',') ? Str::split($to) : $to;
-
-        try {
-            $this->kirby->email([
-                'template' => $template,
-                'from' => $from,
-                'replyTo' => $replyTo,
-                'to' => $recipients,
-                'subject' => $subject,
-                'data' => $data
-            ]);
-        } catch (Throwable $error) {
-            $this->writeToLog('errors', $error->getMessage());
-            return false;
-        }
-
-        return true;
+        return (new EmailService($this->kirby))->send($template, $from, $replyTo, $to, $subject, $data);
     }
 
     /**
@@ -5646,91 +5626,14 @@ abstract class KirbyBaseHelper
     }
 
     /**
-     * @return string
-     * @throws InvalidArgumentException
-     * @throws DateMalformedStringException
-     * @throws Throwable
+     * Processes the scheduled-publication queue. Kept for compatibility;
+     * the logic lives in {@see ScheduledPublishService}.
+     *
+     * @return string A short report for the route response
      */
     public function publishScheduledPages(): string
     {
-        try {
-
-            if ($this->isSiteFieldNotEmpty('scheduled')) {
-                $scheduledEntries = $this->getSiteFieldAsStructure('scheduled');
-                $updatedList = [];
-                $publishedCount = 0;
-
-                $this->kirby->impersonate('kirby');
-
-                foreach ($scheduledEntries as $entry) {
-                    // Get the collection of Page objects from the field
-                    /** @noinspection PhpUndefinedMethodInspection */
-                    $pages = $entry->page()->toPages();
-
-                    // If there's at least one page selected
-                    if ($pages->isNotEmpty()) {
-                        /** @noinspection PhpUndefinedMethodInspection */
-                        $scheduledDate = $entry->scheduledPublishDate()->value();
-                        /** @noinspection PhpUndefinedMethodInspection */
-                        $scheduledTime = $entry->scheduledPublishTime()->value();
-
-                        // If a date and time exist for the entry
-                        if ($scheduledDate && $scheduledTime) {
-                            $timezone = new DateTimeZone('Europe/London');
-                            $scheduledDateTime = new DateTime(
-                                $scheduledDate . ' ' . $scheduledTime,
-                                $timezone
-                            );
-                            $currentDateTime = new DateTime('now', $timezone);
-
-                            // The comparison should now work reliably
-                            if ($currentDateTime >= $scheduledDateTime) {
-                                // Loop through each selected page
-                                foreach ($pages as $page) {
-                                    try {
-                                        if ($page) {
-                                            if ($page->isListed()) {
-                                                $this->writeToLog(
-                                                    'scheduledPublish',
-                                                    'Page already published: ' . $page->title()
-                                                    . ' at ' . $currentDateTime->format('Y-m-d H:i:s') . PHP_EOL
-                                                );
-                                                // Continue to the next page in the loop
-                                                continue;
-                                            }
-                                            // If not already listed, change the status
-                                            $page->changeStatus('listed');
-                                            $this->writeToLog('scheduledPublish',
-                                                'Published ' . $page->title() . ' at '
-                                                . $currentDateTime->format('Y-m-d H:i:s') . PHP_EOL
-                                            );
-                                            $publishedCount++;
-                                        }
-                                    } catch (\Exception $e) {
-                                        $this->writeToLog('scheduledPublish',
-                                            'Error: ' . $e->getMessage() . ' - ' . $e->getTraceAsString() . PHP_EOL);
-                                        return 'Error:' . $e->getMessage() . ' - ' . $e->getTraceAsString() . PHP_EOL;
-                                    }
-                                }
-                            } else {
-                                // Keep the entry in the list if it's not ready to be published
-                                $updatedList[] = $entry->content()->toArray();
-                            }
-                        }
-                    }
-                }
-
-                // Encode and save the new, updated list back to the site file
-                $this->site->update([
-                    'scheduled' => Yaml::encode($updatedList),
-                ]);
-
-                return 'Scheduled pages processed. Published ' . $publishedCount . ' pages.';
-            }
-            return '';
-        } catch (Throwable $e) {
-            return 'Error: ' . $e->getMessage() . ' - ' . $e->getTraceAsString() . PHP_EOL;
-        }
+        return (new ScheduledPublishService($this->kirby))->run();
     }
 
     /**
