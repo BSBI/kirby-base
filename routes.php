@@ -187,10 +187,13 @@ return [
         'pattern' => 'scheduled-publish',
         'method'  => 'GET|POST',
         'action'  => function () {
-            $helper = new KirbyInternalHelper();
-            $output = $helper->publishScheduledPages();
+            $service = new BSBI\WebBase\helpers\ScheduledPublishService(kirby());
+            $token = get('token');
+            if (!$service->authorise(is_string($token) ? $token : null)) {
+                return new Kirby\Cms\Response('Forbidden', 'text/plain', 403);
+            }
             return new Kirby\Cms\Response(
-                $output,
+                $service->run(),
                 'text/plain',
                 200
             );

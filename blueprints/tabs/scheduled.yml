@@ -4,7 +4,10 @@ fields:
   scheduled:
     type: structure
     label: Pages for scheduled publication.
-    help: This will happen automatically.  Note that the schedule is checked every five minutes.
+    help: >
+      This will happen automatically. Note that the schedule is checked every
+      five minutes. Pages given their own scheduled publish date (on the
+      page's Info tab) appear here automatically.
     fields:
       page:
         label: Page(s)
@@ -18,6 +21,8 @@ fields:
         type: time
     columns:
       page:
-        width: 3/4
-      scheduled_publish:
+        width: 1/2
+      scheduledPublishDate:
+        width: 1/4
+      scheduledPublishTime:
         width: 1/4

@@ -1,0 +1,13 @@
+type: group
+fields:
+  scheduledPublishDate:
+    label: Scheduled Publish Date
+    type: date
+    help: >
+      Set a date (and optionally a time) to publish this page automatically.
+      Only applies while the page is not yet published; the schedule is
+      checked every five minutes.
+  scheduledPublishTime:
+    label: Scheduled Publish Time
+    type: time
+    help: Leave blank to publish at midnight on the scheduled date.
