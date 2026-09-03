@@ -48,6 +48,7 @@ echo '<?xml-stylesheet href="/assets/css/pretty-feed-v3.xsl" type="text/xsl"?>' 
         <?=esc($itemDescription, 'xml')?>
       </description>
       <pubDate><?=date('r', $post->publishedDate()->toDate())?></pubDate>
+      <guid isPermaLink="true"><?=esc((string)$post->url(), 'xml')?></guid>
     </item>
 <?php endforeach ?>
   </channel>

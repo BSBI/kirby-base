@@ -99,6 +99,10 @@ final class RssSnippetTest extends TestCase
             "Sedges & rushes of\u{00A0}Britain",
             trim((string)$doc->channel->item[0]->description)
         );
+
+        // feed readers de-duplicate on guid; the page URL is a permalink
+        $this->assertSame((string)$doc->channel->item[0]->link, (string)$doc->channel->item[0]->guid);
+        $this->assertSame('true', (string)$doc->channel->item[0]->guid['isPermaLink']);
     }
 
     public function testSelfLinkQueryStringIsEscapedInAttribute(): void
