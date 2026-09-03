@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace BSBI\WebBase\Tests\Unit\helpers;
 
@@ -394,6 +394,21 @@ final class ScheduledPublishServiceTest extends TestCase
             ->willReturn(true);
 
         $this->service($emailService)->run(self::$now);
+    }
+
+    public function testFailedSendIsLogged(): void
+    {
+        $page = $this->createDraft('email-failed-send-page');
+        $this->setQueue([$this->entry($page, '2026-09-03', '11:00:00', 'editor-a')]);
+
+        $emailService = $this->createStub(EmailSender::class);
+        $emailService->method('send')->willReturn(false);
+
+        $this->service($emailService)->run(self::$now);
+
+        $logFile = self::$kirby->root('logs') . '/scheduledPublish.log';
+        $this->assertFileExists($logFile);
+        $this->assertStringContainsString('Confirmation email not sent', file_get_contents($logFile));
     }
 
     public function testNoEmailSentWhenTheEntryHasNoKnownScheduler(): void

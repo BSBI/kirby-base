@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types = 1);
+declare(strict_types=1);
 
 namespace BSBI\WebBase\helpers;
 
@@ -301,7 +301,7 @@ final readonly class ScheduledPublishService
             return;
         }
 
-        $this->emailService->send(
+        $sent = $this->emailService->send(
             template: self::CONFIRMATION_EMAIL_TEMPLATE,
             from: $from,
             replyTo: $from,
@@ -313,6 +313,14 @@ final readonly class ScheduledPublishService
                 'publishedAt' => $now->format('Y-m-d H:i:s'),
             ],
         );
+
+        if (!$sent) {
+            // Covers both a rejection and a send suppressed by the
+            // environment (e.g. local/dev) — EmailService already logs a
+            // thrown mailer error; this line is what makes the outcome
+            // visible here too, matching every other failure path above.
+            $this->log('Confirmation email not sent for ' . $page->title() . ' (to ' . $email . ')');
+        }
     }
 
     /**
