@@ -7,7 +7,10 @@ fields:
     help: >
       This will happen automatically. Note that the schedule is checked every
       five minutes. Pages given their own scheduled publish date (on the
-      page's Info tab) appear here automatically.
+      page's Info tab) appear here automatically, with the editor who set it
+      recorded as its scheduler. A row added here directly has no scheduler
+      recorded — its "Scheduled By" column stays blank, and no confirmation
+      email is sent when it publishes.
     fields:
       page:
         label: Page(s)
@@ -19,10 +22,47 @@ fields:
       scheduledPublishTime:
         label: Publish Time
         type: time
+      scheduledBy:
+        label: Scheduled By
+        type: users
+        readonly: true
     columns:
       page:
-        width: 1/2
+        width: 2/5
       scheduledPublishDate:
-        width: 1/4
+        width: 1/5
       scheduledPublishTime:
+        width: 1/5
+      scheduledBy:
+        width: 1/5
+  scheduledPublishHistory:
+    type: structure
+    label: Recently published (last 30 days)
+    help: >
+      Pages this automatically publishes, kept for 30 days as a record —
+      pruned automatically, not editable here.
+    disabled: true
+    fields:
+      page:
+        label: Page
+        type: pages
+        status: all
+      title:
+        label: Title
+        type: text
+      scheduledBy:
+        label: Scheduled By
+        type: users
+      publishedAt:
+        label: Published At
+        type: date
+        time: true
+    columns:
+      page:
+        width: 1/4
+      title:
+        width: 1/4
+      scheduledBy:
+        width: 1/4
+      publishedAt:
         width: 1/4

@@ -3721,27 +3721,7 @@ abstract class KirbyBaseHelper
                                  string $subject,
                                  array  $data): bool
     {
-        if (!self::environmentSendsEmail()) {
-            return false;
-        }
-
-        $recipients = str_contains($to, ',') ? Str::split($to) : $to;
-
-        try {
-            $this->kirby->email([
-                'template' => $template,
-                'from' => $from,
-                'replyTo' => $replyTo,
-                'to' => $recipients,
-                'subject' => $subject,
-                'data' => $data
-            ]);
-        } catch (Throwable $error) {
-            $this->writeToLog('errors', $error->getMessage());
-            return false;
-        }
-
-        return true;
+        return (new EmailService($this->kirby))->send($template, $from, $replyTo, $to, $subject, $data);
     }
 
     /**
