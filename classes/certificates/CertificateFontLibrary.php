@@ -32,7 +32,10 @@ final readonly class CertificateFontLibrary
      *
      * The family is validated to letters and digits before touching the
      * filesystem: it originates in Panel-edited content, and a family is only
-     * ever a lookup key, never a path.
+     * ever a lookup key, never a path. Today the consuming blueprints offer a
+     * closed select, so this is belt-and-braces rather than the primary
+     * control — kept deliberately, against a future free-text field or a
+     * hand-edited content file. Do not remove it as dead code.
      *
      * @param string $family The TCPDF family name
      * @return string The absolute path to the definition file, or '' when the
