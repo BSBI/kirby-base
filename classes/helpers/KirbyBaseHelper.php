@@ -5190,6 +5190,14 @@ abstract class KirbyBaseHelper
      */
     public function isPageCacheable(Page $page): bool
     {
+        // Never cache a draft. A draft renders only for an authenticated
+        // editor previewing it; a cached copy — the CDN via a public
+        // Cache-Control header, or the shared pages cache — would serve the
+        // unpublished content to anonymous visitors, bypassing that gate.
+        if ($page->isDraft()) {
+            return false;
+        }
+
         $excludedTemplates = option('excludeTemplatesFromCache', []);
 
         // Merge with hardcoded non-cacheable templates
