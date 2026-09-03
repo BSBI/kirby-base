@@ -188,8 +188,18 @@ return [
         'method'  => 'GET|POST',
         'action'  => function () {
             $service = new BSBI\WebBase\helpers\ScheduledPublishService(kirby());
-            $token = get('token');
-            if (!$service->authorise(is_string($token) ? $token : null)) {
+            // Prefer the Authorization header (query strings end up in access
+            // logs); ?token= stays supported for crons that can only hit a URL.
+            $token = null;
+            $header = kirby()->request()->header('Authorization');
+            if (is_string($header) && str_starts_with($header, 'Bearer ')) {
+                $token = substr($header, strlen('Bearer '));
+            }
+            if ($token === null) {
+                $query = get('token');
+                $token = is_string($query) ? $query : null;
+            }
+            if (!$service->authorise($token)) {
                 return new Kirby\Cms\Response('Forbidden', 'text/plain', 403);
             }
             return new Kirby\Cms\Response(

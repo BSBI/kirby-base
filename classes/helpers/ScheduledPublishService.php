@@ -81,7 +81,7 @@ final readonly class ScheduledPublishService
                 return '';
             }
 
-            $kept = [];
+            $resolved = [];
             $publishedCount = 0;
 
             foreach ($entries as $entry) {
@@ -92,27 +92,24 @@ final readonly class ScheduledPublishService
 
                     if ($pages->count() === 0 || $date === '') {
                         // Half-filled row — an editor is still working on it.
-                        $kept[] = $entry->content()->toArray();
                         continue;
                     }
 
-                    $due = new DateTimeImmutable($date . ' ' . ($time !== '' ? $time : '00:00'), $timezone);
+                    $due = new DateTimeImmutable($date . ' ' . ($time !== '' ? $time : '00:00:00'), $timezone);
                     if ($now < $due) {
-                        $kept[] = $entry->content()->toArray();
                         continue;
                     }
 
                     $publishedCount += $this->publishPages($pages, $now);
+                    $resolved[] = $entry->content()->toArray();
                 } catch (Throwable $e) {
-                    // Keep the entry for retry; a bad row must not strand the rest.
-                    $kept[] = $entry->content()->toArray();
+                    // The entry stays queued for retry (only resolved rows are
+                    // removed); a bad row must not strand the rest.
                     $this->log('Error processing entry: ' . $e->getMessage());
                 }
             }
 
-            if (count($kept) !== $entries->count()) {
-                $this->writeQueue($kept);
-            }
+            $this->removeResolved($resolved);
 
             return 'Scheduled pages processed. Published ' . $publishedCount . ' pages.';
         } catch (Throwable $e) {
@@ -234,6 +231,40 @@ final readonly class ScheduledPublishService
             self::DATE_FIELD => '',
             self::TIME_FIELD => '',
         ]);
+    }
+
+    /**
+     * Removes the resolved rows from the queue, re-reading it first so that
+     * entries added while the run was processing (by an editor, or by the
+     * page hooks the run itself triggers) are never clobbered by a write
+     * from the run's stale snapshot. Skips the write entirely when nothing
+     * needs removing — including when a hook already removed the row.
+     *
+     * @param array<int, array<string, mixed>> $resolved Rows that left the queue this run
+     */
+    private function removeResolved(array $resolved): void
+    {
+        if ($resolved === []) {
+            return;
+        }
+
+        $entries = $this->queueEntries();
+        if ($entries === null) {
+            return;
+        }
+
+        $rows = [];
+        foreach ($entries as $entry) {
+            $row = $entry->content()->toArray();
+            if (in_array($row, $resolved)) {
+                continue;
+            }
+            $rows[] = $row;
+        }
+
+        if (count($rows) !== $entries->count()) {
+            $this->writeQueue($rows);
+        }
     }
 
     /**

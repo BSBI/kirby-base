@@ -139,7 +139,21 @@ function syncScheduledPublishQueue(Kirby\Cms\Page $page): void
 {
     try {
         $content = $page->content();
+        // keys() are lowercase (Kirby normalises content keys); get() below is
+        // case-insensitive, so the camelCase names still resolve.
         if (!in_array('scheduledpublishdate', $content->keys(), true)) {
+            return;
+        }
+
+        // Scheduling causes publication, so it demands the same permission:
+        // a user who cannot change the page's status must not be able to
+        // touch its queue entry. (The cron's own field-clearing updates run
+        // impersonated as kirby, which always passes.)
+        if (!$page->permissions()->can('changeStatus')) {
+            KirbyBaseHelper::writeToLogFile(
+                'scheduledPublish',
+                'Ignored schedule fields on ' . $page->id() . ': user lacks changeStatus permission'
+            );
             return;
         }
 
