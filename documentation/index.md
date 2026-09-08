@@ -31,7 +31,7 @@ as before, so consuming sites require no changes.
 | `SearchService`          | Search query building, SQLite FTS5 search, analytics, and term highlighting   |
 | `CollectionFilterService`| Filtering Kirby `Collection` and `Structure` objects                          |
 | `UserService`            | User model building, permission checks, and user mutation                     |
-| `UuidResolver`           | Resolving `file://`/`page://` references with a short-lived miss list, so a dangling reference does not walk the whole site on every request (bsbi-web#732); misses are logged to `logs/uuid-misses.log`. Block snippets and `KirbyFieldReader` use it; site snippets can call `UuidResolver::instance()->fileFromField($field)`. Pair with the **UUID cache** and **Dangling references** maintenance tasks after copying content in. Not covered: UUIDs inside Kirbytext tags (`(link: page://…)`), which core resolves; the audit lists those too. |
+| `UuidResolver`           | Resolving `file://`/`page://` references with a short-lived miss list (one hour, or the `uuidResolver.missTtlSeconds` option), so a dangling reference does not walk the whole site on every request (bsbi-web#732); misses are logged to `logs/uuid-misses.log`. Block snippets and `KirbyFieldReader` use it; site snippets can call `UuidResolver::instance()->fileFromField($field)`. Pair with the **UUID cache** and **Dangling references** maintenance tasks after copying content in. Not covered: UUIDs inside Kirbytext tags (`(link: page://…)`), which core resolves; the audit lists those too. |
 
 You can instantiate the services directly in your own code if you want to use them
 without going through `KirbyBaseHelper`:

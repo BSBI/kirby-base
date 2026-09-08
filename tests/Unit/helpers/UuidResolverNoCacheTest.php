@@ -22,8 +22,27 @@ final class UuidResolverNoCacheTest extends TestCase
     {
         self::$kirby = KirbyTestEnvironment::bootWithContent(
             dirname(__DIR__, 2) . '/fixtures/uuid-content',
-            'kirby-base-uuid-resolver-nocache'
+            'kirby-base-uuid-resolver-nocache',
+            ['options' => ['uuidResolver' => ['missTtlSeconds' => 90]]]
         );
+    }
+
+    public function testMissTtlComesFromTheOption(): void
+    {
+        self::assertSame(90, (new UuidResolver(self::$kirby))->missTtlSeconds());
+    }
+
+    public function testNonPositiveOptionFallsBackToTheDefault(): void
+    {
+        // Cloning the app registers Kirby's error/exception handlers; pop them again so
+        // PHPUnit does not flag the test as risky.
+        $kirby = self::$kirby->clone(['options' => ['uuidResolver' => ['missTtlSeconds' => 0]]]);
+        try {
+            self::assertSame(UuidResolver::DEFAULT_MISS_TTL_SECONDS, (new UuidResolver($kirby))->missTtlSeconds());
+        } finally {
+            restore_error_handler();
+            restore_exception_handler();
+        }
     }
 
     public function testResolvesWithoutRememberingMisses(): void

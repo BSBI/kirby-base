@@ -25,18 +25,22 @@ use Throwable;
  * with nothing in the logs.
  *
  * This resolver keeps a short-lived list of misses in the site cache
- * (`option('cacheName')`, one entry). A UUID already in Kirby's cache resolves
- * exactly as core does; a recorded miss returns null without touching the
- * index; anything else goes through core once and, if that finds nothing, is
- * recorded and logged once per TTL window to `logs/uuid-misses.log`.
+ * (`option('cacheName')`, one entry; TTL one hour, or `uuidResolver.missTtlSeconds`).
+ * A UUID already in Kirby's cache resolves exactly as core does; a recorded miss
+ * returns null without touching the index; anything else goes through core once
+ * and, if that finds nothing, is recorded and logged once per TTL window to
+ * `logs/uuid-misses.log`.
  *
  * Plain ids and paths (`home/pic.svg`, `about/team`) are passed straight to
  * core; they are cheap and never recorded.
  */
 final class UuidResolver
 {
-    /** How long a miss is remembered, in seconds. */
-    public const int MISS_TTL_SECONDS = 600;
+    /** How long a miss is remembered when the `uuidResolver.missTtlSeconds` option is unset. */
+    public const int DEFAULT_MISS_TTL_SECONDS = 3600;
+
+    /** Config option overriding the miss TTL, in seconds (a positive integer). */
+    public const string MISS_TTL_OPTION = 'uuidResolver.missTtlSeconds';
 
     /** The single cache key holding the miss list (`uuid => expiresAt`). */
     public const string MISS_CACHE_KEY = 'uuid-misses';
@@ -230,13 +234,26 @@ final class UuidResolver
      * rare by design, so this is accepted over a per-UUID key scheme.
      *
      * @param string $uuid The full reference, e.g. `file://abc123`.
-     * @param int $ttlSeconds How long to remember it; a negative value records an already-expired entry (tests).
+     * @param int|null $ttlSeconds How long to remember it; null uses the configured TTL, a negative value records an already-expired entry (tests).
      */
-    public function recordMiss(string $uuid, int $ttlSeconds = self::MISS_TTL_SECONDS): void
+    public function recordMiss(string $uuid, ?int $ttlSeconds = null): void
     {
         $misses = $this->misses();
-        $misses[$uuid] = time() + $ttlSeconds;
+        $misses[$uuid] = time() + ($ttlSeconds ?? $this->missTtlSeconds());
         $this->saveMisses($misses);
+    }
+
+    /**
+     * How long a miss is remembered, in seconds: the `uuidResolver.missTtlSeconds`
+     * option when it is a positive integer, otherwise one hour. The hooks clear the
+     * list on every Panel create/rename/move/duplicate, so the TTL only bounds how
+     * long a file added by filesystem copy can stay hidden.
+     */
+    public function missTtlSeconds(): int
+    {
+        $configured = $this->kirby->option(self::MISS_TTL_OPTION);
+
+        return is_int($configured) && $configured > 0 ? $configured : self::DEFAULT_MISS_TTL_SECONDS;
     }
 
     /**
@@ -282,7 +299,7 @@ final class UuidResolver
             $this->recordMiss($uuid);
             KirbyBaseHelper::writeToLogFile(
                 self::LOG_FILE,
-                'No model for ' . $uuid . ' — recorded as a miss for ' . self::MISS_TTL_SECONDS . 's'
+                'No model for ' . $uuid . ' — recorded as a miss for ' . $this->missTtlSeconds() . 's'
             );
         }
 
@@ -353,7 +370,7 @@ final class UuidResolver
                 $this->cache()->remove(self::MISS_CACHE_KEY);
             } else {
                 // cache-level expiry (minutes) is a backstop; entries carry their own expiry
-                $this->cache()->set(self::MISS_CACHE_KEY, $misses, (int) ceil(self::MISS_TTL_SECONDS / 60) + 1);
+                $this->cache()->set(self::MISS_CACHE_KEY, $misses, (int) ceil($this->missTtlSeconds() / 60) + 1);
             }
         } catch (Throwable) {
             // an unwritable cache degrades to core behaviour

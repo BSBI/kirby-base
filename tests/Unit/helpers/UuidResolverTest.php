@@ -114,6 +114,12 @@ final class UuidResolverTest extends TestCase
         self::assertInstanceOf(File::class, $resolver->file('file://fileaaaaaaaaaaaa'));
     }
 
+    public function testMissTtlDefaultsToAnHour(): void
+    {
+        self::assertSame(3600, $this->resolver()->missTtlSeconds());
+        self::assertSame(3600, UuidResolver::DEFAULT_MISS_TTL_SECONDS);
+    }
+
     public function testPlainIdsBypassTheMissList(): void
     {
         $resolver = $this->resolver();
