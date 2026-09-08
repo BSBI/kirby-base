@@ -14,7 +14,9 @@ use Kirby\Cms\StructureObject;
  * its own links; wrapping the card in `<a>` would nest anchors, which browsers
  * repair by splitting the outer one (bsbi-web#727). Inline links in the body
  * need `position: relative; z-index: 2` from the site's CSS to sit above the
- * stretched link's overlay.
+ * stretched link's overlay. The title link drops the underline on purpose: the
+ * card as a whole is the affordance, shown by the site's hover/focus shadow on
+ * `.card`, and the link keeps its colour and focus ring.
  *
  * @var Block $block
  */
@@ -51,9 +53,9 @@ $colClass = match ($columns) {
                 <?php endif ?>
                 <div class="card-body p-4">
                     <?php if ($url): ?>
-                        <h3 class="card-title"><a href="<?= esc($url) ?>" class="stretched-link text-decoration-none"><?= $title ?></a></h3>
+                        <h3 class="card-title"><a href="<?= esc($url) ?>" class="stretched-link text-decoration-none"><?= esc($title) ?></a></h3>
                     <?php elseif ($title !== null): ?>
-                        <h3 class="card-title"><?= $title ?></h3>
+                        <h3 class="card-title"><?= esc($title) ?></h3>
                     <?php endif ?>
                     <?php if ($card->text()->isNotEmpty()): ?>
                         <?= $card->text()->kt() ?>

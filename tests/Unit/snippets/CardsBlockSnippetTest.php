@@ -156,6 +156,21 @@ final class CardsBlockSnippetTest extends TestCase
         self::assertStringNotContainsString('b="2"', $html);
     }
 
+    public function testTitleAndUrlFallbackAreEscapedAsText(): void
+    {
+        $html = $this->render([
+            'cards' => [
+                ['title' => 'Sedges & <rushes>', 'text' => '', 'url' => ''],
+                ['title' => '', 'text' => '', 'url' => 'https://example.test/?a=1&b=<2>'],
+            ],
+        ]);
+
+        self::assertStringContainsString('<h3 class="card-title">Sedges &amp; &lt;rushes&gt;</h3>', $html);
+        self::assertStringContainsString('>https://example.test/?a=1&amp;b=&lt;2&gt;</a>', $html);
+        self::assertStringNotContainsString('<rushes>', $html);
+        self::assertStringNotContainsString('<2>', $html);
+    }
+
     public function testEmptyCardsRenderNothing(): void
     {
         self::assertSame('', $this->render(['title' => 'Nothing to see', 'cards' => []]));
