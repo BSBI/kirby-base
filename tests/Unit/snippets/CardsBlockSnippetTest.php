@@ -10,22 +10,88 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Tests for the `blocks/cards` snippet (bsbi-web#727).
+ * Tests for the `blocks/cards` snippet (bsbi-web#727, cropped images follow-up).
  *
  * A linked card used to wrap the whole card in an anchor. The description is
  * Kirbytext, so an editor's inline link produced an anchor inside an anchor;
  * browsers repair that by splitting the outer anchor, which broke the layout
  * (the image shrank to a thumbnail) and announced the card link three times.
  * The card is now a `<div>` whose title carries the link as a stretched link.
+ *
+ * Card images go through ImageService and the shared `base/image` snippet:
+ * cropped to 4:3 by default (with the panel srcset), or a width-only thumbnail
+ * when the block's `crop` toggle is off. The image cases use a real PNG so
+ * thumb()/srcset() run for real; they are skipped when GD is unavailable.
  */
 final class CardsBlockSnippetTest extends TestCase
 {
+    private const string IMAGE_ID = 'photos/photo.png';
+
     private static KirbyContentBuilder $content;
+
+    private static bool $hasImage = false;
 
     public static function setUpBeforeClass(): void
     {
-        KirbyTestEnvironment::boot('kirby-base-cards-snippet-' . uniqid());
+        $fixture = sys_get_temp_dir() . '/kirby-base-cards-fixture-' . uniqid();
+        mkdir($fixture . '/photos', 0777, true);
+        file_put_contents($fixture . '/site.txt', "Title: Test Site\n");
+        file_put_contents($fixture . '/photos/photos.txt', "Title: Photos\n");
+        file_put_contents(
+            $fixture . '/photos/logo.svg',
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10"/></svg>'
+        );
+
+        // A real 3:2 PNG: a 4:3 crop and a width-only resize to 400 wide then
+        // differ in height (300 vs 267), so the two paths are distinguishable.
+        if (function_exists('imagepng') && function_exists('imagewebp')) {
+            $im = imagecreatetruecolor(900, 600);
+            imagepng($im, $fixture . '/photos/photo.png');
+            imagedestroy($im);
+            self::$hasImage = true;
+        }
+
+        KirbyTestEnvironment::bootWithContent($fixture, 'kirby-base-cards-snippet', [
+            'snippets' => [
+                'base/image' => dirname(__DIR__, 3) . '/snippets/image.php',
+            ],
+            'options' => [
+                'thumbs' => [
+                    'srcsets' => [
+                        'panel' => [
+                            '400w' => ['width' => 400, 'height' => 300, 'crop' => true],
+                            '800w' => ['width' => 800, 'height' => 600, 'crop' => true],
+                        ],
+                        'panel-webp' => [
+                            '400w' => ['width' => 400, 'height' => 300, 'format' => 'webp', 'crop' => true],
+                            '800w' => ['width' => 800, 'height' => 600, 'format' => 'webp', 'crop' => true],
+                        ],
+                        'default' => [
+                            '300w' => ['width' => 300],
+                            '600w' => ['width' => 600],
+                        ],
+                        'default-webp' => [
+                            '300w' => ['width' => 300, 'format' => 'webp'],
+                            '600w' => ['width' => 600, 'format' => 'webp'],
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+        self::removeDir($fixture);
         self::$content = new KirbyContentBuilder();
+    }
+
+    private static function removeDir(string $dir): void
+    {
+        foreach (scandir($dir) ?: [] as $entry) {
+            if ($entry === '.' || $entry === '..') {
+                continue;
+            }
+            $path = $dir . '/' . $entry;
+            is_dir($path) ? self::removeDir($path) : unlink($path);
+        }
+        rmdir($dir);
     }
 
     /**
@@ -50,6 +116,44 @@ final class CardsBlockSnippetTest extends TestCase
         };
 
         return $renderer(dirname(__DIR__, 3) . '/snippets/blocks/cards.php', ['block' => $block]);
+    }
+
+    /**
+     * Renders one card carrying the fixture image, with any extra block fields.
+     *
+     * @param array<string, mixed> $blockFields Block-level fields (`crop`, `columns`).
+     */
+    private function renderImageCard(array $blockFields = []): string
+    {
+        if (!self::$hasImage) {
+            $this->markTestSkipped('GD/WebP toolchain unavailable for real thumbnail generation');
+        }
+
+        return $this->render($blockFields + [
+            'cards' => [[
+                'title' => 'With image',
+                'text'  => '',
+                'url'   => 'https://example.test/with-image',
+                'image' => [self::IMAGE_ID],
+            ]],
+        ]);
+    }
+
+    /**
+     * The `<img>` tag's attributes, keyed by name.
+     *
+     * @return array<string, string>
+     */
+    private function imgAttributes(string $html): array
+    {
+        self::assertSame(1, preg_match('/<img\b([^>]*)>/s', $html, $m), "No <img> in:\n$html");
+        preg_match_all('/([a-z-]+)="([^"]*)"/', $m[1], $pairs, PREG_SET_ORDER);
+        $attributes = [];
+        foreach ($pairs as [, $name, $value]) {
+            $attributes[$name] = $value;
+        }
+
+        return $attributes;
     }
 
     /**
@@ -220,4 +324,117 @@ final class CardsBlockSnippetTest extends TestCase
 
         self::assertStringContainsString('<h2 class="text-center mb-4">Talks &amp; &lt;walks&gt;</h2>', $html);
     }
+
+    // region images
+
+    public function testCardWithoutImageRendersNoFigure(): void
+    {
+        $html = $this->render([
+            'cards' => [['title' => 'A', 'text' => '', 'url' => '', 'image' => []]],
+        ]);
+
+        self::assertStringNotContainsString('<figure', $html);
+        self::assertStringNotContainsString('<img', $html);
+    }
+
+    public function testDanglingImageReferenceRendersNoFigure(): void
+    {
+        $html = $this->render([
+            'cards' => [['title' => 'A', 'text' => '', 'url' => '', 'image' => ['file://no-such-file']]],
+        ]);
+
+        self::assertStringNotContainsString('<figure', $html);
+        self::assertStringNotContainsString('<img', $html);
+        self::assertStringContainsString('<h3 class="card-title">A</h3>', $html);
+    }
+
+    public function testCroppedCardServesA4x3ThumbnailWithThePanelSrcset(): void
+    {
+        $html = $this->renderImageCard(['crop' => 'true']);
+        $img  = $this->imgAttributes($html);
+
+        self::assertStringContainsString('<figure>', $html);
+        self::assertStringContainsString('<picture>', $html);
+        self::assertStringContainsString('<source type="image/webp"', $html);
+        self::assertSame('card-img-top img-fix-size img-fix-size--four-three', $img['class']);
+        self::assertSame('400', $img['width']);
+        self::assertSame('300', $img['height']);
+        self::assertMatchesRegularExpression('#/photo-400x300-crop[^"]*\.png$#', $img['src']);
+        self::assertStringContainsString('photo-400x300-crop', $img['srcset']);
+        self::assertStringContainsString(' 800w', $img['srcset']);
+        self::assertStringNotContainsString('photos/photo.png"', $html, 'the original upload must not be served');
+    }
+
+    public function testCropIsOnWhenTheBlockPredatesTheToggle(): void
+    {
+        $img = $this->imgAttributes($this->renderImageCard());
+
+        self::assertSame('card-img-top img-fix-size img-fix-size--four-three', $img['class']);
+        self::assertSame('300', $img['height']);
+        self::assertMatchesRegularExpression('#/photo-400x300-crop[^"]*\.png$#', $img['src']);
+    }
+
+    public function testUncroppedCardServesAWidthOnlyThumbnail(): void
+    {
+        $html = $this->renderImageCard(['crop' => 'false']);
+        $img  = $this->imgAttributes($html);
+
+        self::assertSame('card-img-top', $img['class']);
+        self::assertStringNotContainsString('img-fix-size', $html);
+        self::assertSame('400', $img['width']);
+        self::assertArrayNotHasKey('height', $img, 'no fixed height when the image keeps its own ratio');
+        self::assertMatchesRegularExpression('#/photo-400x(-[^"/]*)?\.png$#', $img['src'], 'a width-only thumbnail');
+        self::assertStringNotContainsString('-crop', $img['src']);
+        self::assertStringContainsString(' 600w', $img['srcset']);
+        self::assertStringNotContainsString('-crop', $img['srcset']);
+        self::assertStringNotContainsString('photos/photo.png"', $html, 'the original upload must not be served');
+    }
+
+    /**
+     * @return array<string, array{string, string}>
+     */
+    public static function sizesProvider(): array
+    {
+        return [
+            'two'     => ['2 columns', '(min-width: 768px) 50vw, 100vw'],
+            'three'   => ['3 columns', '(min-width: 992px) 33vw, (min-width: 768px) 50vw, 100vw'],
+            'four'    => ['4', '(min-width: 992px) 25vw, (min-width: 768px) 33vw, 50vw'],
+            'default' => ['', '(min-width: 992px) 33vw, (min-width: 768px) 50vw, 100vw'],
+        ];
+    }
+
+    #[DataProvider('sizesProvider')]
+    public function testSizesFollowTheColumnCount(string $columns, string $expectedSizes): void
+    {
+        $img = $this->imgAttributes($this->renderImageCard(['columns' => $columns]));
+
+        self::assertSame($expectedSizes, $img['sizes']);
+    }
+
+    public function testSvgLogoIsServedAsItIs(): void
+    {
+        $html = $this->render([
+            'cards' => [[
+                'title' => 'Logo',
+                'text'  => '',
+                'url'   => '',
+                'image' => ['photos/logo.svg'],
+            ]],
+        ]);
+        $img = $this->imgAttributes($html);
+
+        self::assertMatchesRegularExpression('#/logo\.svg$#', $img['src']);
+        self::assertStringNotContainsString('logo-400x', $html, 'no thumbnail is made of a vector');
+        self::assertSame('card-img-top img-fix-size img-fix-size--four-three', $img['class']);
+        self::assertArrayNotHasKey('width', $img);
+    }
+
+    public function testImageAltComesFromTheFile(): void
+    {
+        $img = $this->imgAttributes($this->renderImageCard());
+
+        self::assertArrayHasKey('alt', $img, 'an <img> always carries alt, empty when the file has none');
+    }
+
+    // endregion
 }

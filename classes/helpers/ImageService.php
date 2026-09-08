@@ -10,6 +10,7 @@ use BSBI\WebBase\models\ImageList;
 use BSBI\WebBase\models\ImageSizes;
 use BSBI\WebBase\models\ImageType;
 use Exception;
+use Kirby\Cms\App;
 use Kirby\Cms\Block;
 use Kirby\Cms\File;
 use Kirby\Cms\Page;
@@ -23,8 +24,14 @@ use Throwable;
  * Handles image processing (thumbnails, srcsets, WebP/AVIF), document URL resolution,
  * and file metadata extraction.
  */
-final readonly class ImageService
+final class ImageService
 {
+    /** @var self|null The shared instance, one per Kirby App (see instance()) */
+    private static ?self $instance = null;
+
+    /** @var App|null The App the shared instance was built for */
+    private static ?App $instanceApp = null;
+
     /**
      * Minimum SVG file size (bytes) before we inspect it for an embedded raster.
      * Genuine icon/vector SVGs sit well under this; only bloated raster-wrapped
@@ -37,9 +44,27 @@ final readonly class ImageService
      * @param SvgRasterExtractor $svgRasterExtractor Pulls embedded bitmaps out of raster-wrapped SVGs
      */
     public function __construct(
-        private KirbyFieldReader $fieldReader,
-        private SvgRasterExtractor $svgRasterExtractor = new SvgRasterExtractor()
+        private readonly KirbyFieldReader $fieldReader,
+        private readonly SvgRasterExtractor $svgRasterExtractor = new SvgRasterExtractor()
     ) {
+    }
+
+    /**
+     * A shared instance for the current app, for snippets that have no helper
+     * to hand (block snippets receive only `$block`). Built once per App and
+     * replaced when a different App is current, as UuidResolver::instance() does.
+     *
+     * @return self The shared image service.
+     */
+    public static function instance(): self
+    {
+        $kirby = App::instance();
+        if (self::$instance === null || self::$instanceApp !== $kirby) {
+            self::$instance = new self(new KirbyFieldReader($kirby, $kirby->site()));
+            self::$instanceApp = $kirby;
+        }
+
+        return self::$instance;
     }
 
     // region IMAGES
