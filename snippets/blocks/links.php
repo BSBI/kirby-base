@@ -18,7 +18,7 @@ use Kirby\Cms\Site;
 
 <?php if ($block->links()->isNotEmpty()) : ?>
 <ul>
-    <?php foreach ($block->links()->toPages() as $link) : ?>
+    <?php foreach (\BSBI\WebBase\helpers\UuidResolver::instance()->pagesFromField($block->links()) as $link) : ?>
     <li><a href="<?=$link->url()?>"><?=$link->title()?></a></li>
     <?php endforeach?>
 </ul>

@@ -1,0 +1,28 @@
+Title: Home
+
+----
+
+Goodimage: - file://fileaaaaaaaaaaaa
+
+----
+
+Badimage: - file://nosuchfile000000
+
+----
+
+Mixedimages:
+
+- file://fileaaaaaaaaaaaa
+- file://nosuchfile000000
+
+----
+
+Goodpage: - page://pagebbbbbbbbbbbb
+
+----
+
+Badpage: - page://nosuchpage000000
+
+----
+
+Uuid: pageaaaaaaaaaaaa

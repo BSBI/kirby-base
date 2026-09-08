@@ -6,6 +6,7 @@ use BSBI\WebBase\helpers\ImageConversionHelper;
 use BSBI\WebBase\helpers\KirbyBaseHelper;
 use BSBI\WebBase\helpers\KirbyInternalHelper;
 use BSBI\WebBase\helpers\SearchIndexHelper;
+use BSBI\WebBase\helpers\UuidResolver;
 use Kirby\Filesystem\F;
 
 /**
@@ -195,8 +196,22 @@ function syncScheduledPublishQueue(Kirby\Cms\Page $page): void
     }
 }
 
+/**
+ * Drops UuidResolver's remembered misses so a file or page that has just been
+ * created, renamed or moved resolves at once (bsbi-web#732). Best-effort.
+ */
+function forgetUuidMisses(string $context): void
+{
+    try {
+        UuidResolver::instance()->forgetMisses();
+    } catch (Throwable $e) {
+        KirbyBaseHelper::writeToLogFile('uuid-misses', 'Failed to clear the miss list after ' . $context . ': ' . $e->getMessage());
+    }
+}
+
 return [
     'file.create:after' => function (Kirby\Cms\File $file) {
+        forgetUuidMisses('file.create');
         $filename = $file->filename();
         if (strtolower(pathinfo($filename, PATHINFO_EXTENSION)) !== 'bmp') {
             return $file;
@@ -233,6 +248,16 @@ return [
         }
     },
 
+    'file.changeName:after' => function (Kirby\Cms\File $newFile, Kirby\Cms\File $oldFile) {
+        forgetUuidMisses('file.changeName');
+        return $newFile;
+    },
+
+    'page.duplicate:after' => function (Kirby\Cms\Page $duplicatePage, Kirby\Cms\Page $originalPage) {
+        forgetUuidMisses('page.duplicate');
+        return $duplicatePage;
+    },
+
     'page.update:after' => function ($newPage, $oldPage) {
         $result = handlePageChange($newPage, $oldPage);
         syncScheduledPublishQueue($result instanceof Kirby\Cms\Page ? $result : $newPage);
@@ -244,11 +269,13 @@ return [
     },
 
     'page.changeSlug:after' => function ($newPage, $oldPage) {
+        forgetUuidMisses('page.changeSlug');
         return handlePageChange($newPage, $oldPage);
     },
 
 
     'page.create:after' => function ($page) {
+        forgetUuidMisses('page.create');
         // Each of these is best-effort: a failure here must not prevent the
         // indexing below from running, and must not vanish silently either
         // (bsbi-web#725 — an uncaught exception here used to abort the whole
@@ -413,6 +440,7 @@ return [
     },
 
     'page.move:after' => function (Kirby\Cms\Page $newPage, Kirby\Cms\Page $oldPage) {
+        forgetUuidMisses('page.move');
         try {
             $helper = new KirbyInternalHelper();
 
