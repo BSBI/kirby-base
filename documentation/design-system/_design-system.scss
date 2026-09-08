@@ -158,6 +158,7 @@ $theme-colors: (
 
 @import "../node_modules/bootstrap/scss/helpers/position";
 @import "../node_modules/bootstrap/scss/helpers/visually-hidden";
+@import "../node_modules/bootstrap/scss/helpers/stretched-link";
 
 $utilities: map-merge(
   $utilities,
@@ -736,6 +737,18 @@ h1, h2, h3, h4, h5, h6 {
     &:focus {
       box-shadow: $box-shadow;
     }
+  }
+
+  // Cards whose title is a Bootstrap stretched link (the kirby-base cards block,
+  // bsbi-web#727): the card, not an anchor, shows the hover/focus affordance, and
+  // inline links in the body sit above the stretched link's overlay (z-index 1).
+  .card:has(.stretched-link:hover),
+  .card:focus-within {
+    box-shadow: $box-shadow;
+  }
+  .card-body a:not(.stretched-link) {
+    position: relative;
+    z-index: 2;
   }
 
 
