@@ -88,4 +88,22 @@ final class MaintenanceFilesystemTest extends TestCase
         self::assertSame('1 MB', MaintenanceFilesystem::humanBytes(1048576));
         self::assertSame('1 GB', MaintenanceFilesystem::humanBytes(1073741824));
     }
+
+    public function testDeleteContentsCanKeepNamedEntries(): void
+    {
+        $dir = sys_get_temp_dir() . '/kirby-base-fs-except-' . uniqid();
+        mkdir($dir . '/keep/inner', 0777, true);
+        mkdir($dir . '/drop', 0777, true);
+        file_put_contents($dir . '/keep/inner/a.txt', 'a');
+        file_put_contents($dir . '/drop/b.txt', 'b');
+        file_put_contents($dir . '/c.txt', 'c');
+
+        $removed = MaintenanceFilesystem::deleteContents($dir, ['keep']);
+
+        self::assertSame(2, $removed);
+        self::assertFileExists($dir . '/keep/inner/a.txt');
+        self::assertDirectoryDoesNotExist($dir . '/drop');
+        self::assertFileDoesNotExist($dir . '/c.txt');
+        MaintenanceFilesystem::delete($dir);
+    }
 }

@@ -117,8 +117,9 @@ final class MaintenanceFilesystem
      *
      * @param string $dir absolute directory path
      * @return int number of top-level entries removed
+     * @param list<string> $except top-level entry names to leave in place (bsbi-web#734)
      */
-    public static function deleteContents(string $dir): int
+    public static function deleteContents(string $dir, array $except = []): int
     {
         if (!is_dir($dir)) {
             return 0;
@@ -126,7 +127,7 @@ final class MaintenanceFilesystem
 
         $removed = 0;
         foreach (scandir($dir) ?: [] as $entry) {
-            if ($entry === '.' || $entry === '..') {
+            if ($entry === '.' || $entry === '..' || in_array($entry, $except, true)) {
                 continue;
             }
             if (self::delete($dir . '/' . $entry)) {

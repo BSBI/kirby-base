@@ -19,7 +19,7 @@ use Kirby\Uuid\Uuids;
  *
  * The preview walks the site to count pages and files, so it is deferred.
  */
-final readonly class UuidCachePopulateTask implements MaintenanceTask, DeferredPreviewTask
+final readonly class UuidCachePopulateTask implements MaintenanceTask, DeferredPreviewTask, NonDestructiveTask
 {
     public function __construct(private App $kirby)
     {
@@ -37,8 +37,9 @@ final readonly class UuidCachePopulateTask implements MaintenanceTask, DeferredP
 
     public function description(): string
     {
-        return 'Fill the UUID lookup cache for every page and file, so references resolve without '
-            . 'walking the site. Run after content has been copied in from elsewhere.';
+        return 'For localhost and staging after content has been copied in from live: fills the UUID '
+            . 'lookup cache for every page and file so no first lookup walks the site. Not needed on live — '
+            . 'Kirby caches pages and files as editors create them, and the Cache task keeps this cache.';
     }
 
     public function preview(MaintenanceOptions $options): MaintenancePreview
@@ -48,8 +49,20 @@ final readonly class UuidCachePopulateTask implements MaintenanceTask, DeferredP
         return new MaintenancePreview(
             $pages + $files,
             0,
-            [sprintf('%d page(s) and %d file(s) would be written to the UUID cache', $pages, $files)]
+            [sprintf('%d page(s) and %d file(s)', $pages, $files)],
+            sprintf('Would write %d page and file UUID(s) to the lookup cache', $pages + $files),
+            $this->emptySummary()
         );
+    }
+
+    public function icon(): string
+    {
+        return 'refresh';
+    }
+
+    public function emptySummary(): string
+    {
+        return 'No pages or files to cache';
     }
 
     public function run(MaintenanceOptions $options, int $offset = 0, int $limit = 0): MaintenanceRunResult
