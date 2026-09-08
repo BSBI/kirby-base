@@ -42,6 +42,10 @@ final class CardsBlockSnippetTest extends TestCase
             '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10"/></svg>'
         );
 
+        // Editor-entered metadata with attribute-breaking characters: the alt (and the
+        // title, which falls back to it) must reach the page escaped.
+        file_put_contents($fixture . '/photos/photo.png.txt', 'Alt: Sedges & "rushes" <b>x</b>' . "\n");
+
         // A real 3:2 PNG: a 4:3 crop and a width-only resize to 400 wide then
         // differ in height (300 vs 267), so the two paths are distinguishable.
         if (function_exists('imagepng') && function_exists('imagewebp')) {
@@ -426,14 +430,44 @@ final class CardsBlockSnippetTest extends TestCase
         self::assertMatchesRegularExpression('#/logo\.svg$#', $img['src']);
         self::assertStringNotContainsString('logo-400x', $html, 'no thumbnail is made of a vector');
         self::assertSame('card-img-top img-fix-size img-fix-size--four-three', $img['class']);
+        self::assertSame('object-fit: contain', $img['style'], 'the whole vector shows inside the 4:3 box');
         self::assertArrayNotHasKey('width', $img);
     }
 
-    public function testImageAltComesFromTheFile(): void
+    public function testUncroppedSvgHasNoBoxAndNoStyle(): void
     {
-        $img = $this->imgAttributes($this->renderImageCard());
+        $img = $this->imgAttributes($this->render([
+            'crop'  => 'false',
+            'cards' => [['title' => 'Logo', 'text' => '', 'url' => '', 'image' => ['photos/logo.svg']]],
+        ]));
 
-        self::assertArrayHasKey('alt', $img, 'an <img> always carries alt, empty when the file has none');
+        self::assertSame('card-img-top', $img['class']);
+        self::assertArrayNotHasKey('style', $img);
+    }
+
+    public function testImageAltAndTitleComeFromTheFileEscaped(): void
+    {
+        $html = $this->renderImageCard();
+        $img  = $this->imgAttributes($html);
+
+        self::assertSame('Sedges &amp; &quot;rushes&quot; &lt;b&gt;x&lt;/b&gt;', $img['alt']);
+        self::assertSame(
+            'Sedges &amp; &quot;rushes&quot; x',
+            $img['title'],
+            'the title is the caption (here the alt) without markup'
+        );
+        self::assertStringNotContainsString('"rushes"', $html);
+        self::assertStringNotContainsString('<b>', $html);
+    }
+
+    public function testSvgWithoutAltStillCarriesAnEmptyAlt(): void
+    {
+        $img = $this->imgAttributes($this->render([
+            'cards' => [['title' => 'Logo', 'text' => '', 'url' => '', 'image' => ['photos/logo.svg']]],
+        ]));
+
+        self::assertSame('', $img['alt']);
+        self::assertArrayNotHasKey('title', $img);
     }
 
     // endregion

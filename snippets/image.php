@@ -4,12 +4,16 @@
  *
  * @var Image $image The Image object to render
  * @var bool $showDimensions Whether to include width/height attributes (recommended for CLS)
+ *
+ * Alt and title come from editor-entered file metadata, so both are escaped for the
+ * attribute; the title is the caption with its Kirbytext markup removed first.
  */
 
 declare(strict_types=1);
 
 use BSBI\WebBase\helpers\KirbyRetrievalException;
 use BSBI\WebBase\models\Image;
+use Kirby\Toolkit\Html;
 
 if (!isset($image)) :
     return;
@@ -40,7 +44,7 @@ endif;
 <?php if ($image->hasStyle()) : ?>
             style="<?= $image->getStyle() ?>"
 <?php endif ?>
-            alt="<?= $image->getAlt() ?>"
+            alt="<?= esc($image->getAlt()) ?>"
             src="<?= $image->getSrc() ?>"
             srcset="<?= $image->getSrcset() ?>"
 <?php if ($showDimensions && $image->getWidth() > 0) : ?>
@@ -58,7 +62,7 @@ endif;
             fetchpriority="<?= $image->getFetchPriority() ?>"
 <?php endif ?>
 <?php if ($image->hasCaption()) : ?>
-            title="<?= $image->getCaptionWithoutHTML() ?>"
+            title="<?= esc(Html::decode($image->getCaption())) ?>"
 <?php endif ?>
         >
     </picture>

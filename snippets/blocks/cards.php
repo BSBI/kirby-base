@@ -32,7 +32,8 @@ use Kirby\Cms\StructureObject;
  * shape while it loads, so the cards line up. With it off, the image keeps its
  * own ratio as a 400-wide thumbnail with the width-only `default` srcset — for
  * logos, which must not lose their edges. SVGs are served as they are (a vector
- * needs no thumbnail); if a thumbnail cannot be made the original file is served
+ * needs no thumbnail): with crop on they sit whole inside the 4:3 box rather than
+ * being clipped by it. If a thumbnail cannot be made the original file is served
  * rather than dropping the image.
  *
  * @var Block $block
@@ -63,7 +64,12 @@ $cardImage = static function (?File $file) use ($imageService, $crop, $sizes, $i
         return null;
     }
     if (strtolower($file->extension()) === 'svg') {
-        return $imageService->getSvgImageFromFile($file, $imageClass);
+        $svg = $imageService->getSvgImageFromFile($file, $imageClass);
+        if ($crop) {
+            // Keep the 4:3 box so the cards line up, but show the whole vector: a logo must not be clipped.
+            $svg->setStyle('object-fit: contain');
+        }
+        return $svg;
     }
     try {
         return $crop
