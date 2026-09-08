@@ -14,8 +14,8 @@ use PHPUnit\Framework\TestCase;
  * Tests for DanglingReferenceAuditTask (bsbi-web#732).
  *
  * The fixture's home page references one file and one page that exist and one
- * of each that do not, and site.txt references the missing page too; only the
- * three references with no target are dangling.
+ * of each that do not, and site.txt references the missing page and file too;
+ * only the four references with no target are dangling.
  */
 final class DanglingReferenceAuditTaskTest extends TestCase
 {
@@ -34,7 +34,7 @@ final class DanglingReferenceAuditTaskTest extends TestCase
         $task = new DanglingReferenceAuditTask(self::$kirby);
 
         self::assertSame(
-            ['home' => ['file://nosuchfile000000', 'page://nosuchpage000000'], 'site' => ['page://nosuchpage000000']],
+            ['home' => ['file://nosuchfile000000', 'page://nosuchpage000000'], 'site' => ['page://nosuchpage000000', 'file://nosuchfile000000']],
             $task->dangling()
         );
     }
@@ -43,9 +43,9 @@ final class DanglingReferenceAuditTaskTest extends TestCase
     {
         $preview = (new DanglingReferenceAuditTask(self::$kirby))->preview(new MaintenanceOptions());
 
-        self::assertSame(3, $preview->items);
+        self::assertSame(4, $preview->items);
         self::assertSame(0, $preview->bytes);
-        self::assertSame(['home: file://nosuchfile000000, page://nosuchpage000000', 'site: page://nosuchpage000000'], $preview->sample);
+        self::assertSame(['home: file://nosuchfile000000, page://nosuchpage000000', 'site: page://nosuchpage000000, file://nosuchfile000000'], $preview->sample);
     }
 
     public function testRunWritesTheLogAndDeletesNothing(): void
@@ -55,9 +55,9 @@ final class DanglingReferenceAuditTaskTest extends TestCase
         $result = (new DanglingReferenceAuditTask(self::$kirby))->run(new MaintenanceOptions());
 
         self::assertTrue($result->done);
-        self::assertSame(3, $result->processed);
+        self::assertSame(4, $result->processed);
         $log = (string) file_get_contents(self::$kirby->root('logs') . '/' . DanglingReferenceAuditTask::LOG_FILE . '.log');
-        self::assertStringContainsString('3 dangling reference(s) on 2 page(s):', $log);
+        self::assertStringContainsString('4 dangling reference(s) on 2 page(s):', $log);
         self::assertStringContainsString('home: file://nosuchfile000000, page://nosuchpage000000', $log);
 
         $after = count(iterator_to_array(new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator(self::$kirby->root('content'), \FilesystemIterator::SKIP_DOTS))));

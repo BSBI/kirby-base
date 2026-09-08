@@ -168,7 +168,8 @@ final readonly class DanglingReferenceAuditTask implements MaintenanceTask, Defe
 
         $segments = [];
         foreach (explode('/', $dir) as $segment) {
-            // `_drafts` holds draft pages, `_changes` a page's unsaved Panel version: both are the page itself
+            // Report by the page's own id: `_drafts` wraps unpublished pages, `_changes` holds a page's
+            // unsaved Panel version. Neither segment is part of the id an editor would look for.
             if ($segment === '_drafts' || $segment === '_changes') {
                 continue;
             }

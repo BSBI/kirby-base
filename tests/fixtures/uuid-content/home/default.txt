@@ -25,4 +25,24 @@ Badpage: - page://nosuchpage000000
 
 ----
 
+Cards:
+
+- 
+  image:
+    - file://fileaaaaaaaaaaaa
+  images:
+    - file://fileaaaaaaaaaaaa
+    - file://nosuchfile000000
+  link:
+    - page://pagebbbbbbbbbbbb
+- 
+  image:
+    - file://nosuchfile000000
+  images:
+    - file://nosuchfile000000
+  link:
+    - page://nosuchpage000000
+
+----
+
 Uuid: pageaaaaaaaaaaaa

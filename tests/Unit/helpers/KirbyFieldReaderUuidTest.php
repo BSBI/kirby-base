@@ -54,6 +54,41 @@ final class KirbyFieldReaderUuidTest extends TestCase
         self::assertTrue($resolver->isKnownMiss('page://nosuchpage000000'));
     }
 
+    public function testSiteFileFieldResolvesOrThrows(): void
+    {
+        self::assertInstanceOf(File::class, self::$reader->getSiteFieldAsFile('goodfile'));
+
+        $this->expectException(KirbyRetrievalException::class);
+        self::$reader->getSiteFieldAsFile('badfile');
+    }
+
+    public function testStructureFieldsResolveIntactReferencesAndSkipDanglingOnes(): void
+    {
+        $cards = self::$kirby->page('home')->content()->get('cards')->toStructure();
+        $good = $cards->first();
+        $bad = $cards->last();
+
+        self::assertInstanceOf(File::class, self::$reader->getStructureFieldAsFile($good, 'image'));
+        self::assertSame(['home/pic.svg'], self::$reader->getStructureFieldAsFiles($good, 'images')->keys());
+        self::assertInstanceOf(Page::class, self::$reader->getStructureFieldAsPage($good, 'link'));
+
+        self::assertSame([], self::$reader->getStructureFieldAsFiles($bad, 'images')->keys());
+        try {
+            self::$reader->getStructureFieldAsFile($bad, 'image');
+            self::fail('a dangling structure file reference should throw');
+        } catch (KirbyRetrievalException) {
+        }
+        try {
+            self::$reader->getStructureFieldAsPage($bad, 'link');
+            self::fail('a dangling structure page reference should throw');
+        } catch (KirbyRetrievalException) {
+        }
+
+        $resolver = new UuidResolver(self::$kirby);
+        self::assertTrue($resolver->isKnownMiss('file://nosuchfile000000'));
+        self::assertTrue($resolver->isKnownMiss('page://nosuchpage000000'));
+    }
+
     public function testSiteFieldAsPageThrowsInsteadOfReturningNull(): void
     {
         // site.txt in the fixture holds `Danglingpage: - page://nosuchpage000000`
