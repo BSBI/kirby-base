@@ -6,6 +6,16 @@ use Kirby\Cms\Block;
 use Kirby\Cms\StructureObject;
 
 /**
+ * Cards block: a titled grid of linked or unlinked cards.
+ *
+ * A linked card is a `<div class="card">` whose title carries the link as a
+ * Bootstrap stretched link, so the whole card is clickable without any block
+ * content sitting inside an anchor. The description is Kirbytext and may hold
+ * its own links; wrapping the card in `<a>` would nest anchors, which browsers
+ * repair by splitting the outer one (bsbi-web#727). Inline links in the body
+ * need `position: relative; z-index: 2` from the site's CSS to sit above the
+ * stretched link's overlay.
+ *
  * @var Block $block
  */
 
@@ -31,21 +41,25 @@ $colClass = match ($columns) {
         /** @var StructureObject $card */
         $url = $card->url()->isNotEmpty() ? $card->url()->value() : null;
         $image = $card->image()->isNotEmpty() ? $card->image()->toFile() : null;
+        // A linked card without a title still needs a link with a name: fall back to the URL.
+        $title = $card->title()->isNotEmpty() ? $card->title()->value() : $url;
         ?>
         <div class="<?= $colClass ?> mb-4 d-flex">
-            <?= $url ? '<a href="' . esc($url) . '" class="card border-0 flex-fill text-decoration-none">' : '<div class="card border-0 flex-fill">' ?>
+            <div class="card border-0 flex-fill">
                 <?php if ($image): ?>
                     <img src="<?= $image->url() ?>" class="card-img-top" alt="<?= $image->alt()->esc() ?>">
                 <?php endif ?>
                 <div class="card-body p-4">
-                    <?php if ($card->title()->isNotEmpty()): ?>
-                        <h3 class="card-title"><?= $card->title() ?></h3>
+                    <?php if ($url): ?>
+                        <h3 class="card-title"><a href="<?= esc($url) ?>" class="stretched-link text-decoration-none"><?= $title ?></a></h3>
+                    <?php elseif ($title !== null): ?>
+                        <h3 class="card-title"><?= $title ?></h3>
                     <?php endif ?>
                     <?php if ($card->text()->isNotEmpty()): ?>
                         <?= $card->text()->kt() ?>
                     <?php endif ?>
                 </div>
-            <?= $url ? '</a>' : '</div>' ?>
+            </div>
         </div>
     <?php endforeach ?>
 </div>
