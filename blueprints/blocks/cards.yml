@@ -16,6 +16,14 @@ fields:
       "2": 2 columns
       "3": 3 columns
       "4": 4 columns
+  crop:
+    label: Crop images to 4:3?
+    type: toggle
+    default: true
+    width: 1/4
+    help: >
+      On: every card image is cropped to the same 4:3 shape, so the cards line up.
+      Turn off for logos or other images that must not lose their edges.
   cards:
     label: Cards
     type: structure

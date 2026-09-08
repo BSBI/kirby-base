@@ -26,7 +26,7 @@ as before, so consuming sites require no changes.
 | Service                  | Responsibility                                                                |
 |--------------------------|-------------------------------------------------------------------------------|
 | `KirbyFieldReader`       | Reading and type-coercing Kirby fields (page, site, structure, block, user)   |
-| `ImageService`           | Resolving images, files, and documents from Kirby fields                      |
+| `ImageService`           | Resolving images, files, and documents from Kirby fields: thumbnails, srcsets, WebP/AVIF. Block snippets, which receive only `$block`, use the shared `ImageService::instance()` (one per App, as `UuidResolver::instance()`); the `blocks/cards` snippet is the example — a 400×300 `panel`-srcset crop when the block's `crop` toggle is on (the default), a width-only `default`-srcset thumbnail when it is off, SVGs served as they are. |
 | `NavigationService`      | Building `WebPageLink` / `WebPageLinks` / `CoreLink` model objects            |
 | `SearchService`          | Search query building, SQLite FTS5 search, analytics, and term highlighting   |
 | `CollectionFilterService`| Filtering Kirby `Collection` and `Structure` objects                          |
