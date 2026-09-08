@@ -34,7 +34,9 @@ final class UuidCachePopulateTaskTest extends TestCase
         $preview = (new UuidCachePopulateTask(self::$kirby))->preview(new MaintenanceOptions());
 
         self::assertSame(3, $preview->items, 'two pages and one file');
-        self::assertSame(['2 page(s) and 1 file(s) would be written to the UUID cache'], $preview->sample);
+        self::assertSame(['2 page(s) and 1 file(s)'], $preview->sample);
+        self::assertSame('Would write 3 page and file UUID(s) to the lookup cache', $preview->summary);
+        self::assertSame('No pages or files to cache', $preview->emptySummary);
     }
 
     public function testRunPopulatesTheCacheAndForgetsMisses(): void

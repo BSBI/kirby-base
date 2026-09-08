@@ -60,9 +60,7 @@ final class MaintenancePanel
             // Expensive previews (e.g. the media walk) are deferred: return a placeholder now and
             // let the client fetch the real preview from the time-limit-lifted preview endpoint,
             // so a slow scan never blocks or times out this 30-second dashboard request.
-            $tasks[] = $task instanceof DeferredPreviewTask
-                ? self::deferredPlaceholder($task)
-                : self::previewTask($task, $options);
+            $tasks[] = self::taskProps($task, $options);
         }
 
         return [
@@ -162,60 +160,61 @@ final class MaintenancePanel
     }
 
     /**
-     * A placeholder card for a deferred task: no counts computed yet, flagged so the client
-     * fetches the real preview lazily via {@see previewOne()}.
+     * The props for one task card: label, preview counts, wording and destructiveness
+     * (bsbi-web#734). A deferred card carries zero counts and `deferred: true`; the
+     * client fetches the real preview from the preview endpoint.
      *
-     * @param MaintenanceTask $task the deferred task
-     * @return array{key: string, label: string, description: string, items: int, bytes: int, humanBytes: string, sample: array<int, string>, error: bool, deferred: bool}
+     * @param MaintenanceTask $task the task
+     * @param MaintenanceOptions $options the options the preview runs with
+     * @param bool|null $deferred force the deferred placeholder (true) or a computed preview (false); null decides by DeferredPreviewTask
+     * @return array{key: string, label: string, description: string, items: int, bytes: int, humanBytes: string, sample: array<int, string>, summary: string|null, emptySummary: string|null, destructive: bool, icon: string, error: bool, deferred: bool}
      */
-    private static function deferredPlaceholder(MaintenanceTask $task): array
+    public static function taskProps(MaintenanceTask $task, MaintenanceOptions $options, ?bool $deferred = null): array
     {
+        $deferred ??= $task instanceof DeferredPreviewTask;
+        $error = false;
+        $preview = null;
+
+        if (!$deferred) {
+            try {
+                $preview = $task->preview($options);
+            } catch (Throwable) {
+                $error = true;
+            }
+        }
+
+        $bytes = $preview !== null ? $preview->bytes : 0;
+        $nonDestructive = $task instanceof NonDestructiveTask;
+        $emptySummary = $preview !== null ? $preview->emptySummary : null;
+        if ($emptySummary === null && $nonDestructive) {
+            $emptySummary = $task->emptySummary();
+        }
+
         return [
-            'key'         => $task->key(),
-            'label'       => $task->label(),
-            'description' => $task->description(),
-            'items'       => 0,
-            'bytes'       => 0,
-            'humanBytes'  => MaintenanceFilesystem::humanBytes(0),
-            'sample'      => [],
-            'error'       => false,
-            'deferred'    => true,
+            'key'          => $task->key(),
+            'label'        => $task->label(),
+            'description'  => $task->description(),
+            'items'        => $preview !== null ? $preview->items : 0,
+            'bytes'        => $bytes,
+            'humanBytes'   => MaintenanceFilesystem::humanBytes($bytes),
+            'sample'       => $preview !== null ? $preview->sample : [],
+            'summary'      => $preview !== null ? $preview->summary : null,
+            'emptySummary' => $emptySummary,
+            'destructive'  => !$nonDestructive,
+            'icon'         => $nonDestructive ? $task->icon() : 'trash',
+            'error'        => $error,
+            'deferred'     => $deferred,
         ];
     }
 
     /**
-     * Preview a single task, isolating failures so one bad task never breaks the dashboard.
+     * Computed preview props for one task (the preview endpoint).
      *
-     * @param MaintenanceTask $task the task to preview
-     * @param MaintenanceOptions $options shared options
-     * @return array{key: string, label: string, description: string, items: int, bytes: int, humanBytes: string, sample: array<int, string>, error: bool, deferred: bool}
+     * @return array<string, mixed>
      */
     private static function previewTask(MaintenanceTask $task, MaintenanceOptions $options): array
     {
-        try {
-            $preview = $task->preview($options);
-            $items = $preview->items;
-            $bytes = $preview->bytes;
-            $sample = $preview->sample;
-            $error = false;
-        } catch (Throwable) {
-            $items = 0;
-            $bytes = 0;
-            $sample = [];
-            $error = true;
-        }
-
-        return [
-            'key'         => $task->key(),
-            'label'       => $task->label(),
-            'description' => $task->description(),
-            'items'       => $items,
-            'bytes'       => $bytes,
-            'humanBytes'  => MaintenanceFilesystem::humanBytes($bytes),
-            'sample'      => $sample,
-            'error'       => $error,
-            'deferred'    => false,
-        ];
+        return self::taskProps($task, $options, deferred: false);
     }
 
     /**

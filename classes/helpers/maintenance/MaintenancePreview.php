@@ -16,11 +16,15 @@ final readonly class MaintenancePreview
      * @param int $items number of items (files/dirs/log entries) that would be removed or rewritten
      * @param int $bytes total bytes that would be reclaimed
      * @param array<int, string> $sample human-readable sample lines describing the biggest/first targets
+     * @param string|null $summary the line shown instead of "Would free X · N item(s)" — for tasks that free nothing (bsbi-web#734)
+     * @param string|null $emptySummary the line shown instead of "Nothing to reclaim" when $items is 0
      */
     public function __construct(
         public int $items,
         public int $bytes,
         public array $sample = [],
+        public ?string $summary = null,
+        public ?string $emptySummary = null,
     ) {
     }
 

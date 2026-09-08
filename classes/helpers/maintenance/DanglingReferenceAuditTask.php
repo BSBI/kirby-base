@@ -24,7 +24,7 @@ use SplFileInfo;
  * `logs/dangling-references.log` (overwriting) so editors can fix the pages.
  * Nothing is deleted.
  */
-final readonly class DanglingReferenceAuditTask implements MaintenanceTask, DeferredPreviewTask
+final readonly class DanglingReferenceAuditTask implements MaintenanceTask, DeferredPreviewTask, NonDestructiveTask
 {
     public const string LOG_FILE = 'dangling-references';
 
@@ -55,7 +55,23 @@ final readonly class DanglingReferenceAuditTask implements MaintenanceTask, Defe
         $dangling = $this->dangling();
         $count = array_sum(array_map('count', $dangling));
 
-        return new MaintenancePreview($count, 0, array_slice($this->lines($dangling), 0, self::SAMPLE_LINES));
+        return new MaintenancePreview(
+            $count,
+            0,
+            array_slice($this->lines($dangling), 0, self::SAMPLE_LINES),
+            sprintf('Would list %d dangling reference(s) on %d page(s)', $count, count($dangling)),
+            $this->emptySummary()
+        );
+    }
+
+    public function icon(): string
+    {
+        return 'search';
+    }
+
+    public function emptySummary(): string
+    {
+        return 'No dangling references';
     }
 
     public function run(MaintenanceOptions $options, int $offset = 0, int $limit = 0): MaintenanceRunResult

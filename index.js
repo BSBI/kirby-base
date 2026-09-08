@@ -2487,10 +2487,13 @@ panel.plugin('open-foundations/kirby-base', {
         // advancing a progress estimate against the previewed item count.
         runTask: async function (task) {
           var self = this;
+          // An empty preview never reaches the confirm, so the item-count fallback below is never "0 item(s)".
           if (task.items === 0) return;
-          var msg = 'Run the "' + task.label + '" cleanup?\n\n'
-            + 'This will free about ' + task.humanBytes + ' (' + task.items + ' item(s)).\n'
-            + 'This cannot be undone.';
+          var msg = task.destructive === false
+            ? ('Run "' + task.label + '"?\n\n' + (task.summary || (task.items + ' item(s)')) + '.\nNothing is deleted.')
+            : ('Run the "' + task.label + '" cleanup?\n\n'
+              + 'This will free about ' + task.humanBytes + ' (' + task.items + ' item(s)).\n'
+              + 'This cannot be undone.');
           if (!window.confirm(msg)) return;
 
           self.running = task.key;
@@ -2519,8 +2522,10 @@ panel.plugin('open-foundations/kirby-base', {
                 self.progress = Math.min(100, Math.round(totalProcessed / task.items * 100));
               }
             }
-            self.lastResult = 'Freed ' + self.humanBytes(totalReclaimed)
-              + ' from "' + task.label + '" (' + totalProcessed + ' item(s)).';
+            self.lastResult = task.destructive === false
+              ? ('Done: "' + task.label + '" (' + totalProcessed + ' item(s)).')
+              : ('Freed ' + self.humanBytes(totalReclaimed)
+                + ' from "' + task.label + '" (' + totalProcessed + ' item(s)).');
             // Refresh the previews so the just-cleaned task now reads "Nothing to reclaim".
             await self.refresh();
           } catch (error) {
@@ -2604,8 +2609,8 @@ panel.plugin('open-foundations/kirby-base', {
                   <p class="k-maintenance-task-preview" role="status" aria-live="polite" aria-atomic="true">
                     <strong v-if="task.deferred || deferredLoading[task.key]">Calculating…</strong>
                     <strong v-else-if="task.error" style="color: var(--color-negative);">Preview failed</strong>
-                    <strong v-else-if="task.items === 0">Nothing to reclaim</strong>
-                    <strong v-else>Would free {{ task.humanBytes }} &middot; {{ task.items }} item(s)</strong>
+                    <strong v-else-if="task.items === 0">{{ task.emptySummary || 'Nothing to reclaim' }}</strong>
+                    <strong v-else>{{ task.summary || ('Would free ' + task.humanBytes + ' · ' + task.items + ' item(s)') }}</strong>
                   </p>
                   <ul v-if="task.sample && task.sample.length" class="k-maintenance-sample">
                     <li v-for="(line, i) in task.sample" :key="i">{{ line }}</li>
@@ -2613,16 +2618,16 @@ panel.plugin('open-foundations/kirby-base', {
                 </div>
                 <div class="k-maintenance-task-action">
                   <k-button
-                    :icon="running === task.key ? 'loader' : 'trash'"
+                    :icon="running === task.key ? 'loader' : (task.icon || 'trash')"
                     :text="running === task.key ? (progress !== null ? ('Running ' + progress + '%') : 'Running…') : 'Run'"
                     size="sm"
                     variant="filled"
-                    theme="negative"
+                    :theme="task.destructive === false ? 'info' : 'negative'"
                     :aria-label="running === task.key
                       ? ('Running ' + task.label + (progress !== null ? ' ' + progress + '%' : ''))
                       : (task.deferred || deferredLoading[task.key]
                         ? ('Calculating ' + task.label + ' preview, please wait')
-                        : (task.items === 0 ? ('Nothing to reclaim for ' + task.label) : ('Run ' + task.label + ' cleanup')))"
+                        : (task.items === 0 ? ((task.emptySummary || 'Nothing to reclaim') + ' for ' + task.label) : ('Run ' + task.label + (task.destructive === false ? ' (nothing is deleted)' : ' cleanup'))))"
                     :disabled="task.deferred || deferredLoading[task.key] || task.items === 0 || task.error || running !== null"
                     @click="runTask(task)"
                   />
