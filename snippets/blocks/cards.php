@@ -35,7 +35,7 @@ $colClass = match ($columns) {
 
 ?>
 <?php if ($block->title()->isNotEmpty()): ?>
-    <h2 class="text-center mb-4"><?= $block->title() ?></h2>
+    <h2 class="text-center mb-4"><?= $block->title()->esc() ?></h2>
 <?php endif ?>
 <div class="row align-items-stretch justify-content-center">
     <?php foreach ($cards as $card): ?>
@@ -49,7 +49,7 @@ $colClass = match ($columns) {
         <div class="<?= $colClass ?> mb-4 d-flex">
             <div class="card border-0 flex-fill">
                 <?php if ($image): ?>
-                    <img src="<?= $image->url() ?>" class="card-img-top" alt="<?= $image->alt()->esc() ?>">
+                    <img src="<?= esc($image->url()) ?>" class="card-img-top" alt="<?= $image->alt()->esc() ?>">
                 <?php endif ?>
                 <div class="card-body p-4">
                     <?php if ($url): ?>

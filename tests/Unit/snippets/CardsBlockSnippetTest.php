@@ -210,4 +210,14 @@ final class CardsBlockSnippetTest extends TestCase
 
         self::assertStringContainsString('<h2 class="text-center mb-4">You could also try</h2>', $html);
     }
+
+    public function testSectionTitleIsEscaped(): void
+    {
+        $html = $this->render([
+            'title' => 'Talks & <walks>',
+            'cards' => [['title' => 'A', 'text' => '', 'url' => '']],
+        ]);
+
+        self::assertStringContainsString('<h2 class="text-center mb-4">Talks &amp; &lt;walks&gt;</h2>', $html);
+    }
 }
