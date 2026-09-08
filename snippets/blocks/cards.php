@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use BSBI\WebBase\helpers\UuidResolver;
 use Kirby\Cms\Block;
 use Kirby\Cms\StructureObject;
 
@@ -42,7 +43,7 @@ $colClass = match ($columns) {
         <?php
         /** @var StructureObject $card */
         $url = $card->url()->isNotEmpty() ? $card->url()->value() : null;
-        $image = $card->image()->isNotEmpty() ? $card->image()->toFile() : null;
+        $image = UuidResolver::instance()->fileFromField($card->image());
         // A linked card without a title still needs a link with a name: fall back to the URL.
         $title = $card->title()->isNotEmpty() ? $card->title()->value() : $url;
         ?>

@@ -1112,10 +1112,10 @@ abstract class KirbyBaseHelper
     /**
      * @param Page $page
      * @param string $fieldName
-     * @return File|null
+     * @return Files
      * @throws KirbyRetrievalException
      */
-    protected function getPageFieldAsFiles(Page $page, string $fieldName): Files|null
+    protected function getPageFieldAsFiles(Page $page, string $fieldName): Files
     {
         return $this->fieldReader->getPageFieldAsFiles($page, $fieldName);
     }

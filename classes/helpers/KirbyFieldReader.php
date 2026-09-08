@@ -460,7 +460,7 @@ final readonly class KirbyFieldReader
     {
         $pageField = $this->getPageField($page, $fieldName);
         /** @noinspection PhpUndefinedMethodInspection */
-        return $pageField->toFile();
+        return UuidResolver::instance()->fileFromField($pageField, $page);
     }
 
     /**
@@ -468,11 +468,11 @@ final readonly class KirbyFieldReader
      *
      * @throws KirbyRetrievalException
      */
-    public function getPageFieldAsFiles(Page $page, string $fieldName): Files|null
+    public function getPageFieldAsFiles(Page $page, string $fieldName): Files
     {
         $pageField = $this->getPageField($page, $fieldName);
         /** @noinspection PhpUndefinedMethodInspection */
-        return $pageField->toFiles();
+        return UuidResolver::instance()->filesFromField($pageField, $page);
     }
 
     /**
@@ -485,7 +485,7 @@ final readonly class KirbyFieldReader
         try {
             $pageField = $this->getPageField($page, $fieldName);
             /** @noinspection PhpUndefinedMethodInspection */
-            return $pageField->toPages();
+            return UuidResolver::instance()->pagesFromField($pageField);
         } catch (KirbyRetrievalException) {
             if ($isRequired) {
                 throw new KirbyRetrievalException('The field ' . $fieldName . ' does not exist');
@@ -504,7 +504,7 @@ final readonly class KirbyFieldReader
         try {
             $pageField = $this->getPageField($page, $fieldName);
             /** @noinspection PhpUndefinedMethodInspection */
-            return $pageField->toPages()->first();
+            return UuidResolver::instance()->pageFromField($pageField);
         } catch (KirbyRetrievalException) {
             if ($isRequired) {
                 throw new KirbyRetrievalException('The field ' . $fieldName . ' does not exist');
@@ -582,8 +582,7 @@ final readonly class KirbyFieldReader
     public function getLinkFieldType(Page $page, string $fieldName): string
     {
         $linkField = $this->getPageField($page, $fieldName);
-        /** @noinspection PhpUndefinedMethodInspection */
-        if ($linkField->toPage()) {
+        if (UuidResolver::instance()->pageFromField($linkField)) {
             return 'page';
         }
         /** @noinspection PhpUndefinedMethodInspection */
@@ -928,8 +927,12 @@ final readonly class KirbyFieldReader
     public function getSiteFieldAsPage(string $fieldName): Page
     {
         $siteField = $this->getSiteField($fieldName);
-        /** @noinspection PhpUndefinedMethodInspection */
-        return $siteField->toPage();
+        $page = UuidResolver::instance()->pageFromField($siteField);
+        if ($page === null) {
+            throw new KirbyRetrievalException('The site field ' . $fieldName . ' does not resolve to a page');
+        }
+
+        return $page;
     }
 
     /**
@@ -968,7 +971,7 @@ final readonly class KirbyFieldReader
     {
         $siteField = $this->getSiteField($fieldName);
         /** @noinspection PhpUndefinedMethodInspection */
-        $file = $siteField->toFile();
+        $file = UuidResolver::instance()->fileFromField($siteField);
         if ($file instanceof File) {
             return $file;
         }
@@ -1183,7 +1186,7 @@ final readonly class KirbyFieldReader
     {
         $structureField = $this->getStructureField($structure, $fieldName);
         /** @noinspection PhpUndefinedMethodInspection */
-        $page = $structureField->toPage();
+        $page = UuidResolver::instance()->pageFromField($structureField);
         if ($page) {
             return $page;
         }
@@ -1199,7 +1202,7 @@ final readonly class KirbyFieldReader
     {
         $structureField = $this->getStructureField($structure, $fieldName);
         /** @noinspection PhpUndefinedMethodInspection */
-        $file = $structureField->toFile();
+        $file = UuidResolver::instance()->fileFromField($structureField);
         if ($file) {
             return $file;
         }
@@ -1214,12 +1217,8 @@ final readonly class KirbyFieldReader
     public function getStructureFieldAsFiles(StructureObject $structure, string $fieldName): Files
     {
         $structureField = $this->getStructureField($structure, $fieldName);
-        /** @noinspection PhpUndefinedMethodInspection */
-        $files = $structureField->toFiles();
-        if ($files) {
-            return $files;
-        }
-        throw new KirbyRetrievalException('The file field ' . $fieldName . ' does not exist');
+
+        return UuidResolver::instance()->filesFromField($structureField);
     }
 
     /**

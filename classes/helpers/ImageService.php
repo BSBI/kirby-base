@@ -106,9 +106,6 @@ final readonly class ImageService
     {
         $pageImages = $this->fieldReader->getPageFieldAsFiles($page, $fieldName);
         $imageList = new ImageList();
-        if ($pageImages === null) {
-            return $imageList;
-        }
         foreach ($pageImages as $image) {
             $imageList->addListItem($this->getImageFromFile($image, $width, $height, $quality, $imageType, $imageFormat, $imageSizes, $crop, $imageClass));
         }

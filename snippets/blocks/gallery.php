@@ -26,10 +26,10 @@ $figCaptionClass = '';
 $location = $block->location()->value() ?: 'kirby';
 if ($location === 'bank') {
     $bankIds = $block->bank()->value() ?: [];
-    $resolvedFiles = array_filter(array_map(fn($id) => kirby()->file($id), $bankIds));
+    $resolvedFiles = \BSBI\WebBase\helpers\UuidResolver::instance()->files($bankIds)->values();
     $allImages = new Collection($resolvedFiles);
 } else {
-    $allImages = $block->images()->toFiles();
+    $allImages = \BSBI\WebBase\helpers\UuidResolver::instance()->filesFromField($block->images());
 }
 $hideSeeAllButton = $block->hideSeeAllButton()->toBool();
 

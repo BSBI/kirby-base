@@ -77,7 +77,7 @@ snippet('base/full-width-block-starts', ['fullWidth' => $fullWidth]);
 
         <?php
 // Handle regular page image (original behavior)
-        elseif ($image = $block->image()->toFile()) :
+        elseif ($image = \BSBI\WebBase\helpers\UuidResolver::instance()->fileFromField($block->image())) :
             ?>
             <picture>
                 <source type="image/webp" srcset="<?= $image->srcset('webp') ?>" sizes="<?= $sizes ?>">

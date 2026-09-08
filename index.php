@@ -21,6 +21,8 @@ use BSBI\WebBase\helpers\maintenance\LogRetentionTask;
 use BSBI\WebBase\helpers\maintenance\MaintenancePanel;
 use BSBI\WebBase\helpers\maintenance\MaintenanceRegistry;
 use BSBI\WebBase\helpers\maintenance\MediaCleanupTask;
+use BSBI\WebBase\helpers\maintenance\UuidCachePopulateTask;
+use BSBI\WebBase\helpers\maintenance\DanglingReferenceAuditTask;
 use Kirby\Cms\App as Kirby;
 use Kirby\Exception\PermissionException;
 use Kirby\Panel\Ui\Item\PageItem;
@@ -709,6 +711,8 @@ if (option('maintenance.showPanel', false)) {
         MaintenanceRegistry::register(new LogRetentionTask(kirby()));
         MaintenanceRegistry::register(new CacheClearTask(kirby()));
         MaintenanceRegistry::register(new MediaCleanupTask(kirby()));
+        MaintenanceRegistry::register(new UuidCachePopulateTask(kirby()));
+        MaintenanceRegistry::register(new DanglingReferenceAuditTask(kirby()));
     } catch (Throwable $e) {
         error_log('Failed to register maintenance tasks: ' . $e->getMessage());
     }

@@ -15,7 +15,7 @@ use Kirby\Cms\Site;
 
 ?>
 <div class="list-group m-1 p-2">
-<?php if ($file = $block->file()->toFile()) :
+<?php if ($file = \BSBI\WebBase\helpers\UuidResolver::instance()->fileFromField($block->file())) :
     $fileUrl = $file->permanentUrl()->isNotEmpty() ? kirby()->url() . '/files/' . $file->permanentUrl()->value() : $file->url();?>
     <a class="list-group-item" href="<?= $fileUrl?>" target="_blank">
         <img src="/assets/images/icons/file-text.svg" alt="File icon">

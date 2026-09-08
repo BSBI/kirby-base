@@ -1,0 +1,13 @@
+Title: Fixture site
+
+----
+
+Danglingpage: - page://nosuchpage000000
+
+----
+
+Goodfile: - file://fileaaaaaaaaaaaa
+
+----
+
+Badfile: - file://nosuchfile000000
