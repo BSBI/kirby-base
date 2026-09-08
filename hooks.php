@@ -72,23 +72,39 @@ function handlePageChange($newPage, $oldPage) {
     try {
         $user = kirby()->user();
 
-        $newPage = $newPage->update([
-            'updatedDate' => date('Y-m-d H:i:s'),
-            'updatedBy' => $user?->id()
-        ]);
-
-        if ($newPage->publishedDate()->isEmpty()) {
+        // Each of these is best-effort: a failure here must not prevent the
+        // reindexing below from running, and must not vanish silently either
+        // (bsbi-web#725 — an uncaught exception here used to abort the whole
+        // hook before the index was ever touched, with nothing logged).
+        try {
             $newPage = $newPage->update([
-                'publishedDate' => date('Y-m-d H:i:s'),
-                'publishedBy' => $user?->id()
+                'updatedDate' => date('Y-m-d H:i:s'),
+                'updatedBy' => $user?->id()
             ]);
+
+            if ($newPage->publishedDate()->isEmpty()) {
+                $newPage = $newPage->update([
+                    'publishedDate' => date('Y-m-d H:i:s'),
+                    'publishedBy' => $user?->id()
+                ]);
+            }
+        } catch (Throwable $e) {
+            KirbyBaseHelper::writeToLogFile('search-index', 'Failed to stamp updatedDate/publishedDate for page ' . $newPage->id() . ': ' . $e->getMessage());
         }
 
-        /** @noinspection PhpUnhandledExceptionInspection */
         $helper = new KirbyInternalHelper();
-        /** @noinspection PhpUnhandledExceptionInspection */
-        $helper->handleTwoWayTagging($newPage, $oldPage);
-        $helper->handleCaches($newPage);
+
+        try {
+            $helper->handleTwoWayTagging($newPage, $oldPage);
+        } catch (Throwable $e) {
+            KirbyBaseHelper::writeToLogFile('search-index', 'Failed two-way tagging for page ' . $newPage->id() . ': ' . $e->getMessage());
+        }
+
+        try {
+            $helper->handleCaches($newPage);
+        } catch (Throwable $e) {
+            KirbyBaseHelper::writeToLogFile('search-index', 'Failed cache handling for page ' . $newPage->id() . ': ' . $e->getMessage());
+        }
 
         // Update search index
         try {
@@ -233,17 +249,35 @@ return [
 
 
     'page.create:after' => function ($page) {
-        if ($page->publishedDate()->isEmpty() || $page->publishedBy()->isEmpty()) {
-            $user = kirby()->user();
-            $page = $page->update([
-                'publishedDate' => date('Y-m-d H:i:s'),
-                'publishedBy' => $user?->id()
-            ]);
+        // Each of these is best-effort: a failure here must not prevent the
+        // indexing below from running, and must not vanish silently either
+        // (bsbi-web#725 — an uncaught exception here used to abort the whole
+        // hook before the index was ever touched, with nothing logged).
+        try {
+            if ($page->publishedDate()->isEmpty() || $page->publishedBy()->isEmpty()) {
+                $user = kirby()->user();
+                $page = $page->update([
+                    'publishedDate' => date('Y-m-d H:i:s'),
+                    'publishedBy' => $user?->id()
+                ]);
+            }
+        } catch (Throwable $e) {
+            KirbyBaseHelper::writeToLogFile('search-index', 'Failed to backfill publishedDate/publishedBy for page ' . $page->id() . ': ' . $e->getMessage());
         }
 
         $helper = new KirbyInternalHelper();
-        $helper->handleTwoWayTagging($page);
-        $helper->handleCaches($page);
+
+        try {
+            $helper->handleTwoWayTagging($page);
+        } catch (Throwable $e) {
+            KirbyBaseHelper::writeToLogFile('search-index', 'Failed two-way tagging for page ' . $page->id() . ': ' . $e->getMessage());
+        }
+
+        try {
+            $helper->handleCaches($page);
+        } catch (Throwable $e) {
+            KirbyBaseHelper::writeToLogFile('search-index', 'Failed cache handling for page ' . $page->id() . ': ' . $e->getMessage());
+        }
 
         // Add to search index
         try {
@@ -271,7 +305,14 @@ return [
 
     'page.changeStatus:after' => function ($newPage, $_oldPage) {
         $helper = new KirbyInternalHelper();
-        $helper->handleCaches($newPage);
+
+        // Best-effort: a failure here must not prevent the reindexing below
+        // (bsbi-web#725), and must be logged rather than vanish silently.
+        try {
+            $helper->handleCaches($newPage);
+        } catch (Throwable $e) {
+            KirbyBaseHelper::writeToLogFile('search-index', 'Failed cache handling after status change for page ' . $newPage->id() . ': ' . $e->getMessage());
+        }
 
         // Update search index
         try {
