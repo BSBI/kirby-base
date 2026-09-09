@@ -215,6 +215,11 @@ function forgetUuidMisses(string $context): void
  * when the editor has not set one, so every archive file has a stable URL from
  * day one (bsbi-web#570). Other files are returned untouched.
  *
+ * The update re-enters file.update:before, which validates the slug; a filename always
+ * passes (Kirby safe names use a subset of the allowed characters, and two files on one
+ * page cannot share a name), so the only way to land here with an empty slug is an I/O
+ * failure, which is logged.
+ *
  * @param Kirby\Cms\File $file
  * @return Kirby\Cms\File
  */

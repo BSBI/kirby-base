@@ -236,6 +236,14 @@ final class FileArchiveServiceTest extends TestCase
         $this->assertMatchesRegularExpression('/^\w{3}, \d{2} \w{3} \d{4} \d{2}:\d{2}:\d{2} GMT$/', $headers['Last-Modified']);
     }
 
+    public function testHeaderSafeFilenameStripsQuotesBackslashesAndControls(): void
+    {
+        $this->assertSame('report.pdf', FileArchiveService::headerSafeFilename("re\"po\\rt.pdf"));
+        $this->assertSame('a.pdf', FileArchiveService::headerSafeFilename("a\r\n.pdf"));
+        $this->assertSame('file', FileArchiveService::headerSafeFilename('"'));
+        $this->assertSame('Annual-Report_2025@v2.pdf', FileArchiveService::headerSafeFilename('Annual-Report_2025@v2.pdf'));
+    }
+
     public function testRespondReturnsNotModifiedWhenUnchangedSince(): void
     {
         $lastModified = self::$service->respond(self::SLUG)?->headers()['Last-Modified'] ?? '';

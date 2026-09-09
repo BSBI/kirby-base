@@ -137,6 +137,9 @@ final readonly class FileArchiveService
 
     /**
      * Finds the archive file for a slug. Exact match, including case.
+     *
+     * A linear scan of the archive page's files, once per /files/ request — fine for
+     * an archive of hundreds; index it if the archive ever reaches many thousands.
      */
     public function findBySlug(string $slug): ?File
     {
@@ -183,7 +186,7 @@ final readonly class FileArchiveService
         $modified     = filemtime($root) ?: time();
         $lastModified = gmdate('D, d M Y H:i:s', $modified) . ' GMT';
         $headers      = [
-            'Content-Disposition' => 'inline; filename="' . $file->filename() . '"',
+            'Content-Disposition' => 'inline; filename="' . self::headerSafeFilename($file->filename()) . '"',
             'Last-Modified'       => $lastModified,
             'Cache-Control'       => 'public, max-age=' . self::CACHE_MAX_AGE,
         ];
@@ -196,6 +199,18 @@ final readonly class FileArchiveService
         }
 
         return Response::file($root, ['headers' => $headers]);
+    }
+
+    /**
+     * A filename safe to quote in a Content-Disposition header. Kirby's safe names
+     * already contain nothing but letters, digits, `-`, `_`, `.` and `@`; this guards
+     * a content file edited by hand, where a quote, backslash or control character
+     * would otherwise break the header.
+     */
+    public static function headerSafeFilename(string $filename): string
+    {
+        $safe = preg_replace('/["\\\\\x00-\x1F\x7F]/', '', $filename) ?? '';
+        return $safe !== '' ? $safe : 'file';
     }
 
     /**
