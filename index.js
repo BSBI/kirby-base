@@ -150,6 +150,11 @@ panel.plugin('open-foundations/kirby-base', {
     usernamesearch: {
       extends: 'k-users-field'
     },
+    // A text field whose live prefix and placeholder come from PHP
+    // (fields/permanenturl.php): the File Archive permanent URL.
+    permanenturl: {
+      extends: 'k-text-field'
+    },
     maplocation: {
       props: {
         value: {

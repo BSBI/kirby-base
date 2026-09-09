@@ -9,6 +9,7 @@ use Closure;
 use Kirby\Cms\App;
 use Kirby\Cms\File;
 use Kirby\Exception\InvalidArgumentException;
+use Kirby\Form\Field as FormField;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -347,6 +348,22 @@ final class FileArchiveServiceTest extends TestCase
     {
         self::$service->validateSlug('', $this->archiveFile('no-slug.pdf'));
         $this->addToAssertionCount(1);
+    }
+
+    // -------------------------------------------------------------------------
+    // The Panel field: live prefix and filename placeholder
+    // -------------------------------------------------------------------------
+
+    public function testPermanentUrlFieldShowsThePrefixAndFilenameLive(): void
+    {
+        self::$kirby->extend([
+            'fields' => ['permanenturl' => require dirname(__DIR__, 3) . '/fields/permanenturl.php'],
+        ]);
+        $field = new FormField('permanenturl', ['model' => $this->archiveFile('no-slug.pdf')]);
+        $props = $field->toArray();
+        $this->assertSame('https://example.test/files/', $props['before']);
+        $this->assertSame('no-slug.pdf', $props['placeholder']);
+        $this->assertSame('permanenturl', $props['type']);
     }
 
     public function testSlugFromUpdateValuesIsReadCaseInsensitively(): void

@@ -74,6 +74,7 @@ $pluginConfig = [
         },
     ],
     'fields' => [
+        'permanenturl' => require __DIR__ . '/fields/permanenturl.php',
         'maplocation' => [
             'props' => [
                 'value' => function ($value = null) {
