@@ -354,16 +354,24 @@ final class FileArchiveServiceTest extends TestCase
     // The Panel field: live prefix and filename placeholder
     // -------------------------------------------------------------------------
 
-    public function testPermanentUrlFieldShowsThePrefixAndFilenameLive(): void
+    public function testPermanentUrlFieldPassesThePrefixAndFilenameToThePanel(): void
     {
         self::$kirby->extend([
             'fields' => ['permanenturl' => require dirname(__DIR__, 3) . '/fields/permanenturl.php'],
         ]);
         $field = new FormField('permanenturl', ['model' => $this->archiveFile('no-slug.pdf')]);
         $props = $field->toArray();
-        $this->assertSame('https://example.test/files/', $props['before']);
-        $this->assertSame('no-slug.pdf', $props['placeholder']);
+        $this->assertSame('https://example.test/files/', $props['prefix']);
+        $this->assertSame('no-slug.pdf', $props['filename']);
         $this->assertSame('permanenturl', $props['type']);
+    }
+
+    public function testPermanentUrlFieldOnANonFileModelHasNoFilename(): void
+    {
+        $field = new FormField('permanenturl', ['model' => self::$kirby->site()]);
+        // Kirby drops null props from toArray(); the Vue prop defaults to ''.
+        $this->assertArrayNotHasKey('filename', $field->toArray());
+        $this->assertSame('https://example.test/files/', $field->toArray()['prefix']);
     }
 
     public function testSlugFromUpdateValuesIsReadCaseInsensitively(): void

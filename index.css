@@ -65,3 +65,16 @@
   text-decoration: underline dashed;
   text-underline-offset: 0.2ex;
 }
+
+/* File Archive permanent URL field: the live address under the slug input */
+.k-permanenturl-field-preview {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  margin-top: var(--spacing-2);
+  font-size: var(--text-sm);
+}
+.k-permanenturl-field-link {
+  word-break: break-all;
+  text-decoration: underline;
+}

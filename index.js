@@ -150,10 +150,37 @@ panel.plugin('open-foundations/kirby-base', {
     usernamesearch: {
       extends: 'k-users-field'
     },
-    // A text field whose live prefix and placeholder come from PHP
-    // (fields/permanenturl.php): the File Archive permanent URL.
+    // File Archive permanent URL (fields/permanenturl.php): the slug input, with
+    // the address it produces shown underneath as a live link and a copy button.
+    // `prefix` and `filename` come from PHP; an empty value means the filename.
     permanenturl: {
-      extends: 'k-text-field'
+      extends: 'k-text-field',
+      props: {
+        prefix: { type: String, default: '' },
+        filename: { type: String, default: '' }
+      },
+      computed: {
+        effectiveUrl: function () {
+          var slug = (this.value || '').trim();
+          return this.prefix + (slug !== '' ? slug : (this.filename || ''));
+        }
+      },
+      methods: {
+        copyUrl: function () {
+          this.$helper.clipboard.write(this.effectiveUrl);
+          this.$panel.notification.success('Permanent URL copied');
+        }
+      },
+      template:
+        '<k-field v-bind="$props" :input="_uid" class="k-permanenturl-field">' +
+        '  <k-input v-bind="$props" :id="_uid" ref="input" type="text"' +
+        '    :before="prefix" :placeholder="filename"' +
+        '    @input="$emit(\'input\', $event)" />' +
+        '  <div class="k-permanenturl-field-preview">' +
+        '    <k-link :to="effectiveUrl" target="_blank" class="k-permanenturl-field-link">{{ effectiveUrl }}</k-link>' +
+        '    <k-button icon="copy" size="xs" variant="filled" @click="copyUrl">Copy</k-button>' +
+        '  </div>' +
+        '</k-field>'
     },
     maplocation: {
       props: {
