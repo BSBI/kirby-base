@@ -366,15 +366,15 @@ final class ImageService
     // region FILES
 
     /**
+     * The URL to link a file by. File Archive files report their permanent URL
+     * from `$file->url()` itself (the `file::url` component, bsbi-web#570), so this
+     * is now a plain delegation kept for callers.
+     *
      * @param File $file
      * @return string
      */
     public function getFileURL(File $file): string
     {
-        if ($this->isFileFieldNotEmpty($file, 'permanentUrl')) {
-            $slug = $this->getFileFieldAsString($file, 'permanentUrl');
-            return kirby()->url() . '/files/' . $slug;
-        }
         return $file->url();
     }
 

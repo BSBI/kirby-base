@@ -1,6 +1,7 @@
 <?php
 
 use BSBI\WebBase\helpers\ContentIndexRegistry;
+use BSBI\WebBase\helpers\FileArchiveService;
 use BSBI\WebBase\helpers\FileLinkIndexHelper;
 use BSBI\WebBase\helpers\ImageConversionHelper;
 use BSBI\WebBase\helpers\KirbyBaseHelper;
@@ -209,9 +210,40 @@ function forgetUuidMisses(string $context): void
     }
 }
 
+/**
+ * Gives a newly uploaded File Archive file its permanent-URL slug (its filename)
+ * when the editor has not set one, so every archive file has a stable URL from
+ * day one (bsbi-web#570). Other files are returned untouched.
+ *
+ * The update re-enters file.update:before, which validates the slug; a filename always
+ * passes (Kirby safe names use a subset of the allowed characters, and two files on one
+ * page cannot share a name), so the only way to land here with an empty slug is an I/O
+ * failure, which is logged.
+ *
+ * @param Kirby\Cms\File $file
+ * @return Kirby\Cms\File
+ */
+function ensureFileArchiveSlug(Kirby\Cms\File $file): Kirby\Cms\File
+{
+    $archive = FileArchiveService::fromKirby(kirby());
+    if (!$archive->isArchiveFile($file) || $archive->slugOf($file) !== '') {
+        return $file;
+    }
+    try {
+        return $file->update([FileArchiveService::FIELD => $archive->defaultSlug($file)]);
+    } catch (Throwable $e) {
+        KirbyBaseHelper::writeToLogFile(
+            'file-archive',
+            'Could not set the permanent URL for ' . $file->id() . ': ' . $e->getMessage()
+        );
+        return $file;
+    }
+}
+
 return [
     'file.create:after' => function (Kirby\Cms\File $file) {
         forgetUuidMisses('file.create');
+        $file = ensureFileArchiveSlug($file);
         $filename = $file->filename();
         if (strtolower(pathinfo($filename, PATHINFO_EXTENSION)) !== 'bmp') {
             return $file;
@@ -245,6 +277,19 @@ return [
             if ($tmpPath !== null && file_exists($tmpPath)) {
                 unlink($tmpPath);
             }
+        }
+    },
+
+    // A File Archive permanent URL must be URL-safe and unique: the route matches
+    // exactly, so a bad or duplicated slug is a broken link (bsbi-web#570).
+    'file.update:before' => function (Kirby\Cms\File $file, array $values, array $strings) {
+        $slug = FileArchiveService::slugFromValues($values);
+        if ($slug === null) {
+            return;
+        }
+        $archive = FileArchiveService::fromKirby(kirby());
+        if ($archive->isArchiveFile($file)) {
+            $archive->validateSlug($slug, $file);
         }
     },
 

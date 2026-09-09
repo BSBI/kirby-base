@@ -18,8 +18,9 @@ use Kirby\Cms\App;
  * {@see preview()} and {@see run()}, so even if the task were mistakenly registered somewhere it
  * must not be, it deletes nothing.
  *
- * Media is a disposable cache (originals live in `content/`; file-archive downloads stream from the
- * original, never from `media/`), which is what makes a blanket wipe recoverable. It reuses the
+ * Media is a disposable cache (originals live in `content/`; file-archive downloads are streamed
+ * from the original by the `/files/<slug>` route, never from `media/`), which is what makes a
+ * blanket wipe recoverable. It reuses the
  * unit-tested {@see MediaGarbageCollector} walk in `wipeAll` mode, so it is chunked and
  * resumable-under-deletion like the live cleanup.
  *

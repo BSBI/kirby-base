@@ -4,6 +4,7 @@ use BSBI\WebBase\helpers\ContentIndexDefinition;
 use BSBI\WebBase\helpers\ContentIndexRegistry;
 use BSBI\WebBase\helpers\ErrorNotificationThrottle;
 use BSBI\WebBase\helpers\FatalError;
+use BSBI\WebBase\helpers\FileArchiveService;
 use BSBI\WebBase\helpers\FileLinkIndexHelper;
 use BSBI\WebBase\helpers\ImageBankIndexHelper;
 use BSBI\WebBase\helpers\FilteredFilesHelper;
@@ -24,6 +25,7 @@ use BSBI\WebBase\helpers\maintenance\MediaCleanupTask;
 use BSBI\WebBase\helpers\maintenance\UuidCachePopulateTask;
 use BSBI\WebBase\helpers\maintenance\DanglingReferenceAuditTask;
 use Kirby\Cms\App as Kirby;
+use Kirby\Cms\File;
 use Kirby\Exception\PermissionException;
 use Kirby\Panel\Ui\Item\PageItem;
 use Kirby\Toolkit\I18n;
@@ -61,6 +63,16 @@ if (!function_exists('decodeFilteredSectionParam')) {
 }
 
 $pluginConfig = [
+    'components' => [
+        // File Archive files report their permanent URL from $file->url(), so writer
+        // links, file blocks, feeds and the Panel all emit /files/<slug> without each
+        // caller knowing (bsbi-web#570). Everything else falls through to Kirby.
+        'file::url' => function (Kirby $kirby, File $file): string {
+            $native = $kirby->nativeComponent('file::url');
+            return FileArchiveService::fromKirby($kirby)
+                ->resolveUrl($file, $native instanceof Closure ? $native : null);
+        },
+    ],
     'fields' => [
         'maplocation' => [
             'props' => [

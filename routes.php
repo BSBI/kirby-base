@@ -1,6 +1,7 @@
 <?php
 
 use BSBI\WebBase\helpers\ContentIndexRegistry;
+use BSBI\WebBase\helpers\FileArchiveService;
 use BSBI\WebBase\helpers\KirbyInternalHelper;
 use BSBI\WebBase\helpers\SearchIndexHelper;
 use BSBI\WebBase\helpers\SessionFlash;
@@ -259,23 +260,16 @@ return [
         },
     ],
     [
+        // File Archive permanent URL (bsbi-web#570): stream the file here rather than
+        // redirecting to the hashed media URL, so this is the URL that stays in the
+        // address bar and gets copied. Byte ranges and 304s are handled inside.
         'pattern' => 'files/(:any)',
-        'action'  => function ($slug) {
-            // Find the archive page first to narrow the search
-            $archivePage = page('file-archive'); // Adjust to your actual page URI
+        'action'  => function (string $slug) {
+            $ifModifiedSince = kirby()->request()->header('If-Modified-Since');
+            $response = FileArchiveService::fromKirby(kirby())
+                ->respond($slug, is_string($ifModifiedSince) ? $ifModifiedSince : null);
 
-            if ($archivePage) {
-                // Search files for a match in the 'alt_slug' field
-                $file = $archivePage->files()->findBy('permanentUrl', $slug);
-
-                if ($file) {
-                    // Redirect to the actual physical file URL
-                    return go($file->mediaUrl());
-                }
-            }
-
-            // If no file matches, show 404
-            return site()->errorPage();
+            return $response ?? site()->errorPage();
         }
     ],
     [
