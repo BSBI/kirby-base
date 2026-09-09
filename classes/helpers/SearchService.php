@@ -80,9 +80,11 @@ final readonly class SearchService
      *
      * @param string|null $query
      * @param string $params Pipe-separated list of fields to search
-     * @param int $perPage
+     * @param int $perPage Results per page, paged from the request's page number;
+     *        0 (or less) returns every match unpaginated for a caller that pages
+     *        the results itself
      * @param Collection|null $collection Defaults to site index
-     * @return Collection
+     * @return Collection Matches in score order; carries a pagination only when $perPage > 0
      */
     public function getSearchCollection(
         ?string     $query = null,
@@ -139,10 +141,21 @@ final readonly class SearchService
             return $scoring['hits'] > 0;
         });
 
-        return $results->sort(
+        $sorted = $results->sort(
             fn ($item) => $scores[$item->id()]['score'],
             'desc'
-        )->paginate($perPage);
+        );
+
+        // A non-positive $perPage means the caller pages the results itself.
+        // Kirby's Pagination::for() drops a zero limit and falls back to 20 per
+        // page, so paginating here would hand back a 20-item slice of the current
+        // URL page — which a listing then re-paginated, 404ing on its page 2
+        // (bsbi-web#703).
+        if ($perPage <= 0) {
+            return $sorted;
+        }
+
+        return $sorted->paginate($perPage);
     }
 
     /**
