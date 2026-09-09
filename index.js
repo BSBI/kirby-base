@@ -177,7 +177,7 @@ panel.plugin('open-foundations/kirby-base', {
         '    :before="prefix" :placeholder="filename"' +
         '    @input="$emit(\'input\', $event)" />' +
         '  <div class="k-permanenturl-field-preview">' +
-        '    <k-link :to="effectiveUrl" target="_blank" class="k-permanenturl-field-link">{{ effectiveUrl }}</k-link>' +
+        '    <a :href="effectiveUrl" target="_blank" rel="noopener" class="k-permanenturl-field-link">{{ effectiveUrl }}</a>' +
         '    <k-button icon="copy" size="xs" variant="filled" @click="copyUrl">Copy</k-button>' +
         '  </div>' +
         '</k-field>'
