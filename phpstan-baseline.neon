@@ -1873,12 +1873,6 @@ parameters:
 			path: classes/helpers/SearchService.php
 
 		-
-			message: '#^Cannot call method paginate\(\) on Kirby\\Cms\\Pages\|null\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: classes/helpers/SearchService.php
-
-		-
 			message: '#^Cannot cast mixed to string\.$#'
 			identifier: cast.string
 			count: 1

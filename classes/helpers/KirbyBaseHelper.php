@@ -4487,12 +4487,15 @@ abstract class KirbyBaseHelper
     }
 
     /**
-     * Search the specified Kirby collection
+     * Search the specified Kirby collection with the in-memory weighted search.
+     *
      * @param string|null $query
-     * @param string $params
-     * @param int $perPage the number of records per field
-     * @param Collection|null $collection
-     * @return Collection
+     * @param string $params Pipe-separated list of fields to search
+     * @param int $perPage Results per page, paged from the request's page number;
+     *        0 (or less) returns every match unpaginated for a caller that pages
+     *        the results itself (every filtered listing does — see bsbi-web#703)
+     * @param Collection|null $collection Defaults to the site index
+     * @return Collection Matches in score order; carries a pagination only when $perPage > 0
      */
     protected function getSearchCollection(
         ?string     $query = null,

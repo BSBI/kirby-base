@@ -7,6 +7,7 @@ namespace BSBI\WebBase\helpers;
 use BSBI\WebBase\models\BaseWebPage;
 use Closure;
 use Kirby\Cms\App;
+use Kirby\Cms\Pages;
 use Kirby\Cms\Site;
 use Kirby\Toolkit\Collection;
 use Kirby\Toolkit\Str;
@@ -162,7 +163,7 @@ final readonly class SearchService
      * Search using SQLite FTS5 index with automatic fallback to in-memory search.
      *
      * @param string|null $query Search query
-     * @param int $perPage Results per page
+     * @param int $perPage Results per page; 0 (or less) returns every match unpaginated
      * @param string|null $templates Optional comma-delimited template names to filter results
      * @return Collection
      */
@@ -192,7 +193,15 @@ final readonly class SearchService
                 return $this->site->index()->limit(0);
             }
 
-            return pages($pageIds)->paginate($perPage);
+            $found = pages($pageIds) ?? new Pages([]);
+
+            // Same contract as getSearchCollection(): a non-positive $perPage
+            // means the caller pages the results itself.
+            if ($perPage <= 0) {
+                return $found;
+            }
+
+            return $found->paginate($perPage);
         } catch (Throwable $e) {
             KirbyBaseHelper::writeToLogFile('content-index', 'SQLite search failed: ' . $e->getMessage());
             // Never fall back to an unfiltered search — return empty results to avoid leaking
