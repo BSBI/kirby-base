@@ -11,6 +11,7 @@ This plugin declares runtime dependencies in its own `composer.json`:
 |---|---|
 | `setasign/fpdi` | reads an existing PDF so a certificate can be overlaid onto the designer's artwork |
 | `tecnickcom/tcpdf` | writes the PDF; UTF-8 native, so names like *Siân* or *Ó Briain* survive |
+| `league/flysystem`, `league/flysystem-aws-s3-v3`, `league/flysystem-memory` | document storage (`BSBI\WebBase\storage`): local, S3, and in-memory for tests — see `documentation/document-storage.md` |
 
 **How those reach the site depends on how the plugin is being used, and the two differ:**
 
