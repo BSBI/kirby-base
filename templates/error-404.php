@@ -13,13 +13,13 @@
     <?php snippet('base/styles') ?>
 </head>
 <body>
-<div class="container mt-4">
+<main class="container mt-4">
     <p><a href="/">Home</a></p>
-    <div class="alert alert-warning" role="alert">
-        <h2>Page not found</h2>
+    <div class="alert alert-warning">
+        <h1 class="h2">Page not found</h1>
         <p>There is no page at this address.</p>
         <a href="/" class="btn btn-outline-primary">Return to the website.</a>
     </div>
-</div>
+</main>
 </body>
 </html>
