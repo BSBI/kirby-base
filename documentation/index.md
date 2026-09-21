@@ -137,6 +137,31 @@ display the login form.
 
 
 
+## Error handling and alerting
+
+When `debug` is off, `index.php` registers a global exception handler and a shutdown
+handler so that nothing fails silently on live.
+
+- **Unhandled exceptions** — anything that escapes Kirby's render flow — are wrapped in
+  `UnhandledException` (`classes/helpers/`), which classifies them. A **server fault** is
+  logged, emailed to `adminEmail`, and answered with the `error-500` template (admins see
+  the exception detail, everyone else a generic apology). A **routing miss** — Kirby's
+  router found no route for the path and method, which it reports as a plain `\Exception`
+  with code 404 — is logged and answered with the `error-404` template, and **never
+  alerts**: it is a request for a URL that has no route, not a fault. The usual source is a
+  `HEAD` request to a Panel URL from a mail-client link scanner; the Panel registers no
+  `HEAD` routes. The rule is the exact class and code the router uses, so a Kirby
+  `NotFoundException` escaping from application code still alerts.
+- **Fatal errors** (out of memory, parse errors) never reach the exception handler and
+  are picked up by the shutdown handler via `FatalError`, which filters
+  `error_get_last()` down to genuine fatals and reports them the same way.
+- **Alerts are throttled** per distinct fault by `ErrorNotificationThrottle` (marker
+  files under the logs root, window set by `errorNotificationWindowSeconds`), so a
+  site-wide fault alerts once per window rather than once per visitor — an un-throttled
+  flood can get the sending domain rate-limited and take the site's transactional mail
+  down with it. The fingerprint is `message|file|line`.
+- Alerts are skipped when the host starts with `localhost`.
+
 # Testing
 
 ## Running the tests

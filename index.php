@@ -17,6 +17,7 @@ use BSBI\WebBase\helpers\KirbyInternalHelper;
 use BSBI\WebBase\helpers\SearchIndexHelper;
 use BSBI\WebBase\helpers\SearchService;
 use BSBI\WebBase\helpers\StyleGuideService;
+use BSBI\WebBase\helpers\UnhandledException;
 use BSBI\WebBase\helpers\maintenance\CacheClearTask;
 use BSBI\WebBase\helpers\maintenance\LogRetentionTask;
 use BSBI\WebBase\helpers\maintenance\MaintenancePanel;
@@ -801,37 +802,34 @@ if (option('debug') === false) {
     set_exception_handler(function (Throwable $exception) use ($notifyAdmin, &$errorReported) {
         $redirectUrl = $_SERVER['REDIRECT_URL'] ?? '';
         $pageUrl = is_string($redirectUrl) ? $redirectUrl : '';
-        $exceptionAsString = "Message: " . $exception->getMessage() . "\n" .
-            "File:" . $exception->getFile() . "'\n" .
-            "Line:" . $exception->getLine() . "\n" .
-            "Trace:" . $exception->getTraceAsString() . "\n" .
-            "Page: " . $pageUrl . "\n";
+        $unhandled = new UnhandledException($exception);
+        $exceptionAsString = $unhandled->describe($pageUrl);
 
         error_log($exceptionAsString);
 
-        $notifyAdmin(
-            $exception->getMessage() . '|' . $exception->getFile() . '|' . $exception->getLine(),
-            'Website Exception: ' . $exception->getMessage(),
-            "<b>An unhandled exception occurred:</b><br>" .
-                "<b>Message</b>: " . htmlspecialchars($exception->getMessage()) . "<br>" .
-                "<b>File:</b> " . htmlspecialchars($exception->getFile()) . "<br>" .
-                "<b>Line:</b> " . $exception->getLine() . "<br>" .
-                "<b>Trace:</b> " . htmlspecialchars($exception->getTraceAsString()) . "<br>" .
-                "<b>Page:</b> " . htmlspecialchars($pageUrl)
-        );
+        // A routing miss (Kirby's router found no route — typically a HEAD request to a
+        // Panel URL from a link scanner) is a 404, not a fault: logged, never alerted.
+        if ($unhandled->shouldNotify()) {
+            $notifyAdmin(
+                $unhandled->fingerprint(),
+                'Website Exception: ' . $exception->getMessage(),
+                $unhandled->describeHtml($pageUrl)
+            );
+        }
 
         // Render the error page and pass the exception
         $kirby = Kirby::instance();
+        $status = $unhandled->httpStatus();
 
         // Send the status line directly. This handler bypasses Kirby's normal
         // render/send flow, and Responder::code() only records the code for that flow
         // to apply later — so on its own it leaves the error page being served as 200,
         // which reports a dead site as healthy to uptime monitoring.
         if (headers_sent() === false) {
-            http_response_code(500);
+            http_response_code($status);
         }
 
-        $kirby->response()->code(500); // keep the Responder in step for anything reading it
+        $kirby->response()->code($status); // keep the Responder in step for anything reading it
 
         // Only now mark the failure as reported. Doing it earlier would mean a fault in
         // the error page itself (below) is swallowed by the shutdown handler, which is
@@ -839,10 +837,14 @@ if (option('debug') === false) {
         $errorReported = true;
 
         try {
-            echo Tpl::load(__DIR__ . '/templates/error-500.php', [
-                'userRole' => $kirby->user() ? $kirby->user()->role()->name() : '',
-                'exception' => $exceptionAsString,
-            ]);
+            if ($unhandled->isRoutingMiss()) {
+                echo Tpl::load(__DIR__ . '/templates/error-404.php');
+            } else {
+                echo Tpl::load(__DIR__ . '/templates/error-500.php', [
+                    'userRole' => $kirby->user() ? $kirby->user()->role()->name() : '',
+                    'exception' => $exceptionAsString,
+                ]);
+            }
         } catch (Throwable $renderFailure) {
             error_log('Error page failed to render: ' . $renderFailure->getMessage());
             $notifyAdmin(
