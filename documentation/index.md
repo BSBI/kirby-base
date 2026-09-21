@@ -19,7 +19,7 @@
 
 ## Service Helpers
 
-KirbyBase ships seven focused service classes that encapsulate distinct concerns.
+KirbyBase ships eight focused service classes that encapsulate distinct concerns.
 `KirbyBaseHelper` delegates to all of them internally and exposes the same public API
 as before, so consuming sites require no changes.
 
@@ -31,6 +31,7 @@ as before, so consuming sites require no changes.
 | `SearchService`          | Search query building, SQLite FTS5 search, analytics, and term highlighting   |
 | `CollectionFilterService`| Filtering Kirby `Collection` and `Structure` objects                          |
 | `UserService`            | User model building, permission checks, and user mutation                     |
+| `PageWriter`             | Page writes — update, publish, unpublish, delete — on the object Kirby holds now. Kirby 5's storage is immutable: a write returns a new `Page` and the old object refuses further writes ("Storage for the page is immutable"), so a `Page` held across another write is stale. `KirbyBaseHelper::updatePage()`, `publishPage()`, `unpublishPage()` and `deletePage()` go through it; `currentPage()` gives the fresh object for reads. `updatePage(..., asCurrentUser: true)` writes as the logged-in user where an audit hook must record the person. Never call `$page->update()` directly in a consuming site. |
 | `UuidResolver`           | Resolving `file://`/`page://` references with a short-lived miss list (one hour, or the `uuidResolver.missTtlSeconds` option), so a dangling reference does not walk the whole site on every request (bsbi-web#732); misses are logged to `logs/uuid-misses.log`. Block snippets and `KirbyFieldReader` use it; site snippets can call `UuidResolver::instance()->fileFromField($field)`. Pair with the **Dangling references** maintenance task, and on localhost/staging the **UUID cache** task after copying content in (the **Cache** task keeps the UUID cache, so live never needs it). Not covered: UUIDs inside Kirbytext tags (`(link: page://…)`), which core resolves; the audit lists those too. |
 
 You can instantiate the services directly in your own code if you want to use them
