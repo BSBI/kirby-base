@@ -17,12 +17,19 @@ use Throwable;
  * upstream catches it. Reporting that as a 500 misreports the site's health to whatever is
  * probing it and spends the alert channel on noise (bsbi-web#754).
  *
- * The routing-miss rule is deliberately narrow: the exact class and code the router uses.
- * A subclass carrying 404, or a Kirby NotFoundException escaping from application code,
- * points at code or content and keeps alerting.
+ * The routing-miss rule is deliberately narrow: the exact class, code and message prefix
+ * the router uses. A subclass carrying 404, a plain \Exception with 404 thrown from
+ * anywhere else, or a Kirby NotFoundException escaping from application code, points at
+ * code or content and keeps alerting. If Kirby ever rewords the message the rule fails
+ * safe: the misses go back to alerting, which is noticed, rather than a fault going quiet.
  */
 final readonly class UnhandledException
 {
+    /**
+     * The start of the message Kirby\Http\Router::find() throws with when no route matches.
+     */
+    public const string ROUTING_MISS_MESSAGE_PREFIX = 'No route found for path:';
+
     /**
      * @param Throwable $throwable the throwable that reached the handler
      */
@@ -33,11 +40,14 @@ final readonly class UnhandledException
     /**
      * Whether this is Kirby's router reporting that no route matched.
      *
-     * @return bool true for the router's exact shape: a plain \Exception with code 404
+     * @return bool true for the router's exact shape: a plain \Exception with code 404 and
+     *              the router's message
      */
     public function isRoutingMiss(): bool
     {
-        return $this->throwable::class === Exception::class && $this->throwable->getCode() === 404;
+        return $this->throwable::class === Exception::class
+            && $this->throwable->getCode() === 404
+            && str_starts_with($this->throwable->getMessage(), self::ROUTING_MISS_MESSAGE_PREFIX);
     }
 
     /**

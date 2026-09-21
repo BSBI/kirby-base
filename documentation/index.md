@@ -150,8 +150,9 @@ handler so that nothing fails silently on live.
   with code 404 — is logged and answered with the `error-404` template, and **never
   alerts**: it is a request for a URL that has no route, not a fault. The usual source is a
   `HEAD` request to a Panel URL from a mail-client link scanner; the Panel registers no
-  `HEAD` routes. The rule is the exact class and code the router uses, so a Kirby
-  `NotFoundException` escaping from application code still alerts.
+  `HEAD` routes. The rule is the exact class, code and message prefix the router uses,
+  so a Kirby `NotFoundException` escaping from application code still alerts, and so
+  does a plain `\Exception` with code 404 thrown from anywhere else.
 - **Fatal errors** (out of memory, parse errors) never reach the exception handler and
   are picked up by the shutdown handler via `FatalError`, which filters
   `error_get_last()` down to genuine fatals and reports them the same way.

@@ -23,7 +23,8 @@ use TypeError;
  * HEAD request to a Panel URL, for instance. Reporting that as a 500 misreports the site's
  * health and spends the alert channel on noise (bsbi-web#754). The rule is deliberately
  * narrow: the exact class and code the router uses, and nothing else, so a Kirby
- * NotFoundException escaping from application code still alerts.
+ * NotFoundException escaping from application code still alerts, and so does a plain
+ * \Exception with code 404 that does not carry the router's message.
  */
 final class UnhandledExceptionTest extends TestCase
 {
@@ -47,6 +48,7 @@ final class UnhandledExceptionTest extends TestCase
         return [
             'plain exception, no code' => [new Exception('boom')],
             'plain exception, code 500' => [new Exception('boom', 500)],
+            'plain exception, code 404, not the router' => [new Exception('upstream said 404', 404)],
             'subclass with code 404' => [new RuntimeException('not here', 404)],
             'Kirby NotFoundException (HTTP 404)' => [new NotFoundException(message: 'The file could not be found')],
             'Error' => [new Error('fatal-ish')],
@@ -56,8 +58,9 @@ final class UnhandledExceptionTest extends TestCase
 
     /**
      * Anything other than the router's exact shape is a fault we want to hear about — a
-     * subclass carrying 404, or a Kirby NotFoundException from a controller, both point
-     * at application code or content, not at a request for a URL that has no route.
+     * subclass carrying 404, a plain \Exception with 404 from anywhere but the router, or
+     * a Kirby NotFoundException from a controller, all point at application code or
+     * content, not at a request for a URL that has no route.
      */
     #[DataProvider('serverFaultProvider')]
     public function testEverythingElseIsA500ThatNotifies(Throwable $throwable): void
