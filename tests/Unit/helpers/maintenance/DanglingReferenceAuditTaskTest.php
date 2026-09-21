@@ -91,7 +91,11 @@ final class DanglingReferenceAuditTaskTest extends TestCase
 
         try {
             $dangling = (new DanglingReferenceAuditTask(self::$kirby))->dangling();
-            self::assertSame(['file://gonefile00000000', 'file://gonefile00000001'], $dangling['learn/guide'] ?? null, 'the unsaved-changes version counts against the same page');
+            // two files under one page: which is read first is the filesystem's
+            // choice (APFS and ext4 differ), so the order is not the assertion
+            $found = $dangling['learn/guide'] ?? null;
+            sort($found);
+            self::assertSame(['file://gonefile00000000', 'file://gonefile00000001'], $found, 'the unsaved-changes version counts against the same page');
         } finally {
             unlink($root . '/3_learn/_drafts/2_guide/_changes/default.txt');
             rmdir($root . '/3_learn/_drafts/2_guide/_changes');

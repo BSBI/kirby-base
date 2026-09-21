@@ -88,6 +88,8 @@ abstract class KirbyBaseHelper
      * @var App
      */
     protected App $kirby;
+
+    private ?PageWriter $pageWriter = null;
     /**
      * The Kirby site object
      * @var Site
@@ -647,20 +649,36 @@ abstract class KirbyBaseHelper
     }
 
     /**
+     * Every page write below goes through here, so it lands on the object
+     * Kirby holds now — see PageWriter for why a held Page can be stale.
+     */
+    protected function pageWriter(): PageWriter
+    {
+        return $this->pageWriter ??= new PageWriter($this->kirby);
+    }
+
+    /**
+     * The page as Kirby holds it now. Use it before reading back from, or
+     * writing to, a Page held across another write (a service that recorded
+     * something on it, a hook, a helper call whose return was discarded).
+     */
+    protected function currentPage(Page $page): Page
+    {
+        return $this->pageWriter()->current($page);
+    }
+
+    /**
      * @param Page $page
      * @param array $pageData
+     * @param bool $asCurrentUser Write as the logged-in user rather than the system user, so
+     *                            an audit hook (updatedBy) records the person; the caller is
+     *                            responsible for that user having permission
      * @return Page
      * @throws KirbyRetrievalException
      */
-    protected function updatePage(Page $page, array $pageData): Page
+    protected function updatePage(Page $page, array $pageData, bool $asCurrentUser = false): Page
     {
-        try {
-            return $this->kirby->impersonate('kirby', function () use ($page, $pageData) {
-                return $page->update($pageData);
-            });
-        } catch (Throwable $e) {
-            throw new KirbyRetrievalException($e->getMessage());
-        }
+        return $this->pageWriter()->update($page, $pageData, $asCurrentUser);
     }
 
     /**
@@ -670,13 +688,7 @@ abstract class KirbyBaseHelper
      */
     protected function deletePage(Page $page): bool
     {
-        try {
-            return $this->kirby->impersonate('kirby', function () use ($page) {
-                return $page->delete();
-            });
-        } catch (Throwable $e) {
-            throw new KirbyRetrievalException($e->getMessage());
-        }
+        return $this->pageWriter()->delete($page);
     }
 
     /**
@@ -698,13 +710,7 @@ abstract class KirbyBaseHelper
      */
     protected function publishPage(Page $page): Page
     {
-        try {
-            return $this->kirby->impersonate('kirby', function () use ($page) {
-                return $page->changeStatus('listed');
-            });
-        } catch (Throwable $e) {
-            throw new KirbyRetrievalException($e->getMessage());
-        }
+        return $this->pageWriter()->publish($page);
     }
 
     /**
@@ -716,13 +722,7 @@ abstract class KirbyBaseHelper
      */
     protected function unpublishPage(Page $page): Page
     {
-        try {
-            return $this->kirby->impersonate('kirby', function () use ($page) {
-                return $page->changeStatus('draft');
-            });
-        } catch (Throwable $e) {
-            throw new KirbyRetrievalException($e->getMessage());
-        }
+        return $this->pageWriter()->unpublish($page);
     }
 
     #endregion
