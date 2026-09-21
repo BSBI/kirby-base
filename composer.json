@@ -39,13 +39,19 @@
         "phpunit/phpunit": "^12.5",
         "rector/rector": "^2.3",
         "setasign/fpdi": "^2.6",
-        "tecnickcom/tcpdf": "^6.11"
+        "tecnickcom/tcpdf": "^6.11",
+        "league/flysystem": "^3.29",
+        "league/flysystem-memory": "^3.29",
+        "league/flysystem-aws-s3-v3": "^3.29"
     },
     "suggest": {
         "ext-imagick": "Required for BMP to PNG conversion (supports all BMP variants including RLE-compressed)",
         "ext-gd": "Required for BMP to PNG conversion when Imagick is unavailable (uncompressed BMP only)",
         "setasign/fpdi": "Required only to render certificates (BSBI\\WebBase\\certificates). Install alongside tecnickcom/tcpdf.",
-        "tecnickcom/tcpdf": "Required only to render certificates (BSBI\\WebBase\\certificates). Install alongside setasign/fpdi."
+        "tecnickcom/tcpdf": "Required only to render certificates (BSBI\\WebBase\\certificates). Install alongside setasign/fpdi.",
+        "league/flysystem": "Required only for document storage (BSBI\\WebBase\\storage): the local driver, and the base for the others.",
+        "league/flysystem-aws-s3-v3": "Required only for the S3 document storage driver (pulls in aws/aws-sdk-php).",
+        "league/flysystem-memory": "Required only for the in-memory document storage driver, for tests."
     },
     "minimum-stability": "stable"
 }

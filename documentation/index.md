@@ -244,3 +244,5 @@ The following need to be in place for any site using KirbyBase
 
 - Needs favicons in /assets/favicons - using https://realfavicongenerator.net/
 - Needs bootstrap icons in /assets/images/icons - using https://icons.getbootstrap.com/
+
+- [Document storage](document-storage.md) — uploaded documents in S3, a local directory or memory, behind one interface
