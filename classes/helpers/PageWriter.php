@@ -32,11 +32,23 @@ final readonly class PageWriter
 
     /**
      * The page as Kirby holds it now, drafts included; the page given when
-     * Kirby no longer has it (deleted, or not yet in any collection).
+     * Kirby no longer has it (deleted, or not yet in any collection) or holds
+     * it at a directory that no longer exists.
      */
     public function current(Page $page): Page
     {
-        return $this->kirby->page($page->id()) ?? $page;
+        $held = $this->kirby->page($page->id());
+
+        // Kirby's collections can outlive the directory behind a page: after
+        // a lost create race, PageCreateRecovery removes the loser's litter
+        // from disk but Kirby still holds the loser's page. Writing to that
+        // ghost would recreate its directory beside the winner's, so only
+        // prefer Kirby's copy while its directory still exists.
+        if ($held === null || !is_dir($held->root())) {
+            return $page;
+        }
+
+        return $held;
     }
 
     /**
