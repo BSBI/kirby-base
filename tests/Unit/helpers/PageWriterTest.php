@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BSBI\WebBase\Tests\Unit\helpers;
 
+use BSBI\WebBase\helpers\PageCreateRecovery;
 use BSBI\WebBase\helpers\PageWriter;
 use Kirby\Cms\App;
 use Kirby\Cms\Page;
@@ -121,6 +122,46 @@ final class PageWriterTest extends TestCase
         $this->writer->delete($page);
 
         $this->assertSame($page, $this->writer->current($page));
+    }
+
+    /**
+     * A lost create race (bsbi-web checkout, #667): the loser's publish fails
+     * because the winner's directory already exists, and PageCreateRecovery
+     * removes the loser's litter from disk and hands back the winner's page.
+     * Kirby's collections still hold the loser's page at the removed
+     * directory, so looking the page up by id finds that ghost — and writing
+     * to it would recreate the directory as a duplicate of the winner's.
+     */
+    public function testAnUpdateAfterARecoveredCreateRaceWritesToTheWinnersPage(): void
+    {
+        $parent = $this->aPage('orders')->changeStatus('listed');
+        // The losing request's cached view of the parent, from before the winner wrote.
+        $parent->children();
+        $parent->drafts();
+
+        $winnerRoot = $parent->root() . '/1_race';
+        mkdir($winnerRoot);
+        file_put_contents($winnerRoot . '/default.txt', "Title: Winner\n\n----\n\nState: Saved");
+
+        $loser = $parent->createChild(['slug' => 'race', 'template' => 'default', 'content' => ['title' => 'Loser']]);
+        $collided = false;
+        try {
+            $loser->changeStatus('listed');
+        } catch (\Throwable) {
+            // the lost race, as live sees it
+            $collided = true;
+        }
+        $this->assertTrue($collided, 'the loser\'s publish should collide with the winner\'s directory');
+
+        $recovered = (new PageCreateRecovery(self::$kirby))->recover($parent, 'race', true);
+        $this->assertInstanceOf(Page::class, $recovered);
+        $this->assertSame($winnerRoot, $recovered->root());
+
+        $updated = $this->writer->update($recovered, ['state' => 'Submitted']);
+
+        $this->assertSame($winnerRoot, $updated->root());
+        $this->assertSame([$winnerRoot], glob($parent->root() . '/*race') ?: [], 'no duplicate directory for the slug');
+        $this->assertStringContainsString('Submitted', (string) file_get_contents($winnerRoot . '/default.txt'));
     }
 
     public function testAsCurrentUserWritesWithoutImpersonatingTheSystemUser(): void
