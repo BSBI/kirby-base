@@ -62,6 +62,10 @@ Sections are revealed client-side via vanilla JS when the controlling radio/sele
 | `FormFieldSpec::select($name, $label, $options)` | `<select>` | `.overridable('options')` |
 | `FormFieldSpec::likert($name, $label)` | Scale buttons | `.overridable('leftLabel')`, `.overridable('rightLabel')` |
 
+Radio and checkbox groups render as a `<fieldset>` whose `<legend>` is the label, so
+screen readers announce the question alongside each option. Help text set with `.help()`
+is linked to the fieldset by `aria-describedby` (`<name>-help`).
+
 ### Overridable properties
 
 Calling `.overridable('label')` (or `'options'`, `'leftLabel'`, etc.) on a spec:
