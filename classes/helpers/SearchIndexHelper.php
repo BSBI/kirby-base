@@ -140,6 +140,19 @@ class SearchIndexHelper
     }
 
     /**
+     * The configured database path (relative to the site root), for the static
+     * lookups that have no instance.
+     *
+     * @return string
+     */
+    private static function databasePathOption(): string
+    {
+        $path = option('search.databasePath', self::DEFAULT_DATABASE_PATH);
+
+        return is_string($path) ? $path : self::DEFAULT_DATABASE_PATH;
+    }
+
+    /**
      * Get the list of excluded templates from configuration
      *
      * Merges default exclusions (required by kirby-base) with any site-specific exclusions.
@@ -318,7 +331,7 @@ class SearchIndexHelper
      */
     private function initializeDatabase(): void
     {
-        $file = $this->kirby->root('site') . $this->getDatabasePath();
+        $file = SitePaths::resolve($this->kirby, $this->getDatabasePath());
 
         if (F::exists($file) === false) {
             $dir = dirname($file);
@@ -700,8 +713,7 @@ class SearchIndexHelper
     public static function lookupPageIdByDdbId(string $ddbId): ?string
     {
         if (self::$staticDb === null) {
-            $databasePath = option('search.databasePath', self::DEFAULT_DATABASE_PATH);
-            $file = kirby()->root('site') . $databasePath;
+            $file = SitePaths::resolve(kirby(), self::databasePathOption());
             if (!F::exists($file)) {
                 return null;
             }
@@ -736,8 +748,7 @@ class SearchIndexHelper
         }
 
         if (self::$staticDb === null) {
-            $databasePath = option('search.databasePath', self::DEFAULT_DATABASE_PATH);
-            $file = kirby()->root('site') . $databasePath;
+            $file = SitePaths::resolve(kirby(), self::databasePathOption());
             if (!F::exists($file)) {
                 return [];
             }

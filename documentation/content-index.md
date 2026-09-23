@@ -261,7 +261,7 @@ The definition's `getIndexes()` method returns CREATE INDEX statements that are 
 
 ### Storage Location
 
-By default, index files are stored at `site/logs/content-indexes/`. This can be configured via the `contentIndex.databasePath` option in `config.php`:
+By default, index files are stored at `site/logs/content-indexes/`. Paths under `/logs/` resolve against Kirby's `logs` root (`SitePaths::resolve()`), which defaults to `site/logs`; a site that sets its own `logs` root (such as a seeded browser-test site) therefore gets its own indexes. The same applies to the search, file-link and image-bank indexes. The path can be configured via the `contentIndex.databasePath` option in `config.php`:
 
 ```php
 'contentIndex' => [
