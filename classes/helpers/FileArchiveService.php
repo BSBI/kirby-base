@@ -22,8 +22,11 @@ use Kirby\Http\Response;
  * redirecting to the hashed media URL — which is what used to end up in the address
  * bar and in the links people copied.
  *
- * Every archive file gets a slug on upload (its filename) and slugs are validated on
- * save, so the URL people see is stable across file replacements.
+ * An archive file whose `permanentUrl` field is empty uses its filename as the slug, so
+ * every archive file has a permanent URL — including the ones uploaded before this
+ * existed — without any data change. An explicit slug wins over a filename: a file with
+ * one is reached only by it, and no other file may take a slug that shadows a
+ * filename-addressed file. Slugs are validated on save.
  *
  * Scope is the archive page only (option `fileArchive.pageId`, default
  * `file-archive`): a `permanentUrl` field on any other file is ignored, and sites
@@ -99,19 +102,24 @@ final readonly class FileArchiveService
     }
 
     /**
-     * The absolute permanent URL, or null when the file is not an archive file
-     * with a slug.
+     * The slug an archive file is addressed by: its `permanentUrl` field, or its
+     * filename when the field is empty.
+     */
+    public function effectiveSlug(File $file): string
+    {
+        $slug = $this->slugOf($file);
+        return $slug !== '' ? $slug : $file->filename();
+    }
+
+    /**
+     * The absolute permanent URL, or null when the file is not an archive file.
      */
     public function permanentUrl(File $file): ?string
     {
         if (!$this->isArchiveFile($file)) {
             return null;
         }
-        $slug = $this->slugOf($file);
-        if ($slug === '') {
-            return null;
-        }
-        return $this->kirby->url() . '/' . self::URL_PREFIX . '/' . $slug;
+        return $this->kirby->url() . '/' . self::URL_PREFIX . '/' . $this->effectiveSlug($file);
     }
 
     /**
@@ -138,8 +146,10 @@ final readonly class FileArchiveService
     /**
      * Finds the archive file for a slug. Exact match, including case.
      *
-     * A linear scan of the archive page's files, once per /files/ request — fine for
-     * an archive of hundreds; index it if the archive ever reaches many thousands.
+     * An explicit `permanentUrl` wins; failing that, the filename of a file that has
+     * no explicit slug. A linear scan of the archive page's files, once per /files/
+     * request — fine for an archive of hundreds; index it if the archive ever reaches
+     * many thousands.
      */
     public function findBySlug(string $slug): ?File
     {
@@ -150,12 +160,17 @@ final readonly class FileArchiveService
         if ($archive === null) {
             return null;
         }
+        $byFilename = null;
         foreach ($archive->files() as $file) {
-            if ($this->slugOf($file) === $slug) {
+            $explicit = $this->slugOf($file);
+            if ($explicit === $slug) {
                 return $file;
             }
+            if ($explicit === '' && $byFilename === null && $file->filename() === $slug) {
+                $byFilename = $file;
+            }
         }
-        return null;
+        return $byFilename;
     }
 
     /**
@@ -213,22 +228,14 @@ final readonly class FileArchiveService
         return $safe !== '' ? $safe : 'file';
     }
 
-    /**
-     * The slug a newly uploaded archive file gets when the editor has not set one:
-     * its filename, extension included, so the URL says what it is and the browser
-     * saves it under the right name.
-     */
-    public function defaultSlug(File $file): string
-    {
-        return $file->filename();
-    }
 
     /**
      * Validates a slug about to be saved on an archive file.
      *
-     * An empty slug is allowed (the file falls back to its media URL). Otherwise the
-     * slug must be URL-safe and not in use by another archive file — the route
-     * matches exactly, so two files with one slug would make the second unreachable.
+     * An empty slug is allowed (the file is then addressed by its filename). Otherwise
+     * the slug must be URL-safe and not in use by another archive file, explicitly or
+     * by filename — the route matches exactly, so two files with one slug would make
+     * the second unreachable.
      *
      * @param File $file The file being saved, so it may keep its own slug.
      * @throws InvalidArgumentException With the message the editor sees in the Panel.

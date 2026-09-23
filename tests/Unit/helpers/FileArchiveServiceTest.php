@@ -9,13 +9,14 @@ use Closure;
 use Kirby\Cms\App;
 use Kirby\Cms\File;
 use Kirby\Exception\InvalidArgumentException;
+use Kirby\Form\Field as FormField;
 use PHPUnit\Framework\TestCase;
 
 /**
  * Tests for FileArchiveService (bsbi-web#570): File Archive files are addressed by
  * their permanent URL everywhere — `$file->url()` reports it, the `/files/<slug>` route
- * streams the file at it instead of redirecting to the hashed media URL, every archive
- * file gets a slug on upload, and slugs are validated on save.
+ * streams the file at it instead of redirecting to the hashed media URL, a file without
+ * a slug is addressed by its filename, and slugs are validated on save.
  *
  * Boots one App per class with a real file on disk under the archive page, so the
  * streamed response can be checked byte for byte, plus a second page holding a file
@@ -142,9 +143,18 @@ final class FileArchiveServiceTest extends TestCase
         );
     }
 
-    public function testPermanentUrlIsNullWithoutSlug(): void
+    public function testPermanentUrlWithoutSlugUsesTheFilename(): void
     {
-        $this->assertNull(self::$service->permanentUrl($this->archiveFile('no-slug.pdf')));
+        $this->assertSame(
+            'https://example.test/files/no-slug.pdf',
+            self::$service->permanentUrl($this->archiveFile('no-slug.pdf'))
+        );
+    }
+
+    public function testEffectiveSlugPrefersTheExplicitSlug(): void
+    {
+        $this->assertSame(self::SLUG, self::$service->effectiveSlug($this->archiveFile()));
+        $this->assertSame('no-slug.pdf', self::$service->effectiveSlug($this->archiveFile('no-slug.pdf')));
     }
 
     public function testPermanentUrlIsNullOutsideTheArchive(): void
@@ -154,16 +164,18 @@ final class FileArchiveServiceTest extends TestCase
         $this->assertNull(self::$service->permanentUrl($file));
     }
 
-    public function testResolveUrlFallsBackToNativeUrl(): void
+    public function testResolveUrlFallsBackToNativeUrlOutsideTheArchive(): void
     {
-        $file   = $this->archiveFile('no-slug.pdf');
+        $file = self::$kirby->page('other')?->file('elsewhere.pdf');
+        self::assertInstanceOf(File::class, $file);
         $native = fn (App $kirby, File $f): string => 'native:' . $f->filename();
-        $this->assertSame('native:no-slug.pdf', self::$service->resolveUrl($file, $native));
+        $this->assertSame('native:elsewhere.pdf', self::$service->resolveUrl($file, $native));
     }
 
     public function testResolveUrlFallsBackToMediaUrlWhenNoNativeComponent(): void
     {
-        $file = $this->archiveFile('no-slug.pdf');
+        $file = self::$kirby->page('other')?->file('elsewhere.pdf');
+        self::assertInstanceOf(File::class, $file);
         $this->assertSame($file->mediaUrl(), self::$service->resolveUrl($file, null));
     }
 
@@ -176,9 +188,9 @@ final class FileArchiveServiceTest extends TestCase
         $this->assertSame('https://example.test/files/' . self::SLUG, $this->archiveFile()->url());
     }
 
-    public function testFileUrlWithoutSlugStaysOnTheMediaUrl(): void
+    public function testFileUrlWithoutSlugIsTheFilenameUrl(): void
     {
-        $this->assertStringContainsString('/media/pages/', $this->archiveFile('no-slug.pdf')->url());
+        $this->assertSame('https://example.test/files/no-slug.pdf', $this->archiveFile('no-slug.pdf')->url());
     }
 
     public function testFileOutsideTheArchiveKeepsTheMediaUrl(): void
@@ -205,6 +217,16 @@ final class FileArchiveServiceTest extends TestCase
         $this->assertSame('leaders-guidance.pdf', self::$service->findBySlug(self::SLUG)?->filename());
     }
 
+    public function testFindBySlugFallsBackToTheFilename(): void
+    {
+        $this->assertSame('no-slug.pdf', self::$service->findBySlug('no-slug.pdf')?->filename());
+    }
+
+    public function testAFileWithAnExplicitSlugIsNotReachableByFilename(): void
+    {
+        $this->assertNull(self::$service->findBySlug('leaders-guidance.pdf'));
+    }
+
     public function testFindBySlugIsExactOnCase(): void
     {
         $this->assertNull(self::$service->findBySlug(strtolower(self::SLUG)));
@@ -220,6 +242,14 @@ final class FileArchiveServiceTest extends TestCase
     // -------------------------------------------------------------------------
     // Streaming response
     // -------------------------------------------------------------------------
+
+    public function testRespondStreamsAFilenameAddressedFile(): void
+    {
+        $response = self::$service->respond('no-slug.pdf');
+        self::assertNotNull($response);
+        $this->assertSame(200, $response->code());
+        $this->assertSame('inline; filename="no-slug.pdf"', $response->headers()['Content-Disposition']);
+    }
 
     public function testRespondStreamsTheFileInline(): void
     {
@@ -269,11 +299,6 @@ final class FileArchiveServiceTest extends TestCase
     // Slugs on upload and on save
     // -------------------------------------------------------------------------
 
-    public function testDefaultSlugIsTheFilename(): void
-    {
-        $this->assertSame('no-slug.pdf', self::$service->defaultSlug($this->archiveFile('no-slug.pdf')));
-    }
-
     public function testValidSlugPasses(): void
     {
         self::$service->validateSlug('Annual-Report_2025.v2.pdf', $this->archiveFile('no-slug.pdf'));
@@ -300,6 +325,19 @@ final class FileArchiveServiceTest extends TestCase
         self::$service->validateSlug(self::SLUG, $this->archiveFile('no-slug.pdf'));
     }
 
+    public function testSlugShadowingAnotherFilesFilenameIsRejected(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessageMatches('/no-slug\.pdf/');
+        self::$service->validateSlug('no-slug.pdf', $this->archiveFile());
+    }
+
+    public function testAFileMayUseItsOwnFilenameAsSlug(): void
+    {
+        self::$service->validateSlug('no-slug.pdf', $this->archiveFile('no-slug.pdf'));
+        $this->addToAssertionCount(1);
+    }
+
     public function testAFileMayKeepItsOwnSlug(): void
     {
         self::$service->validateSlug(self::SLUG, $this->archiveFile());
@@ -310,6 +348,30 @@ final class FileArchiveServiceTest extends TestCase
     {
         self::$service->validateSlug('', $this->archiveFile('no-slug.pdf'));
         $this->addToAssertionCount(1);
+    }
+
+    // -------------------------------------------------------------------------
+    // The Panel field: live prefix and filename placeholder
+    // -------------------------------------------------------------------------
+
+    public function testPermanentUrlFieldPassesThePrefixAndFilenameToThePanel(): void
+    {
+        self::$kirby->extend([
+            'fields' => ['permanenturl' => require dirname(__DIR__, 3) . '/fields/permanenturl.php'],
+        ]);
+        $field = new FormField('permanenturl', ['model' => $this->archiveFile('no-slug.pdf')]);
+        $props = $field->toArray();
+        $this->assertSame('https://example.test/files/', $props['prefix']);
+        $this->assertSame('no-slug.pdf', $props['filename']);
+        $this->assertSame('permanenturl', $props['type']);
+    }
+
+    public function testPermanentUrlFieldOnANonFileModelHasNoFilename(): void
+    {
+        $field = new FormField('permanenturl', ['model' => self::$kirby->site()]);
+        // Kirby drops null props from toArray(); the Vue prop defaults to ''.
+        $this->assertArrayNotHasKey('filename', $field->toArray());
+        $this->assertSame('https://example.test/files/', $field->toArray()['prefix']);
     }
 
     public function testSlugFromUpdateValuesIsReadCaseInsensitively(): void
