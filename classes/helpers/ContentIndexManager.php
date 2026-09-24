@@ -248,7 +248,7 @@ class ContentIndexManager
      */
     private function initializeDatabase(): void
     {
-        $dir = $this->kirby->root('site') . $this->getDatabasePath();
+        $dir = SitePaths::resolve($this->kirby, $this->getDatabasePath());
         $file = $dir . $this->definition->getName() . '.sqlite';
 
         $needsCreate = !F::exists($file);

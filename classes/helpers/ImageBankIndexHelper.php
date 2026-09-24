@@ -74,7 +74,7 @@ class ImageBankIndexHelper
      */
     public static function isIndexReady(): bool
     {
-        $file = kirby()->root('site') . self::DATABASE_DIR . self::DATABASE_FILE;
+        $file = SitePaths::resolve(kirby(), self::DATABASE_DIR . self::DATABASE_FILE);
         return F::exists($file);
     }
 
@@ -588,7 +588,7 @@ class ImageBankIndexHelper
     private function initializeDatabase(?string $databaseFilePath): void
     {
         if ($databaseFilePath === null) {
-            $dir              = kirby()->root('site') . self::DATABASE_DIR;
+            $dir              = SitePaths::resolve(kirby(), self::DATABASE_DIR);
             $databaseFilePath = $dir . self::DATABASE_FILE;
         } else {
             $dir = dirname($databaseFilePath);
