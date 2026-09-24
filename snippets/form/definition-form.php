@@ -34,7 +34,7 @@ endif;
     <?= $form->introHtml ?>
 </div>
 <?php endif ?>
-<div class="container bg-light pt-4 mb-2">
+<div class="container bg-light py-4 mb-2">
     <form method="post" novalidate>
         <input type="hidden" name="csrf" value="<?= htmlspecialchars($form->csrfToken, ENT_QUOTES, 'UTF-8') ?>">
 
