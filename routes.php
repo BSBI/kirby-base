@@ -1,6 +1,7 @@
 <?php
 
 use BSBI\WebBase\helpers\ContentIndexRegistry;
+use BSBI\WebBase\helpers\CsvWriter;
 use BSBI\WebBase\helpers\FileArchiveService;
 use BSBI\WebBase\helpers\KirbyInternalHelper;
 use BSBI\WebBase\helpers\SearchIndexHelper;
@@ -53,15 +54,10 @@ return [
                 $submissionRows[] = $rowData;
             }
 
-            // Pass 2: build the CSV in memory.
-            ob_start();
-            $handle = fopen('php://output', 'w');
-
+            // Pass 2: build the CSV (formula-safe cells; see CsvWriter).
             // Row 1: form page title (identification row).
-            fputcsv($handle, [$page->title()->value()]);
-
             // Row 2: column headers.
-            fputcsv($handle, array_merge(['Submission'], $allQuestions));
+            $csvRows = [[$page->title()->value()], array_merge(['Submission'], $allQuestions)];
 
             // Data rows: one per submission, answers mapped to the correct column.
             foreach ($submissionRows as $row) {
@@ -69,11 +65,10 @@ return [
                 foreach ($allQuestions as $question) {
                     $csvRow[] = $row[$question] ?? '';
                 }
-                fputcsv($handle, $csvRow);
+                $csvRows[] = $csvRow;
             }
 
-            fclose($handle);
-            $csv = ob_get_clean();
+            $csv = CsvWriter::toString($csvRows);
 
             $filename = 'submissions-' . $page->slug() . '-' . date('Y-m-d') . '.csv';
 
@@ -148,22 +143,18 @@ return [
                 $submissionRows[] = $rowData;
             }
 
-            // Pass 2: build the CSV in memory.
-            ob_start();
-            $handle = fopen('php://output', 'w');
-
-            fputcsv($handle, array_merge(['Form Type', 'Submission'], $allQuestions));
+            // Pass 2: build the CSV (formula-safe cells; see CsvWriter).
+            $csvRows = [array_merge(['Form Type', 'Submission'], $allQuestions)];
 
             foreach ($submissionRows as $row) {
                 $csvRow = [$row['_form_type'], $row['_title']];
                 foreach ($allQuestions as $question) {
                     $csvRow[] = $row[$question] ?? '';
                 }
-                fputcsv($handle, $csvRow);
+                $csvRows[] = $csvRow;
             }
 
-            fclose($handle);
-            $csv = ob_get_clean();
+            $csv = CsvWriter::toString($csvRows);
 
             $suffix   = $formTypeFilter !== '' ? '-' . preg_replace('/[^a-z0-9]+/i', '-', $formTypeFilter) : '-all';
             $filename = 'form-submissions' . $suffix . '-' . date('Y-m-d') . '.csv';
