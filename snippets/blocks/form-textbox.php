@@ -7,8 +7,8 @@ use Kirby\Cms\Block;
 /** @var Block $block */
 
 snippet('form/textbox', [
-    'id'       => $block->name()->value(),
-    'name'     => $block->name()->value(),
+    'id'       => \BSBI\WebBase\forms\panel\PanelFieldReader::keyFor($block),
+    'name'     => \BSBI\WebBase\forms\panel\PanelFieldReader::keyFor($block),
     'label'    => $block->label()->value(),
     'required' => $block->required()->isTrue(),
 ]);

@@ -12,6 +12,7 @@ return [
     'pages/file_archive' => __DIR__ . '/blueprints/pages/file_archive.yml',
     'pages/file_link' => __DIR__ . '/blueprints/pages/file_link.yml',
     'pages/form_submission' => __DIR__ . '/blueprints/pages/form_submission.yml',
+    'pages/form_section' => __DIR__ . '/blueprints/pages/form_section.yml',
     'pages/page_link' => __DIR__ . '/blueprints/pages/page_link.yml',
     'pages/image_bank' => __DIR__ . '/blueprints/pages/image_bank.yml',
     'pages/search_log' => __DIR__ . '/blueprints/pages/search_log.yml',
@@ -45,6 +46,10 @@ return [
     'blocks/form-radio-group' => __DIR__ . '/blueprints/blocks/form-radio-group.yml',
     'blocks/form-likert' => __DIR__ . '/blueprints/blocks/form-likert.yml',
     'blocks/form-select' => __DIR__ . '/blueprints/blocks/form-select.yml',
+    'blocks/form-rating-matrix' => __DIR__ . '/blueprints/blocks/form-rating-matrix.yml',
+    'blocks/form-info' => __DIR__ . '/blueprints/blocks/form-info.yml',
+    'blocks/form-section-ref' => __DIR__ . '/blueprints/blocks/form-section-ref.yml',
+    'blocks/form-section-inline' => __DIR__ . '/blueprints/blocks/form-section-inline.yml',
 
     //field blueprints
     'fields/scheduledPublish' => __DIR__ . '/blueprints/fields/scheduledPublish.yml',
@@ -60,6 +65,7 @@ return [
     'fields/placeholderImage' => __DIR__ . '/blueprints/fields/placeholderImage.yml',
     'fields/relatedContent' => __DIR__ . '/blueprints/fields/relatedContent.yml',
     'fields/blockImagePicker' => __DIR__ . '/blueprints/fields/blockImagePicker.yml',
+    'fields/formFieldBlocks' => __DIR__ . '/blueprints/fields/formFieldBlocks.yml',
 
     //files blueprints
     'files/default' => __DIR__ . '/blueprints/files/default.yml',

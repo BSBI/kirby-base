@@ -10,8 +10,8 @@ $rawOptions = array_values(array_filter(array_map('trim', explode("\n", (string)
 $options    = array_map(static fn(string $o): array => ['value' => $o, 'display' => $o], $rawOptions);
 
 snippet('form/select', [
-    'id'       => $block->name()->value(),
-    'name'     => $block->name()->value(),
+    'id'       => \BSBI\WebBase\forms\panel\PanelFieldReader::keyFor($block),
+    'name'     => \BSBI\WebBase\forms\panel\PanelFieldReader::keyFor($block),
     'label'    => $block->label()->value(),
     'options'  => $options,
     'required' => $block->required()->isTrue(),

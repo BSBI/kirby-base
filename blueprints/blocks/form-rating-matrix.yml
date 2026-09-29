@@ -1,0 +1,28 @@
+name: Form Rating Grid
+icon: grid
+
+fields:
+  label:
+    type: text
+    label: Question label
+    required: true
+  name:
+    type: text
+    label: Field name (optional; letters, digits, underscores)
+    help: Leave blank and a fixed name is generated. Never change it once the form has responses.
+  rows:
+    type: textarea
+    label: Things to rate (one per line)
+    required: true
+  columns:
+    type: textarea
+    label: Rating choices (one per line)
+    required: true
+    help: For example Poor, Fair, Good, Excellent.
+  required:
+    type: toggle
+    label: Required
+    default: false
+  help:
+    type: text
+    label: Help text

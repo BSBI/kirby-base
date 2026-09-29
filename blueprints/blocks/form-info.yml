@@ -1,0 +1,9 @@
+name: Form Information Text
+icon: info
+
+fields:
+  text:
+    type: textarea
+    label: Text
+    required: true
+    help: Shown to the person filling in the form. Nothing is submitted.
