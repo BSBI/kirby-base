@@ -13,6 +13,11 @@ use PHPUnit\Framework\TestCase;
  */
 final class FormFieldSpecTest extends TestCase
 {
+    public static function setUpBeforeClass(): void
+    {
+        \BSBI\WebBase\Testing\KirbyTestEnvironment::boot('kirby-base-form-field-spec-' . uniqid());
+    }
+
     // ── Factory methods ─────────────────────────────────────────────────────
 
     public function testTextboxFactoryCreatesCorrectType(): void
@@ -287,5 +292,14 @@ final class FormFieldSpecTest extends TestCase
     {
         $spec = FormFieldSpec::siteBlocks('edi_intro', 'edi_intro_text');
         $this->assertSame([], $spec->toBlueprintFields());
+    }
+
+    public function testDeveloperInfoContentKeepsRawHtml(): void
+    {
+        $field = FormFieldSpec::info('note', 'See <abbr title="Botanical Society">BSBI</abbr> **now**')->resolve([]);
+
+        $this->assertFalse($field->safeMarkdown);
+        $this->assertStringContainsString('<abbr title="Botanical Society">BSBI</abbr>', $field->contentHtml());
+        $this->assertStringContainsString('<strong>now</strong>', $field->contentHtml());
     }
 }

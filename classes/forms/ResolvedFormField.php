@@ -28,6 +28,7 @@ readonly class ResolvedFormField
      * @param string        $content     For info: markdown content to display (not a form input)
      * @param string[]      $rows        For rating-matrix: row labels (items to rate)
      * @param string[]      $columns     For rating-matrix: column labels (scale options)
+     * @param bool          $safeMarkdown For info: render content in markdown safe mode (editor-authored)
      */
     public function __construct(
         public readonly string $type,
@@ -45,7 +46,19 @@ readonly class ResolvedFormField
         public readonly string $content = '',
         public readonly array $rows = [],
         public readonly array $columns = [],
+        public readonly bool $safeMarkdown = false,
     ) {
+    }
+
+    /**
+     * Returns an info field's content rendered from markdown. Panel-authored
+     * content (safeMarkdown) is rendered in Parsedown's safe mode, which escapes
+     * raw HTML and neutralises javascript:/data: link targets; developer-authored
+     * content may use raw HTML.
+     */
+    public function contentHtml(): string
+    {
+        return markdown($this->content, ['safe' => $this->safeMarkdown]);
     }
 
     /**

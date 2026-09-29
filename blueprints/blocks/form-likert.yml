@@ -8,9 +8,8 @@ fields:
     required: true
   name:
     type: text
-    label: Field name (no spaces, use_underscores)
-    required: true
-    help: Used as the POST key and column header in CSV exports. Must be unique within the form.
+    label: Field name (optional; letters, digits, underscores)
+    help: Leave blank and a fixed name is generated. Set one only when a system needs a particular name (e.g. email). Used as the column header in CSV exports; never change it once the form has responses.
   required:
     type: toggle
     label: Required
@@ -27,3 +26,6 @@ fields:
     type: text
     label: Right label
     placeholder: Strongly agree
+  help:
+    type: text
+    label: Help text

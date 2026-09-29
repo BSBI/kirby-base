@@ -6,7 +6,7 @@ use Kirby\Cms\Block;
 
 /** @var Block $block */
 
-$fieldName = $block->name()->value();
+$fieldName = \BSBI\WebBase\forms\panel\PanelFieldReader::keyFor($block);
 $options   = array_values(array_filter(array_map('trim', explode("\n", (string) $block->options()->value()))));
 $required  = $block->required()->isTrue();
 

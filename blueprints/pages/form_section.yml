@@ -1,0 +1,27 @@
+title: Form Section
+icon: layers
+
+options:
+  changeTemplate: false
+
+fields:
+  info:
+    type: info
+    label: How sections are used
+    text: >-
+      A reusable group of questions. Forms and form templates include it by reference,
+      so any change here appears on every form that uses it. To add questions for one
+      use only, create a new section that is a variation of this one.
+  legend:
+    type: text
+    label: Title shown on forms
+    help: Shown above the questions. Leave blank for none. A form can override it.
+  extends:
+    type: pages
+    label: Variation of
+    max: 1
+    multiple: false
+    query: site.find("form-library")?.index(true).filterBy("intendedTemplate", "form_section")
+    help: Optional. This section then shows all of that section's questions first, followed by its own.
+  formFields:
+    extends: fields/formFieldBlocks

@@ -1,0 +1,11 @@
+type: blocks
+label: Questions
+fieldsets:
+  - form-textbox
+  - form-textarea
+  - form-radio-group
+  - form-checkbox-group
+  - form-select
+  - form-likert
+  - form-rating-matrix
+  - form-info

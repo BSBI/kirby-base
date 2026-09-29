@@ -198,3 +198,73 @@ Create an intermediate snippet (e.g. `snippets/forms/my_form.php`) if you need c
 | `setMyFormPage()` | `KirbyHelper` | Wires definition → model; handles submission storage |
 | `my_form.yml` | `blueprints/pages/` | Panel UI — field overrides, responses tab |
 | `my_form.php` | `controllers/` + `templates/` | Fetches model; renders the form snippet |
+
+## Panel-built forms
+
+A form can also be read from panel content instead of a PHP class. Editors build it from
+**sections**, and everything downstream (resolving, rendering, submission handling, CSV
+export) is the same as for a hand-written definition.
+
+### Content model
+
+- **Library section**: a page using the `form_section` blueprint. `legend` is the title
+  shown above its questions; `formFields` holds its questions (the `fields/formFieldBlocks`
+  blocks field). It can set `extends` to another section, making it a **variation**: the
+  base section's questions come first, then its own. Bases are read live, so editing a
+  section changes every variation of it and every form that uses any of them.
+- **Form page**: a `formSections` blocks field holding, in order:
+  - `form-section-ref`: a library section (`section` pages field), with an optional
+    `title` overriding its legend
+  - `form-section-inline`: a section written for this form only (`title`, `formFields`)
+
+  Either can set `showWhenField` (a field key) and `showWhenValue`, to show the section
+  only when a radio or dropdown question in an **earlier** section has that answer.
+
+Question blocks: `form-textbox` (with `inputType`: text, email, tel, number, date, url),
+`form-textarea`, `form-radio-group`, `form-checkbox-group`, `form-select`, `form-likert`,
+`form-rating-matrix` and `form-info` (display-only markdown).
+
+The section pickers look for `form_section` pages under a page with the slug
+`form-library`. A site keeping its library elsewhere overrides the
+`blocks/form-section-ref` and `pages/form_section` blueprints.
+
+### Field keys
+
+A question's POST key (and CSV column) is its `name` if one is set, otherwise `f_` plus
+the first eight hex digits of its block id. Block ids never change, so a generated key
+survives label edits and reordering. Set a name only when something downstream needs a
+particular key (a CRM mapping, or a migration preserving an old form's columns). Names must
+start with a letter and use letters, digits, underscores or hyphens (at most 64
+characters); `csrf` and `submit` are reserved. `PanelFieldReader::keyFor()` is the one
+source of keys; the legacy `customFormElements` block snippets use it too.
+
+**Scripts that write form content must give every block an `id`** (a UUID, as the panel
+does). Kirby invents a random id for a block stored without one, on every load, so the
+reader substitutes an id derived from the owner, field and position and reports the block
+through `validate()`. That stand-in lasts only until the panel next saves the content, so
+re-save such content before the form takes responses.
+
+### Using it
+
+```php
+use BSBI\WebBase\forms\panel\KirbySectionPageResolver;
+use BSBI\WebBase\forms\panel\PanelFormDefinition;
+
+$definition = new PanelFormDefinition($page, 'my_form', new KirbySectionPageResolver(kirby()));
+$this->populateFormPage($page, $formPage, $definition);
+
+foreach ($definition->validate() as $problem) {
+    $this->writeToLog('forms', $problem); // or show to editors
+}
+```
+
+Bad content never stops a form rendering. Missing or looping sections, invalid or duplicate
+keys, and unusable conditions are left out (a duplicate key keeps its first occurrence; an
+unusable condition means the section always shows), and `validate()` describes each one in
+words an editor can act on.
+
+Editor text (labels, help, options, Likert end labels) is HTML-escaped when read, because
+the field snippets print those properties unescaped for developer-authored strings.
+`form-info` text is rendered in markdown **safe mode** (`FormFieldSpec::info(..., true)`):
+formatting and ordinary links work, raw HTML shows as text, and `javascript:`/`data:` link
+targets are neutralised. Developer-authored `info()` content keeps full markdown.

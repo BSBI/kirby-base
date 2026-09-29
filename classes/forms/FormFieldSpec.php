@@ -46,6 +46,7 @@ class FormFieldSpec
 
     private string $defaultHelp        = '';
     private string $defaultContent     = '';
+    private bool $safeMarkdown         = false;
     private string $siteFieldName      = '';
     private string $defaultLeftLabel   = 'Strongly disagree';
     private string $defaultMiddleLabel = '';
@@ -184,13 +185,18 @@ class FormFieldSpec
      * Creates an info (display-only) spec that renders markdown content.
      * No form input is generated; the field is not submitted with the form.
      *
-     * @param string $name    Unique identifier for this item (not rendered as an input)
-     * @param string $content Markdown content to display
+     * Pass $safeMarkdown for editor-authored content: it is then rendered in
+     * markdown safe mode (no raw HTML, no javascript: links).
+     *
+     * @param string $name         Unique identifier for this item (not rendered as an input)
+     * @param string $content      Markdown content to display
+     * @param bool   $safeMarkdown Render in markdown safe mode
      */
-    public static function info(string $name, string $content): static
+    public static function info(string $name, string $content, bool $safeMarkdown = false): static
     {
         $spec = new static(self::TYPE_INFO, $name, '');
         $spec->defaultContent = $content;
+        $spec->safeMarkdown = $safeMarkdown;
         return $spec;
     }
 
@@ -375,10 +381,11 @@ class FormFieldSpec
                 scaleMax:    $this->defaultScaleMax,
             ),
             self::TYPE_INFO => new ResolvedFormField(
-                type:    $this->type,
-                name:    $this->name,
-                label:   '',
-                content: $this->defaultContent,
+                type:         $this->type,
+                name:         $this->name,
+                label:        '',
+                content:      $this->defaultContent,
+                safeMarkdown: $this->safeMarkdown,
             ),
             self::TYPE_SITE_BLOCKS => new ResolvedFormField(
                 type:    $this->type,

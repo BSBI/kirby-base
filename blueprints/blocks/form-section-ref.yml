@@ -1,0 +1,28 @@
+name: Section from the library
+icon: layers
+preview: fields
+wysiwyg: true
+
+fields:
+  section:
+    type: pages
+    label: Library section
+    required: true
+    max: 1
+    multiple: false
+    query: site.find("form-library")?.index(true).filterBy("intendedTemplate", "form_section")
+    help: Changes to the library section appear on every form that uses it.
+  title:
+    type: text
+    label: Section title on this form
+    help: Leave blank to use the library section's own title.
+  showWhenField:
+    type: text
+    label: Only show when question (field name)
+    width: 1/2
+    help: The field name of a radio or dropdown question in an earlier section. Leave blank to always show.
+  showWhenValue:
+    type: text
+    label: …has the answer
+    width: 1/2
+    help: Must match one of that question's options exactly.
