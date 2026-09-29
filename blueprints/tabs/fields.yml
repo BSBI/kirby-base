@@ -13,6 +13,11 @@ columns:
           keywords:
             type: textarea
             buttons: false
+            help: >
+              Only used by this site's own search, not by Google. Add words people
+              might search for that aren't already on the page — other names,
+              abbreviations, common misspellings. Comma-separated is fine. Most pages
+              can leave this blank.
       search:
         type: fields
         fields:
@@ -21,9 +26,10 @@ columns:
             type: textarea
             buttons: false
             help: >
-              One phrase per line. A search query that exactly matches any phrase
-              here will rank this page first in results, overriding all other
-              relevance signals.
+              One phrase per line — no commas. If someone's whole search exactly
+              matches a line (capitals don't matter), this page goes to the top,
+              above everything else. Use sparingly, for the few searches where this
+              page must come first, and give each phrase to one page only.
       og-info:
         type: info
         label: " "
