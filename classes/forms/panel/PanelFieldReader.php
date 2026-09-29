@@ -17,8 +17,9 @@ use Kirby\Cms\Block;
  *
  * Escaping: the field snippets print labels, help, options and Likert end
  * labels unescaped (they were written for developer-authored text), so editor
- * text is HTML-escaped here. Rating-matrix rows and columns are left raw because
- * that snippet escapes them itself.
+ * text is HTML-escaped here. Info text is escaped too, before the snippet runs it
+ * through markdown(), so markdown formatting works but raw HTML does not.
+ * Rating-matrix rows and columns are left raw because that snippet escapes them.
  */
 final class PanelFieldReader
 {
@@ -108,7 +109,7 @@ final class PanelFieldReader
                 $this->lines($block, 'rows'),
                 $this->lines($block, 'columns'),
             ),
-            default                            => FormFieldSpec::info($key, $this->text($block, 'text')),
+            default                            => FormFieldSpec::info($key, $this->escape($this->text($block, 'text'))),
         };
 
         if ($type !== FormFieldSpec::TYPE_INFO) {

@@ -108,9 +108,10 @@ final readonly class PanelSectionReader
             }
         }
 
+        $where = sprintf('Section "%s"', $name);
         $own = $this->readBlocks(
-            PanelContent::blocks($section->content(), 'formFields'),
-            sprintf('Section "%s"', $name),
+            PanelContent::blocks($section->content(), 'formFields', $problems, $section->id(), $where),
+            $where,
             $problems
         );
 

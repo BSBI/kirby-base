@@ -9,6 +9,7 @@ use BSBI\WebBase\forms\panel\FormProblems;
 use BSBI\WebBase\forms\panel\PanelField;
 use BSBI\WebBase\forms\panel\PanelSectionReader;
 use BSBI\WebBase\Testing\KirbyTestEnvironment;
+use Kirby\Data\Json;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -130,6 +131,27 @@ final class PanelSectionReaderTest extends TestCase
         $this->assertStringContainsString('deeper', $problems->all()[0]);
     }
 
+    public function testChainExactlyAtTheLimitIsReadInFull(): void
+    {
+        $pages = [];
+        $previous = null;
+        for ($i = 0; $i <= PanelSectionReader::MAX_DEPTH; $i++) {
+            $pages["page://s$i"] = $this->sectionPage(
+                [$this->blockData('form-textbox', ['label' => "F$i", 'name' => "f$i"])],
+                extends: $previous,
+                slug: "s$i"
+            );
+            $previous = "page://s$i";
+        }
+
+        $problems = new FormProblems();
+        $top = $pages['page://s' . PanelSectionReader::MAX_DEPTH];
+        $fields = (new PanelSectionReader($this->resolver($pages)))->read($top, $problems);
+
+        $this->assertCount(PanelSectionReader::MAX_DEPTH + 1, $fields);
+        $this->assertTrue($problems->isEmpty());
+    }
+
     public function testUnknownBlockTypesAreReported(): void
     {
         $section = $this->sectionPage([
@@ -152,6 +174,44 @@ final class PanelSectionReaderTest extends TestCase
         $fields = (new PanelSectionReader($this->resolver([])))->read($section, new FormProblems());
 
         $this->assertInstanceOf(FormFieldSpec::class, $fields[0]->spec);
+    }
+
+    public function testBlockWithoutAnIdGetsTheSameKeyOnEveryReadAndIsReported(): void
+    {
+        $raw = [['type' => 'form-textbox', 'isHidden' => false, 'content' => ['label' => 'Email']]];
+        $builder = new \BSBI\WebBase\Testing\KirbyContentBuilder();
+        $reader = new PanelSectionReader($this->resolver([]));
+
+        $firstProblems = new FormProblems();
+        $first = $reader->read($builder->page(['title' => 'Contact', 'formFields' => Json::encode($raw)], 'contact'), $firstProblems);
+        $second = $reader->read($builder->page(['title' => 'Contact', 'formFields' => Json::encode($raw)], 'contact'), new FormProblems());
+
+        $this->assertMatchesRegularExpression('/^f_[a-f0-9]{8}$/', $first[0]->key);
+        $this->assertSame($first[0]->key, $second[0]->key);
+        $this->assertStringContainsString('save', $firstProblems->all()[0]);
+    }
+
+    public function testBlocksWithoutIdsInDifferentSectionsGetDifferentKeys(): void
+    {
+        $raw = Json::encode([['type' => 'form-textbox', 'isHidden' => false, 'content' => ['label' => 'Q']]]);
+        $builder = new \BSBI\WebBase\Testing\KirbyContentBuilder();
+        $reader = new PanelSectionReader($this->resolver([]));
+
+        $one = $reader->read($builder->page(['formFields' => $raw], 'one'), new FormProblems());
+        $two = $reader->read($builder->page(['formFields' => $raw], 'two'), new FormProblems());
+
+        $this->assertNotSame($one[0]->key, $two[0]->key);
+    }
+
+    public function testCorruptBlocksDataIsReportedNotThrown(): void
+    {
+        $section = (new \BSBI\WebBase\Testing\KirbyContentBuilder())->page(['title' => 'Broken', 'formFields' => '[1, 2]']);
+
+        $problems = new FormProblems();
+        $fields = (new PanelSectionReader($this->resolver([])))->read($section, $problems);
+
+        $this->assertSame([], $fields);
+        $this->assertStringContainsString('could not be read', $problems->all()[0]);
     }
 
     /**

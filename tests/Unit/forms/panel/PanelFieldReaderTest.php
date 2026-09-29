@@ -172,9 +172,9 @@ final class PanelFieldReaderTest extends TestCase
 
     public function testInfoIsDisplayOnly(): void
     {
-        $field = $this->read('form-info', ['name' => 'intro', 'text' => 'Please **read** this']);
+        $field = $this->read('form-info', ['name' => 'intro', 'text' => 'Please **read** this & that']);
         $this->assertEquals(
-            FormFieldSpec::info('intro', 'Please **read** this')->resolve([]),
+            FormFieldSpec::info('intro', 'Please **read** this &amp; that')->resolve([]),
             $field->spec->resolve([])
         );
         $this->assertFalse($field->isSubmittable());
@@ -212,6 +212,15 @@ final class PanelFieldReaderTest extends TestCase
         $this->assertSame('A &amp; B', $resolved->label);
         $this->assertSame(['R & D'], $resolved->rows);
         $this->assertSame(['Good & bad'], $resolved->columns);
+    }
+
+    public function testInfoTextKeepsMarkdownButNotRawHtml(): void
+    {
+        $field = $this->read('form-info', ['text' => "Please **read** <img src=x onerror=alert(1)>"]);
+        $html = markdown($field->spec->resolve([])->content);
+
+        $this->assertStringContainsString('<strong>read</strong>', $html);
+        $this->assertStringNotContainsString('<img', $html);
     }
 
     public function testLikertEndLabelsAreEscaped(): void

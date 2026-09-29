@@ -88,7 +88,13 @@ class PanelFormDefinition extends BaseFormDefinition
         }
 
         $sectionReader = new PanelSectionReader($this->resolver);
-        $blocks = PanelContent::blocks($this->page->content(), $this->sectionsField);
+        $blocks = PanelContent::blocks(
+            $this->page->content(),
+            $this->sectionsField,
+            $this->problems,
+            $this->page->id(),
+            'This form'
+        );
 
         // Pass 1: read every section's fields, so conditions can tell a field
         // that comes later from one that does not exist at all.
@@ -155,7 +161,7 @@ class PanelFormDefinition extends BaseFormDefinition
                 'name'   => $name,
                 'block'  => $block,
                 'fields' => $sectionReader->readBlocks(
-                    PanelContent::blocks($content, 'formFields'),
+                    PanelContent::blocks($content, 'formFields', $this->problems, $block->id(), $name),
                     $name,
                     $this->problems
                 ),

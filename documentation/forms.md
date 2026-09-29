@@ -238,6 +238,12 @@ start with a letter and use letters, digits, underscores or hyphens (at most 64
 characters); `csrf` and `submit` are reserved. `PanelFieldReader::keyFor()` is the one
 source of keys; the legacy `customFormElements` block snippets use it too.
 
+**Scripts that write form content must give every block an `id`** (a UUID, as the panel
+does). Kirby invents a random id for a block stored without one, on every load, so the
+reader substitutes an id derived from the owner, field and position and reports the block
+through `validate()`. That stand-in lasts only until the panel next saves the content, so
+re-save such content before the form takes responses.
+
 ### Using it
 
 ```php
@@ -259,4 +265,5 @@ words an editor can act on.
 
 Editor text (labels, help, options, Likert end labels) is HTML-escaped when read, because
 the field snippets print those properties unescaped for developer-authored strings.
-`form-info` text is rendered as markdown, like any editor textarea.
+`form-info` text is escaped too and then rendered as markdown, so formatting works but raw
+HTML shows as text.

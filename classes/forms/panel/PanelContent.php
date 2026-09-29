@@ -41,15 +41,73 @@ final class PanelContent
     }
 
     /**
-     * Returns the blocks in a blocks field, or an empty collection if blank.
+     * Returns the visible blocks in a blocks field, or an empty collection if
+     * the field is blank or unreadable (reported to $problems).
      *
-     * @param Content $content Page or block content
-     * @param string  $name    Blocks field name
+     * Kirby gives a block stored without an id a random one on every load,
+     * which would make a generated field key change on every request. Such
+     * blocks (only ever written by scripts; the panel always stores ids) get
+     * an id derived from the owner, field and position instead, stable until
+     * the panel saves real ids, and are reported so an editor does that before
+     * responses arrive.
+     *
+     * @param Content      $content  Page or block content
+     * @param string       $name     Blocks field name
+     * @param FormProblems $problems Receives read failures and missing ids
+     * @param string       $ownerId  Stable id of the content's owner (page or block id)
+     * @param string       $where    Editor-facing name of the content's owner
      */
-    public static function blocks(Content $content, string $name): Blocks
+    public static function blocks(
+        Content $content,
+        string $name,
+        FormProblems $problems,
+        string $ownerId,
+        string $where
+    ): Blocks
     {
         $field = self::field($content, $name);
-        return $field->isEmpty() ? new Blocks([]) : $field->toBlocks();
+        if ($field->isEmpty()) {
+            return new Blocks([]);
+        }
+
+        try {
+            $data = Blocks::parse($field->value());
+            $missingIds = false;
+            foreach ($data as $index => $block) {
+                if (is_array($block) && (!isset($block['id']) || !is_string($block['id']) || $block['id'] === '')) {
+                    $data[$index]['id'] = self::fallbackId($ownerId . '#' . $name, (int) $index);
+                    $missingIds = true;
+                }
+            }
+            $blocks = Blocks::factory($data, ['parent' => $field->parent(), 'field' => $field]);
+        } catch (\Throwable) {
+            $problems->add(sprintf('%s: the "%s" content could not be read; it has been left out.', $where, $name));
+            return new Blocks([]);
+        }
+
+        if ($missingIds) {
+            $problems->add(sprintf(
+                '%s has questions stored without an id, so their field names are provisional; '
+                . 'open it in the panel and save it before the form takes responses.',
+                $where
+            ));
+        }
+
+        return $blocks->filter('isHidden', false);
+    }
+
+    /**
+     * Returns a stable stand-in block id, UUID-shaped so keyFor() reads it the
+     * same way as a real one.
+     *
+     * @param string $fieldPath Owner id and blocks field name
+     * @param int    $index     Position in the field
+     */
+    private static function fallbackId(string $fieldPath, int $index): string
+    {
+        $hex = md5($fieldPath . '#' . $index);
+        return substr($hex, 0, 8) . '-' . substr($hex, 8, 4) . '-' . substr($hex, 12, 4) . '-'
+            . substr($hex, 16, 4) . '-' . substr($hex, 20, 12);
     }
 
     /**
