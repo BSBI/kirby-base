@@ -71,7 +71,7 @@ final class PanelContent
         }
 
         try {
-            $data = Blocks::parse($field->value());
+            $data = Blocks::parse($field->toString());
             $missingIds = false;
             foreach ($data as $index => $block) {
                 if (is_array($block) && (!isset($block['id']) || !is_string($block['id']) || $block['id'] === '')) {
