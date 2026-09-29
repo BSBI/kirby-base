@@ -87,7 +87,7 @@ final class PanelContent
 
         if ($missingIds) {
             $problems->add(sprintf(
-                '%s has questions stored without an id, so their field names are provisional; '
+                '%s has content stored without an id, so generated field names in it are provisional; '
                 . 'open it in the panel and save it before the form takes responses.',
                 $where
             ));

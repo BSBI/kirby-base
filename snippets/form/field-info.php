@@ -6,4 +6,4 @@ use BSBI\WebBase\forms\ResolvedFormField;
 
 /** @var ResolvedFormField $field */
 
-echo markdown($field->content);
+echo $field->contentHtml();

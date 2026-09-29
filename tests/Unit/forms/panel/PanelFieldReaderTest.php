@@ -174,7 +174,7 @@ final class PanelFieldReaderTest extends TestCase
     {
         $field = $this->read('form-info', ['name' => 'intro', 'text' => 'Please **read** this & that']);
         $this->assertEquals(
-            FormFieldSpec::info('intro', 'Please **read** this &amp; that')->resolve([]),
+            FormFieldSpec::info('intro', 'Please **read** this & that', safeMarkdown: true)->resolve([]),
             $field->spec->resolve([])
         );
         $this->assertFalse($field->isSubmittable());
@@ -214,13 +214,21 @@ final class PanelFieldReaderTest extends TestCase
         $this->assertSame(['Good & bad'], $resolved->columns);
     }
 
-    public function testInfoTextKeepsMarkdownButNotRawHtml(): void
+    public function testInfoTextRendersSafeMarkdown(): void
     {
-        $field = $this->read('form-info', ['text' => "Please **read** <img src=x onerror=alert(1)>"]);
-        $html = markdown($field->spec->resolve([])->content);
+        $field = $this->read('form-info', ['text' => implode("\n\n", [
+            'Please **read** [the policy](https://example.org/p?a=1&b=2)',
+            '> A quote',
+            '<img src=x onerror=alert(1)> [bad](javascript:alert(1)) [worse](JaVaScript:alert(1))',
+        ])]);
+        $html = $field->spec->resolve([])->contentHtml();
 
         $this->assertStringContainsString('<strong>read</strong>', $html);
+        $this->assertStringContainsString('href="https://example.org/p?a=1&amp;b=2"', $html);
+        $this->assertStringContainsString('<blockquote>', $html);
         $this->assertStringNotContainsString('<img', $html);
+        $this->assertStringNotContainsString('href="javascript:', $html);
+        $this->assertStringNotContainsString('href="JaVaScript:', $html);
     }
 
     public function testLikertEndLabelsAreEscaped(): void

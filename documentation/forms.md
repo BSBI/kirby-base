@@ -265,5 +265,6 @@ words an editor can act on.
 
 Editor text (labels, help, options, Likert end labels) is HTML-escaped when read, because
 the field snippets print those properties unescaped for developer-authored strings.
-`form-info` text is escaped too and then rendered as markdown, so formatting works but raw
-HTML shows as text.
+`form-info` text is rendered in markdown **safe mode** (`FormFieldSpec::info(..., true)`):
+formatting and ordinary links work, raw HTML shows as text, and `javascript:`/`data:` link
+targets are neutralised. Developer-authored `info()` content keeps full markdown.
