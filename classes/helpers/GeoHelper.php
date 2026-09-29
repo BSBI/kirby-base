@@ -106,8 +106,9 @@ class GeoHelper
     /** Grid letters: A–Z without I, 5×5, read west→east then north→south. */
     private const string GRID_LETTERS = 'ABCDEFGHJKLMNOPQRSTUVWXYZ';
 
-    /** Tetrad letters: A–Z without O, 5×5, read south→north then west→east (DINTY). */
-    private const string TETRAD_LETTERS = 'ABCDEFGHIJKLMNPQRSTUVWXYZ';
+    /** Tetrad letters: A–Z without O, 5×5, read south→north then west→east (DINTY). Public so
+     *  code that names tetrads uses the same sequence as code that places them. */
+    public const string TETRAD_LETTERS = 'ABCDEFGHIJKLMNPQRSTUVWXYZ';
 
     // ── Irish National Grid → WGS84 ───────────────────────────────────────────
 
@@ -157,9 +158,8 @@ class GeoHelper
         $eLocal = (int) substr($digits, 0, $half) * $scale;
         $nLocal = (int) substr($digits, $half) * $scale;
 
-        // Letter grid: ABCDEFGHJKLMNOPQRSTUVWXYZ (no I), north→south, west→east, 5×5
-        $letters = 'ABCDEFGHJKLMNOPQRSTUVWXYZ';
-        $pos     = strpos($letters, $m[1]);
+        // Letter grid: A–Z without I, north→south, west→east, 5×5
+        $pos     = strpos(self::GRID_LETTERS, $m[1]);
         if ($pos === false) {
             return null;
         }
