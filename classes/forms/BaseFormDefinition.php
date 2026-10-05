@@ -84,6 +84,21 @@ abstract class BaseFormDefinition
     }
 
     /**
+     * Returns what a submission of this form stores for each question, keyed by
+     * POST key: the label the respondent saw and the CSV export column.
+     *
+     * Empty (the default) keeps the original behaviour: every POST key is stored
+     * under a title-cased version of the key. A non-empty map stores only these
+     * keys (see FormSubmissionBuilder).
+     *
+     * @return array<string, array{label: string, column: string}>
+     */
+    public function getSubmissionColumns(): array
+    {
+        return [];
+    }
+
+    /**
      * Resolves all fixed fields against panel-supplied overrides from the given
      * Kirby page and returns an array of ready-to-render ResolvedFormField objects.
      *

@@ -275,6 +275,54 @@ final class PanelFormDefinitionTest extends TestCase
         $this->assertSame([], $definition->validate());
     }
 
+    public function testSubmissionColumnsMapEachQuestionToItsRawLabelAndKey(): void
+    {
+        $form = $this->formPage([
+            $this->sectionInline([
+                $this->blockData('form-textbox', ['label' => 'Fish & chips?', 'name' => 'fish']),
+                $this->blockData('form-info', ['text' => 'Some help']),
+                $this->blockData('form-radio-group', ['label' => 'Pick', 'options' => "A\nB"], 'abcdef12-0000-4000-8000-000000000000'),
+            ]),
+        ]);
+
+        $definition = new PanelFormDefinition($form, 't', $this->resolver([]));
+
+        $this->assertSame([
+            'fish'       => ['label' => 'Fish & chips?', 'column' => 'fish'],
+            'f_abcdef12' => ['label' => 'Pick', 'column' => 'f_abcdef12'],
+        ], $definition->getSubmissionColumns());
+    }
+
+    public function testReportAsOverridesTheExportColumn(): void
+    {
+        $form = $this->formPage([
+            $this->sectionInline([
+                $this->blockData('form-textbox', ['label' => 'Your view', 'name' => 'view', 'reportAs' => ' Overall view ']),
+                $this->blockData('form-textbox', ['label' => 'Other', 'name' => 'other', 'reportAs' => 'first, second']),
+            ]),
+        ]);
+
+        $columns = (new PanelFormDefinition($form, 't', $this->resolver([])))->getSubmissionColumns();
+
+        $this->assertSame('Overall view', $columns['view']['column']);
+        $this->assertSame('first', $columns['other']['column']);
+    }
+
+    public function testSubmissionColumnsLeaveOutFieldsDroppedFromTheForm(): void
+    {
+        $form = $this->formPage([
+            $this->sectionInline([
+                $this->blockData('form-textbox', ['label' => 'First', 'name' => 'dup']),
+                $this->blockData('form-textbox', ['label' => 'Second', 'name' => 'dup']),
+                $this->blockData('form-textbox', ['label' => 'Bad', 'name' => '9bad']),
+            ]),
+        ]);
+
+        $columns = (new PanelFormDefinition($form, 't', $this->resolver([])))->getSubmissionColumns();
+
+        $this->assertSame(['dup' => ['label' => 'First', 'column' => 'dup']], $columns);
+    }
+
     /**
      * @param array<FormFieldSpec|FormSection> $groups
      */

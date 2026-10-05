@@ -29,6 +29,9 @@ class PanelFormDefinition extends BaseFormDefinition
     /** @var array<FormSection>|null Built on first use */
     private ?array $sections = null;
 
+    /** @var array<string, array{label: string, column: string}> Filled by build() */
+    private array $columns = [];
+
     private FormProblems $problems;
 
     /**
@@ -64,6 +67,18 @@ class PanelFormDefinition extends BaseFormDefinition
     {
         $this->build();
         return $this->problems->all();
+    }
+
+    /**
+     * Returns each question's raw label and export column (its "Report as"
+     * name, or else its key), keyed by POST key, for the fields kept on the form.
+     *
+     * @return array<string, array{label: string, column: string}>
+     */
+    public function getSubmissionColumns(): array
+    {
+        $this->build();
+        return $this->columns;
     }
 
     /**
@@ -127,6 +142,12 @@ class PanelFormDefinition extends BaseFormDefinition
                 }
                 $seen[$field->key] = $field;
                 $specs[] = $field->spec;
+                if ($field->isSubmittable()) {
+                    $this->columns[$field->key] = [
+                        'label'  => $field->label,
+                        'column' => $field->reportAs !== '' ? $field->reportAs : $field->key,
+                    ];
+                }
             }
 
             $formSection = FormSection::make($section['id'], $section['legend'])->fields(...$specs);

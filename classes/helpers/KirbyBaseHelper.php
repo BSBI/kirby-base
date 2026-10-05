@@ -4,6 +4,7 @@ namespace BSBI\WebBase\helpers;
 
 use BSBI\WebBase\forms\BaseFormDefinition;
 use BSBI\WebBase\forms\FormPageInterface;
+use BSBI\WebBase\forms\FormSubmissionBuilder;
 use BSBI\WebBase\models\ActionStatus;
 use BSBI\WebBase\models\BaseFilter;
 use BSBI\WebBase\models\BaseList;
@@ -5367,30 +5368,21 @@ abstract class KirbyBaseHelper
      * @param string $formType   Short identifier for the form type (e.g. 'training_feedback').
      *                           Stored on the submission for filtering and export.
      *                           Pass an empty string for generic/untyped forms.
+     * @param array<string, array{label: string, column: string}> $columns
+     *                           The definition's getSubmissionColumns(): when given, only
+     *                           these keys are stored, with label and export column.
+     *                           Empty keeps the original store-every-POST-key behaviour.
      * @return ActionStatus
      * @throws KirbyRetrievalException
      */
-    protected function createFormSubmission(Page $parentPage, string $formType = ''): ActionStatus
+    protected function createFormSubmission(Page $parentPage, string $formType = '', array $columns = []): ActionStatus
     {
         if ($this->kirby->request()->is('POST')) {
             if (csrf(get('csrf')) === true) {
-                $excludeFields = ['submit', 'csrf'];
-                $formSubmission = [];
-                $formData = $this->kirby->request()->data();
-
-                foreach ($formData as $inputName => $inputValue) {
-
-                    if (in_array($inputName, $excludeFields) || empty($inputName)) {
-                        continue;
-                    }
-                    $spacedString = str_replace(['-', '_'], ' ', $inputName);
-                    $questionTitle = ucwords($spacedString);
-
-                    $formSubmission[] = [
-                        'question' => $questionTitle,
-                        'answer' => is_array($inputValue) ? implode(', ', $inputValue) : $inputValue,
-                    ];
-                }
+                $formSubmission = (new FormSubmissionBuilder())->items(
+                    (array) $this->kirby->request()->data(),
+                    $columns
+                );
 
                 $slug = date('M-j-H.i.s');
 

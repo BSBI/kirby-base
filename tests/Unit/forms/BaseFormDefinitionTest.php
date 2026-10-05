@@ -108,6 +108,12 @@ final class BaseFormDefinitionTest extends TestCase
         $this->assertSame('my_form_type', $definition->getFormType());
     }
 
+    public function testSubmissionColumnsAreEmptyByDefault(): void
+    {
+        $definition = $this->makeDefinition([FormFieldSpec::textbox('name', 'Name')]);
+        $this->assertSame([], $definition->getSubmissionColumns());
+    }
+
     // ── getFieldNames ───────────────────────────────────────────────────────
 
     public function testGetFieldNamesReturnsNamesInOrder(): void
