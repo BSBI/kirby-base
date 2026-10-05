@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BSBI\WebBase\forms;
 
+use BSBI\WebBase\forms\panel\PanelContent;
 use Kirby\Cms\Page;
 
 /**
@@ -38,7 +39,7 @@ final readonly class FormSubmissionExporter
     public static function record(Page $page): array
     {
         $items = [];
-        foreach ($page->content()->get('submission')->yaml() as $item) {
+        foreach (PanelContent::field($page->content(), 'submission')->yaml() as $item) {
             if (is_array($item)) {
                 /** @var array<string, mixed> $item */
                 $items[] = $item;
@@ -48,8 +49,8 @@ final readonly class FormSubmissionExporter
         $date = $page->modified('Y-m-d H:i:s');
 
         return [
-            'formType' => (string) $page->content()->get('form_type')->value(),
-            'title'    => (string) $page->title()->value(),
+            'formType' => PanelContent::text($page->content(), 'form_type'),
+            'title'    => $page->title()->toString(),
             'date'     => is_string($date) ? $date : '',
             'items'    => $items,
         ];

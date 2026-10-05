@@ -700,6 +700,49 @@ panel.plugin('open-foundations/kirby-base', {
       `
     },
 
+    formproblems: {
+      data: function () {
+        return {
+          headline: 'Form check',
+          problems: []
+        }
+      },
+      created: function () {
+        this.refresh();
+        this.$panel.events.on('model.update', this.refresh);
+      },
+      destroyed: function () {
+        this.$panel.events.off('model.update', this.refresh);
+      },
+      methods: {
+        refresh: async function () {
+          try {
+            const response = await this.load();
+            this.headline = response.headline;
+            this.problems = response.problems || [];
+          } catch (error) {
+            console.error("Failed to load form problems section:", error);
+          }
+        }
+      },
+      template: `
+        <section class="k-section k-formproblems-section">
+          <header class="k-section-header">
+            <h2 class="k-headline">{{ headline }}</h2>
+          </header>
+          <k-box v-if="problems.length > 0" theme="notice">
+            <div>
+              <p style="margin-bottom: 0.5rem;">Some parts of this form have been left out until they are fixed:</p>
+              <ul style="list-style: disc; padding-left: 1.25rem;">
+                <li v-for="(problem, index) in problems" :key="index">{{ problem }}</li>
+              </ul>
+            </div>
+          </k-box>
+          <k-box v-else theme="positive" text="No problems found." />
+        </section>
+      `
+    },
+
     formsubmissionexport: {
       data: function () {
         return {

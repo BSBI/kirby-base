@@ -25,7 +25,7 @@ final readonly class FormSubmissionBuilder
      *
      * @param array<mixed>                                       $postData The request data
      * @param array<string, array{label: string, column: string}> $columns  Key => label and export column
-     * @return list<array<string, mixed>>
+     * @return list<array{question: string, answer: string, key?: string, column?: string}>
      */
     public function items(array $postData, array $columns = []): array
     {
@@ -49,7 +49,7 @@ final readonly class FormSubmissionBuilder
      * Returns items for every POST key, as createFormSubmission() always built them.
      *
      * @param array<mixed> $postData
-     * @return list<array<string, mixed>>
+     * @return list<array{question: string, answer: string}>
      */
     private function legacyItems(array $postData): array
     {
@@ -62,7 +62,9 @@ final readonly class FormSubmissionBuilder
 
             $items[] = [
                 'question' => ucwords($spacedString),
-                'answer'   => is_array($inputValue) ? implode(', ', $inputValue) : $inputValue,
+                'answer'   => is_array($inputValue)
+                    ? implode(', ', $inputValue)
+                    : (is_scalar($inputValue) ? (string) $inputValue : ''),
             ];
         }
         return $items;

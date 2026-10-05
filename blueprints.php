@@ -13,6 +13,7 @@ return [
     'pages/file_link' => __DIR__ . '/blueprints/pages/file_link.yml',
     'pages/form_submission' => __DIR__ . '/blueprints/pages/form_submission.yml',
     'pages/form_section' => __DIR__ . '/blueprints/pages/form_section.yml',
+    'pages/form_library' => __DIR__ . '/blueprints/pages/form_library.yml',
     'pages/page_link' => __DIR__ . '/blueprints/pages/page_link.yml',
     'pages/image_bank' => __DIR__ . '/blueprints/pages/image_bank.yml',
     'pages/search_log' => __DIR__ . '/blueprints/pages/search_log.yml',

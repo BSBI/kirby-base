@@ -38,7 +38,7 @@ return [
             // Row 1: form page title (identification row); then the header row
             // and one row per submission (formula-safe cells; see CsvWriter).
             $csvRows = array_merge(
-                [[$page->title()->value()]],
+                [[$page->title()->toString()]],
                 (new FormSubmissionExporter())->wide($records, false)
             );
 

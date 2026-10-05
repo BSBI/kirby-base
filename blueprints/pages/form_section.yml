@@ -3,6 +3,16 @@ icon: layers
 
 options:
   changeTemplate: false
+  create: &libraryRoles
+    admin: true
+    editor: true
+    "*": false
+  update: *libraryRoles
+  delete: *libraryRoles
+  duplicate: *libraryRoles
+  changeTitle: *libraryRoles
+  changeSlug: *libraryRoles
+  changeStatus: *libraryRoles
 
 fields:
   info:
