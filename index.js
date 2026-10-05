@@ -663,7 +663,6 @@ panel.plugin('open-foundations/kirby-base', {
                     <a
                       :href="row.longExportUrl"
                       :aria-label="'Long CSV (one row per answer) for ' + row.formType"
-                      title="One row per answer"
                       style="font-size: 0.8rem; color: var(--color-blue-500, #2563eb); text-decoration: none; white-space: nowrap; margin-left: 0.75rem;"
                     >&#8595; Long CSV</a>
                   </td>
@@ -681,7 +680,6 @@ panel.plugin('open-foundations/kirby-base', {
                     <a
                       :href="exportAllLongUrl"
                       aria-label="All long CSV (one row per answer, every form type)"
-                      title="One row per answer"
                       style="font-size: 0.8rem; color: var(--color-blue-500, #2563eb); text-decoration: none; white-space: nowrap; margin-left: 0.75rem;"
                     >&#8595; All long CSV</a>
                   </td>
@@ -704,22 +702,34 @@ panel.plugin('open-foundations/kirby-base', {
       data: function () {
         return {
           headline: 'Form check',
-          problems: []
+          problems: [],
+          announcement: ''
         }
       },
       created: function () {
-        this.refresh();
-        this.$panel.events.on('model.update', this.refresh);
+        this.refresh(false);
+        this.$panel.events.on('model.update', this.refreshAfterSave);
       },
       destroyed: function () {
-        this.$panel.events.off('model.update', this.refresh);
+        this.$panel.events.off('model.update', this.refreshAfterSave);
       },
       methods: {
-        refresh: async function () {
+        refreshAfterSave: function () {
+          this.refresh(true);
+        },
+        // Announces the outcome through the persistent live region only after
+        // a save, not on first load.
+        refresh: async function (announce) {
           try {
             const response = await this.load();
             this.headline = response.headline;
             this.problems = response.problems || [];
+            if (announce) {
+              const count = this.problems.length;
+              this.announcement = count === 0
+                ? 'Form check: no problems found.'
+                : 'Form check: ' + count + ' problem' + (count === 1 ? '' : 's') + ' found.';
+            }
           } catch (error) {
             console.error("Failed to load form problems section:", error);
           }
@@ -730,6 +740,7 @@ panel.plugin('open-foundations/kirby-base', {
           <header class="k-section-header">
             <h2 class="k-headline">{{ headline }}</h2>
           </header>
+          <div role="status" aria-live="polite" class="sr-only" style="position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0;">{{ announcement }}</div>
           <k-box v-if="problems.length > 0" theme="notice">
             <div>
               <p style="margin-bottom: 0.5rem;">Some parts of this form have been left out until they are fixed:</p>
