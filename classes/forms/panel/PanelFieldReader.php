@@ -129,7 +129,26 @@ final class PanelFieldReader
             FormFieldSpec::TYPE_SELECT,
         ], true);
 
-        return new PanelField($spec, $key, $type, $isChoice ? $options : [], $rawLabel);
+        return new PanelField(
+            $spec,
+            $key,
+            $type,
+            $isChoice ? $options : [],
+            $rawLabel,
+            $type !== FormFieldSpec::TYPE_INFO ? $this->reportAs($block) : ''
+        );
+    }
+
+    /**
+     * Returns the block's "Report as" export column: the first entry of the
+     * tags field, trimmed, or blank when none is set.
+     *
+     * @param Block $block
+     */
+    private function reportAs(Block $block): string
+    {
+        $first = explode(',', PanelContent::text($block->content(), 'reportAs'))[0];
+        return trim($first);
     }
 
     /**

@@ -26,3 +26,12 @@ fields:
   help:
     type: text
     label: Help text
+  reportAs:
+    type: tags
+    label: Report as (export column)
+    max: 1
+    accept: all
+    options:
+      type: query
+      query: site.formReportColumns
+    help: Optional. Answers from every form that uses the same name go in one column of the form-type CSV, under that name. Leave blank to use the field name.

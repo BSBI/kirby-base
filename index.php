@@ -18,6 +18,9 @@ use BSBI\WebBase\helpers\SearchIndexHelper;
 use BSBI\WebBase\helpers\SearchService;
 use BSBI\WebBase\helpers\StyleGuideService;
 use BSBI\WebBase\helpers\UnhandledException;
+use BSBI\WebBase\forms\FormBuilderOptions;
+use BSBI\WebBase\forms\FormLibraryPanel;
+use BSBI\WebBase\helpers\FormBuilderIndexDefinition;
 use BSBI\WebBase\helpers\maintenance\CacheClearTask;
 use BSBI\WebBase\helpers\maintenance\LogRetentionTask;
 use BSBI\WebBase\helpers\maintenance\MaintenancePanel;
@@ -104,6 +107,8 @@ $pluginConfig = [
     'templates' => [
         'file_link' => __DIR__ . '/templates/file_link.php',
         'form_submission' => __DIR__ . '/templates/form_submission.php',
+        'form_library' => __DIR__ . '/templates/form_library.php',
+        'form_section' => __DIR__ . '/templates/form_library.php',
         'page_link' => __DIR__ . '/templates/page_link.php',
         'glossary_item' => __DIR__ . '/templates/glossary_item.php',
         'emails/form-notification.html' => __DIR__ . '/templates/emails/form-notification.html.php',
@@ -118,7 +123,26 @@ $pluginConfig = [
     'collections' => [
         'formSubmissions' => require __DIR__ . '/collections/formSubmissions.php',
     ],
+    'siteMethods' => [
+        /**
+         * Form types in use, offered by the form type field on panel-built forms.
+         *
+         * @return list<string>
+         */
+        'formTypes' => function (): array {
+            return FormBuilderOptions::formTypesInUse();
+        },
+        /**
+         * "Report as" export columns in use, offered on form questions.
+         *
+         * @return list<string>
+         */
+        'formReportColumns' => function (): array {
+            return FormBuilderOptions::reportColumnsInUse(kirby());
+        },
+    ],
     'sections' => [
+        'formproblems' => require __DIR__ . '/sections/formproblems.php',
         'formsubmissionexport' => require __DIR__ . '/sections/formsubmissionexport.php',
         'formsubmissionsindex' => require __DIR__ . '/sections/formsubmissionsindex.php',
         'quicklinks' => require __DIR__ . '/sections/quicklinks.php',
@@ -666,6 +690,17 @@ if (option('contentIndex.showIndexStatsPanel', false)) {
     };
 }
 
+// Form library panel area — opt-in via forms.libraryPanel config. A side-menu
+// shortcut to the library page, shown to the forms.libraryRoles roles.
+if (option('forms.libraryPanel', false)) {
+    if (!array_key_exists('areas', $pluginConfig)) {
+        $pluginConfig['areas'] = [];
+    }
+    $pluginConfig['areas']['form-library'] = function () {
+        return FormLibraryPanel::area(kirby());
+    };
+}
+
 // Maintenance panel area — opt-in via maintenance.showPanel config. Provides a live-safe
 // "Reclaim disk" dashboard (dry-run preview → confirm → run) for the registered tasks.
 if (option('maintenance.showPanel', false)) {
@@ -737,6 +772,16 @@ try {
     ContentIndexRegistry::register(new FormSubmissionIndexDefinition());
 } catch (Throwable $e) {
     error_log('Failed to register form submissions content index: ' . $e->getMessage());
+}
+
+// Register the panel-built forms index (form types and Report-as columns in use)
+try {
+    $formBuilderTemplates = option('forms.builderTemplates', ['form_builder']);
+    ContentIndexRegistry::register(new FormBuilderIndexDefinition(
+        is_array($formBuilderTemplates) ? array_values(array_filter($formBuilderTemplates, 'is_string')) : ['form_builder']
+    ));
+} catch (Throwable $e) {
+    error_log('Failed to register form builder content index: ' . $e->getMessage());
 }
 
 // Register content indexes from site configuration

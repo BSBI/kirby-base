@@ -616,7 +616,8 @@ panel.plugin('open-foundations/kirby-base', {
           headline: 'Form Submissions',
           formTypes: [],
           totalCount: 0,
-          exportAllUrl: ''
+          exportAllUrl: '',
+          exportAllLongUrl: ''
         }
       },
       created: async function() {
@@ -626,6 +627,7 @@ panel.plugin('open-foundations/kirby-base', {
           this.formTypes    = response.formTypes    || [];
           this.totalCount   = response.totalCount   || 0;
           this.exportAllUrl = response.exportAllUrl || '';
+          this.exportAllLongUrl = response.exportAllLongUrl || '';
         } catch (error) {
           console.error("Failed to load form submissions index section:", error);
         }
@@ -658,6 +660,11 @@ panel.plugin('open-foundations/kirby-base', {
                       :href="row.exportUrl"
                       style="font-size: 0.8rem; color: var(--color-blue-500, #2563eb); text-decoration: none; white-space: nowrap;"
                     >&#8595; CSV</a>
+                    <a
+                      :href="row.longExportUrl"
+                      :aria-label="'Long CSV (one row per answer) for ' + row.formType"
+                      style="font-size: 0.8rem; color: var(--color-blue-500, #2563eb); text-decoration: none; white-space: nowrap; margin-left: 0.75rem;"
+                    >&#8595; Long CSV</a>
                   </td>
                 </tr>
               </tbody>
@@ -670,6 +677,11 @@ panel.plugin('open-foundations/kirby-base', {
                       :href="exportAllUrl"
                       style="font-size: 0.8rem; color: var(--color-blue-500, #2563eb); text-decoration: none; white-space: nowrap;"
                     >&#8595; All CSV</a>
+                    <a
+                      :href="exportAllLongUrl"
+                      aria-label="All long CSV (one row per answer, every form type)"
+                      style="font-size: 0.8rem; color: var(--color-blue-500, #2563eb); text-decoration: none; white-space: nowrap; margin-left: 0.75rem;"
+                    >&#8595; All long CSV</a>
                   </td>
                 </tr>
               </tfoot>
@@ -682,6 +694,62 @@ panel.plugin('open-foundations/kirby-base', {
           >
             No form submissions recorded yet.
           </k-empty>
+        </section>
+      `
+    },
+
+    formproblems: {
+      data: function () {
+        return {
+          headline: 'Form check',
+          problems: [],
+          announcement: ''
+        }
+      },
+      created: function () {
+        this.refresh(false);
+        this.$panel.events.on('model.update', this.refreshAfterSave);
+      },
+      destroyed: function () {
+        this.$panel.events.off('model.update', this.refreshAfterSave);
+      },
+      methods: {
+        refreshAfterSave: function () {
+          this.refresh(true);
+        },
+        // Announces the outcome through the persistent live region only after
+        // a save, not on first load.
+        refresh: async function (announce) {
+          try {
+            const response = await this.load();
+            this.headline = response.headline;
+            this.problems = response.problems || [];
+            if (announce) {
+              const count = this.problems.length;
+              this.announcement = count === 0
+                ? 'Form check: no problems found.'
+                : 'Form check: ' + count + ' problem' + (count === 1 ? '' : 's') + ' found.';
+            }
+          } catch (error) {
+            console.error("Failed to load form problems section:", error);
+          }
+        }
+      },
+      template: `
+        <section class="k-section k-formproblems-section">
+          <header class="k-section-header">
+            <h2 class="k-headline">{{ headline }}</h2>
+          </header>
+          <div role="status" aria-live="polite" class="sr-only" style="position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0;">{{ announcement }}</div>
+          <k-box v-if="problems.length > 0" theme="notice">
+            <div>
+              <p style="margin-bottom: 0.5rem;">Some parts of this form have been left out until they are fixed:</p>
+              <ul style="list-style: disc; padding-left: 1.25rem;">
+                <li v-for="(problem, index) in problems" :key="index">{{ problem }}</li>
+              </ul>
+            </div>
+          </k-box>
+          <k-box v-else theme="positive" text="No problems found." />
         </section>
       `
     },

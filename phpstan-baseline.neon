@@ -2497,6 +2497,12 @@ parameters:
 			path: sections/formsubmissionexport.php
 
 		-
+			message: '#^Undefined variable\: \$this$#'
+			identifier: variable.undefined
+			count: 2
+			path: sections/formproblems.php
+
+		-
 			message: '#^Cannot cast mixed to string\.$#'
 			identifier: cast.string
 			count: 1

@@ -17,7 +17,8 @@ final readonly class PanelField
      * @param string        $key     POST key (the spec's name)
      * @param string        $type    One of the FormFieldSpec::TYPE_* constants
      * @param string[]      $options Raw (unescaped) options for choice fields, as submitted
-     * @param string        $label   Raw label, for problem messages
+     * @param string        $label    Raw label, for problem messages and stored submissions
+     * @param string        $reportAs Export column chosen by the editor; blank means the key
      */
     public function __construct(
         public FormFieldSpec $spec,
@@ -25,6 +26,7 @@ final readonly class PanelField
         public string $type,
         public array $options = [],
         public string $label = '',
+        public string $reportAs = '',
     ) {
     }
 

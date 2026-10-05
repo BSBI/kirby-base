@@ -268,3 +268,64 @@ the field snippets print those properties unescaped for developer-authored strin
 `form-info` text is rendered in markdown **safe mode** (`FormFieldSpec::info(..., true)`):
 formatting and ordinary links work, raw HTML shows as text, and `javascript:`/`data:` link
 targets are neutralised. Developer-authored `info()` content keeps full markdown.
+
+### What a submission stores
+
+`BaseFormDefinition::getSubmissionColumns()` returns, per POST key, the label the
+respondent saw and the export column. It is empty by default, and an empty map keeps the
+original behaviour: every POST key except `csrf`/`submit` is stored as
+`{question: "Title Cased Key", answer}`. `PanelFormDefinition` returns a map, so a
+panel-built form stores **only the questions it defines** (in form order, unanswered ones
+blank), each as `{question: <label>, answer, key, column}`. Pass the map through:
+
+```php
+$this->createFormSubmission($page, $definition->getFormType(), $definition->getSubmissionColumns());
+```
+
+Answers are flattened to one cell: checkbox lists joined with commas, rating-matrix rows as
+`row: answer, row: answer`. The building is `FormSubmissionBuilder`.
+
+A question's column is its key unless the editor sets **Report as (export column)** on the
+question block (a tags field offering `site.formReportColumns`, the columns already in use).
+Questions sharing a Report-as name, on any form of the same type, share one CSV column.
+
+### Exports
+
+`FormSubmissionExporter` builds the rows for both export routes:
+
+- `form-export/<page id>` (a form page's Responses section) and `form-export-all`
+  (`?form_type=` to filter; the site Forms tab): **wide**, one row per submission. Legacy
+  items are columned by question text, exactly as before. Items with a column are columned
+  by it, headed by the Report-as name if set, otherwise by the most recent label the
+  question was asked with — so relabelling a question keeps its column. A legacy question
+  and a keyed field never share a column, even with the same header.
+- `form-export-all?format=long`: **long**, one row per answer (Form Type, Submission, Date,
+  Column, Question, Answer), for pivoting. Linked from the Forms tab per type and for all.
+
+Merging different columns at export time is specified separately (bsbi-web
+`specs/forms-export-collation.md`) and not built.
+
+### Form types
+
+Editors set a form's type (the Forms tab groups and exports by it, and editors deliberately
+collate different forms under one type). `site.formTypes` offers every type in use: those
+on submissions plus those on panel-built forms. Store an editor-typed type through
+`FormBuilderOptions::normaliseFormType()` (lower_snake: `Event Feedback` →
+`event_feedback`).
+
+Panel-built form pages are indexed by the `form_builders` content index (form type and
+Report-as columns), for templates in the `forms.builderTemplates` option (default
+`['form_builder']`), so neither list walks the page tree. A new index fills as forms are
+saved; rebuild it from the Indexes panel if needed.
+
+### Library menu entry and form check
+
+- `forms.libraryPanel: true` adds a **Form library** side-menu entry, shown to the roles in
+  `forms.libraryRoles` (default `['admin', 'editor']`). Opening it creates the unlisted
+  `form-library` page (template `form_library`) if missing. The library and its
+  `form_section` pages render the 404 page on the site, and their blueprints allow only
+  admin and editor to change them.
+- The `formproblems` section (`type: formproblems`, optional `field`, default
+  `formSections`) lists what `validate()` reports, on the form page, refreshed after each
+  save. It is a section rather than an `info` field because problem messages quote editor
+  text, which an info field would run through KirbyText.

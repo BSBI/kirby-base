@@ -1,5 +1,6 @@
 <?php
 
+use BSBI\WebBase\forms\FormSubmissionExporter;
 use BSBI\WebBase\helpers\ContentIndexRegistry;
 use BSBI\WebBase\helpers\CsvWriter;
 use BSBI\WebBase\helpers\FileArchiveService;
@@ -29,44 +30,17 @@ return [
                 return new Response('Page not found.', 'text/plain', 404);
             }
 
-            $submissions = $page->children()->template('form_submission');
-
-            // Pass 1: collect all unique questions across every submission,
-            // preserving the first-seen order so later submissions with
-            // extra questions simply append new columns at the right.
-            $allQuestions = [];
-            $submissionRows = [];
-
-            foreach ($submissions as $submission) {
-                $rowData = ['_title' => $submission->title()->value()];
-
-                foreach ($submission->submission()->toStructure() as $item) {
-                    $question = $item->question()->value();
-                    $answer   = $item->answer()->value();
-
-                    if (!in_array($question, $allQuestions, true)) {
-                        $allQuestions[] = $question;
-                    }
-
-                    $rowData[$question] = $answer;
-                }
-
-                $submissionRows[] = $rowData;
+            $records = [];
+            foreach ($page->children()->template('form_submission') as $submission) {
+                $records[] = FormSubmissionExporter::record($submission);
             }
 
-            // Pass 2: build the CSV (formula-safe cells; see CsvWriter).
-            // Row 1: form page title (identification row).
-            // Row 2: column headers.
-            $csvRows = [[$page->title()->value()], array_merge(['Submission'], $allQuestions)];
-
-            // Data rows: one per submission, answers mapped to the correct column.
-            foreach ($submissionRows as $row) {
-                $csvRow = [$row['_title']];
-                foreach ($allQuestions as $question) {
-                    $csvRow[] = $row[$question] ?? '';
-                }
-                $csvRows[] = $csvRow;
-            }
+            // Row 1: form page title (identification row); then the header row
+            // and one row per submission (formula-safe cells; see CsvWriter).
+            $csvRows = array_merge(
+                [[$page->title()->toString()]],
+                (new FormSubmissionExporter())->wide($records, false)
+            );
 
             $csv = CsvWriter::toString($csvRows);
 
@@ -111,53 +85,24 @@ return [
                 }
             }
 
-            $pageIds = $query->getPageIds();
-
-            // Pass 1: collect all unique questions across every submission.
-            $allQuestions  = [];
-            $submissionRows = [];
-
-            foreach ($pageIds as $pageId) {
+            $records = [];
+            foreach ($query->getPageIds() as $pageId) {
                 $submission = $helper->findKirbyPageOrDraft($pageId);
-                if ($submission === null) {
-                    continue;
+                if ($submission !== null) {
+                    $records[] = FormSubmissionExporter::record($submission);
                 }
-
-                $formType = (string) $submission->form_type()->value();
-                $rowData  = [
-                    '_form_type' => $formType !== '' ? $formType : '(untyped)',
-                    '_title'     => $submission->title()->value(),
-                ];
-
-                foreach ($submission->submission()->toStructure() as $item) {
-                    $question = $item->question()->value();
-                    $answer   = $item->answer()->value();
-
-                    if (!in_array($question, $allQuestions, true)) {
-                        $allQuestions[] = $question;
-                    }
-
-                    $rowData[$question] = $answer;
-                }
-
-                $submissionRows[] = $rowData;
             }
 
-            // Pass 2: build the CSV (formula-safe cells; see CsvWriter).
-            $csvRows = [array_merge(['Form Type', 'Submission'], $allQuestions)];
-
-            foreach ($submissionRows as $row) {
-                $csvRow = [$row['_form_type'], $row['_title']];
-                foreach ($allQuestions as $question) {
-                    $csvRow[] = $row[$question] ?? '';
-                }
-                $csvRows[] = $csvRow;
-            }
+            // Wide: one row per submission. Long: one row per answer.
+            // Formula-safe cells; see CsvWriter.
+            $isLong = kirby()->request()->get('format') === 'long';
+            $exporter = new FormSubmissionExporter();
+            $csvRows = $isLong ? $exporter->long($records) : $exporter->wide($records, true);
 
             $csv = CsvWriter::toString($csvRows);
 
             $suffix   = $formTypeFilter !== '' ? '-' . preg_replace('/[^a-z0-9]+/i', '-', $formTypeFilter) : '-all';
-            $filename = 'form-submissions' . $suffix . '-' . date('Y-m-d') . '.csv';
+            $filename = 'form-submissions' . $suffix . ($isLong ? '-long' : '') . '-' . date('Y-m-d') . '.csv';
 
             return new Response($csv, 'text/csv', 200, [
                 'Content-Disposition' => 'attachment; filename="' . $filename . '"',

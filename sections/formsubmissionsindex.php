@@ -24,9 +24,9 @@ return [
     'computed' => [
         /**
          * All form_submission pages grouped by form_type, with counts and
-         * per-type export URLs.
+         * per-type export URLs (wide, and long: one row per answer).
          *
-         * @return array<int, array{formType: string, count: int, exportUrl: string}>
+         * @return array<int, array{formType: string, count: int, exportUrl: string, longExportUrl: string}>
          */
         'formTypes' => function (): array {
             $manager = ContentIndexRegistry::get('form_submissions');
@@ -49,10 +49,12 @@ return [
             $baseUrl = kirby()->url() . '/form-export-all';
             $result  = [];
             foreach ($counts as $formType => $count) {
+                $exportUrl = $baseUrl . '?form_type=' . urlencode($formType);
                 $result[] = [
-                    'formType'  => $formType,
-                    'count'     => $count,
-                    'exportUrl' => $baseUrl . '?form_type=' . urlencode($formType),
+                    'formType'      => $formType,
+                    'count'         => $count,
+                    'exportUrl'     => $exportUrl,
+                    'longExportUrl' => $exportUrl . '&format=long',
                 ];
             }
 
@@ -79,6 +81,13 @@ return [
          */
         'exportAllUrl' => function (): string {
             return kirby()->url() . '/form-export-all';
+        },
+
+        /**
+         * URL to export all submissions as a long CSV (one row per answer).
+         */
+        'exportAllLongUrl' => function (): string {
+            return kirby()->url() . '/form-export-all?format=long';
         },
     ],
 ];

@@ -1,0 +1,36 @@
+title: Form library
+icon: layers
+
+# Panel-only store of reusable form sections, opened from the "Form library"
+# side-menu entry (forms.libraryPanel). Never shown on the site.
+options:
+  changeTemplate: false
+  changeSlug: false
+  changeStatus: false
+  duplicate: false
+  delete: false
+  update: &libraryRoles
+    admin: true
+    editor: true
+    "*": false
+  changeTitle: *libraryRoles
+
+sections:
+  info:
+    type: info
+    label: Form library
+    theme: info
+    text: >-
+      Reusable groups of questions for forms built in the panel. A form uses a
+      section by reference, so editing a section here changes every form that
+      uses it. To change a section for one form only, add a new section that is
+      a variation of it.
+  sections:
+    label: Sections
+    type: pages
+    template: form_section
+    status: all
+    create: form_section
+    sortBy: title asc
+    info: "{{ page.legend }}"
+    empty: No sections yet
