@@ -38,9 +38,10 @@ final class FormLibraryPanel
      */
     public static function area(App $kirby): array
     {
-        // Not static closures, and no `self::` or private calls inside them: the
-        // panel binds area callbacks to its own objects (Closure::call), which
-        // also moves their class scope, so the class is named explicitly.
+        // The panel runs a view action with Closure::call($route), which rejects
+        // a static closure and moves its class scope to Route, so `self::` and
+        // private calls would fail there. All three closures follow the same
+        // rule, in case Kirby starts binding the others too.
         return [
             'label'   => 'Form library',
             'icon'    => 'layers',
@@ -133,6 +134,8 @@ final class FormLibraryPanel
     /**
      * Returns the panel's URL slug.
      *
+     * Public because the area closures call it (see area()).
+     *
      * @param App $kirby
      */
     public static function panelSlug(App $kirby): string
@@ -143,6 +146,8 @@ final class FormLibraryPanel
 
     /**
      * Returns the roles allowed to use the library.
+     *
+     * Public because the area closures call it (see area()).
      *
      * @param App $kirby
      * @return string[]
