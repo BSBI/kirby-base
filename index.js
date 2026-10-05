@@ -616,7 +616,8 @@ panel.plugin('open-foundations/kirby-base', {
           headline: 'Form Submissions',
           formTypes: [],
           totalCount: 0,
-          exportAllUrl: ''
+          exportAllUrl: '',
+          exportAllLongUrl: ''
         }
       },
       created: async function() {
@@ -626,6 +627,7 @@ panel.plugin('open-foundations/kirby-base', {
           this.formTypes    = response.formTypes    || [];
           this.totalCount   = response.totalCount   || 0;
           this.exportAllUrl = response.exportAllUrl || '';
+          this.exportAllLongUrl = response.exportAllLongUrl || '';
         } catch (error) {
           console.error("Failed to load form submissions index section:", error);
         }
@@ -658,6 +660,12 @@ panel.plugin('open-foundations/kirby-base', {
                       :href="row.exportUrl"
                       style="font-size: 0.8rem; color: var(--color-blue-500, #2563eb); text-decoration: none; white-space: nowrap;"
                     >&#8595; CSV</a>
+                    <a
+                      :href="row.longExportUrl"
+                      :aria-label="'Long CSV (one row per answer) for ' + row.formType"
+                      title="One row per answer"
+                      style="font-size: 0.8rem; color: var(--color-blue-500, #2563eb); text-decoration: none; white-space: nowrap; margin-left: 0.75rem;"
+                    >&#8595; Long CSV</a>
                   </td>
                 </tr>
               </tbody>
@@ -670,6 +678,12 @@ panel.plugin('open-foundations/kirby-base', {
                       :href="exportAllUrl"
                       style="font-size: 0.8rem; color: var(--color-blue-500, #2563eb); text-decoration: none; white-space: nowrap;"
                     >&#8595; All CSV</a>
+                    <a
+                      :href="exportAllLongUrl"
+                      aria-label="All long CSV (one row per answer, every form type)"
+                      title="One row per answer"
+                      style="font-size: 0.8rem; color: var(--color-blue-500, #2563eb); text-decoration: none; white-space: nowrap; margin-left: 0.75rem;"
+                    >&#8595; All long CSV</a>
                   </td>
                 </tr>
               </tfoot>
