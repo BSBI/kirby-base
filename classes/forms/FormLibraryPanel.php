@@ -38,20 +38,23 @@ final class FormLibraryPanel
      */
     public static function area(App $kirby): array
     {
+        // Not static closures, and no `self::` or private calls inside them: the
+        // panel binds area callbacks to its own objects (Closure::call), which
+        // also moves their class scope, so the class is named explicitly.
         return [
             'label'   => 'Form library',
             'icon'    => 'layers',
-            'link'    => self::SLUG,
-            'menu'    => static fn(): bool => self::isAllowed($kirby->user()?->role()->id(), self::roles($kirby)),
-            'current' => static fn(): bool => self::isCurrentPath(
+            'link'    => FormLibraryPanel::SLUG,
+            'menu'    => fn(): bool => FormLibraryPanel::isAllowed($kirby->user()?->role()->id(), FormLibraryPanel::roles($kirby)),
+            'current' => fn(): bool => FormLibraryPanel::isCurrentPath(
                 $kirby->request()->path()->toString(),
-                self::panelSlug($kirby)
+                FormLibraryPanel::panelSlug($kirby)
             ),
             'views'   => [
                 [
-                    'pattern' => self::SLUG,
-                    'action'  => static function () use ($kirby): void {
-                        self::open($kirby);
+                    'pattern' => FormLibraryPanel::SLUG,
+                    'action'  => function () use ($kirby): void {
+                        FormLibraryPanel::open($kirby);
                     },
                 ],
             ],
@@ -132,7 +135,7 @@ final class FormLibraryPanel
      *
      * @param App $kirby
      */
-    private static function panelSlug(App $kirby): string
+    public static function panelSlug(App $kirby): string
     {
         $slug = $kirby->option('panel.slug', 'panel');
         return is_string($slug) && $slug !== '' ? $slug : 'panel';
@@ -144,7 +147,7 @@ final class FormLibraryPanel
      * @param App $kirby
      * @return string[]
      */
-    private static function roles(App $kirby): array
+    public static function roles(App $kirby): array
     {
         $roles = $kirby->option('forms.libraryRoles', self::DEFAULT_ROLES);
         return is_array($roles) ? array_values(array_filter($roles, 'is_string')) : self::DEFAULT_ROLES;
