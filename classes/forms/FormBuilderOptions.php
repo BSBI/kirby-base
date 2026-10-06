@@ -6,6 +6,7 @@ namespace BSBI\WebBase\forms;
 
 use BSBI\WebBase\forms\panel\PanelContent;
 use BSBI\WebBase\helpers\ContentIndexRegistry;
+use BSBI\WebBase\helpers\KirbyBaseHelper;
 use Kirby\Cms\App;
 use Kirby\Cms\Page;
 use Throwable;
@@ -98,7 +99,8 @@ final class FormBuilderOptions
         try {
             $manager = ContentIndexRegistry::get('form_builders');
             $pageIds = $manager !== null ? $manager->query()->getPageIds() : [];
-        } catch (Throwable) {
+        } catch (Throwable $e) {
+            KirbyBaseHelper::writeToLogFile('search-index', 'Form builder choices: index unavailable: ' . $e->getMessage());
             $pageIds = [];
         }
         foreach ($pageIds as $pageId) {
@@ -204,7 +206,8 @@ final class FormBuilderOptions
                 $values[] = is_scalar($value) ? (string) $value : '';
             }
             return $values;
-        } catch (Throwable) {
+        } catch (Throwable $e) {
+            KirbyBaseHelper::writeToLogFile('search-index', "Form options: index '{$index}' unavailable: " . $e->getMessage());
             return [];
         }
     }

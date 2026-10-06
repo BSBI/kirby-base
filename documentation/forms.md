@@ -322,7 +322,7 @@ Report-as columns), for templates in the `forms.builderTemplates` option (defaul
 `['form_builder']`), so none of these lists walks the page tree. Unlike other content
 indexes it includes unlisted pages and drafts (`shouldIndex()`), because forms usually are
 one or the other. It is kept up to date by the page hooks (create, update, duplicate,
-status, move, delete); rebuild it from the Indexes panel after adding forms by other means
+status, move, delete; a duplicate's copied sub-pages are not indexed); rebuild it from the Indexes panel after adding forms by other means
 (e.g. copying content files).
 
 ### Starting a form from another
