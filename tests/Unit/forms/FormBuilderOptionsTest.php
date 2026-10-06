@@ -67,6 +67,26 @@ final class FormBuilderOptionsTest extends TestCase
         );
     }
 
+    public function testFormChoicesAreKeyedByUuidAndNamedWithTheirParent(): void
+    {
+        $this->assertSame(
+            ['page://b' => 'Talk feedback (Events)', 'page://a' => 'Walk feedback (Field meetings)', 'page://c' => 'Walk feedback (Wales)'],
+            FormBuilderOptions::formChoices([
+                ['uuid' => 'page://c', 'title' => 'Walk feedback', 'parent' => 'Wales'],
+                ['uuid' => 'page://a', 'title' => 'Walk feedback', 'parent' => 'Field meetings'],
+                ['uuid' => 'page://b', 'title' => 'Talk feedback', 'parent' => 'Events'],
+            ])
+        );
+    }
+
+    public function testATopLevelFormIsNamedWithoutAParent(): void
+    {
+        $this->assertSame(
+            ['page://a' => 'Survey'],
+            FormBuilderOptions::formChoices([['uuid' => 'page://a', 'title' => 'Survey', 'parent' => '']])
+        );
+    }
+
     public function testReportColumnsAreDistinctTrimmedAndSorted(): void
     {
         $this->assertSame(

@@ -66,6 +66,57 @@ final class FormBuilderOptions
     }
 
     /**
+     * Returns choices for picking an existing panel-built form, page UUID =>
+     * "Title (Parent title)", sorted by that label case-insensitively. The
+     * parent tells apart forms with the same title.
+     *
+     * @param array<array{uuid: string, title: string, parent: string}> $forms
+     * @return array<string, string>
+     */
+    public static function formChoices(array $forms): array
+    {
+        $choices = [];
+        foreach ($forms as $form) {
+            $choices[$form['uuid']] = $form['parent'] !== ''
+                ? $form['title'] . ' (' . $form['parent'] . ')'
+                : $form['title'];
+        }
+        uasort($choices, 'strcasecmp');
+        return $choices;
+    }
+
+    /**
+     * Returns choices for every panel-built form (see formChoices()), read
+     * from the form_builders content index rather than the page tree.
+     *
+     * @param App $kirby
+     * @return array<string, string>
+     */
+    public static function formBuilderChoices(App $kirby): array
+    {
+        $forms = [];
+        try {
+            $manager = ContentIndexRegistry::get('form_builders');
+            $pageIds = $manager !== null ? $manager->query()->getPageIds() : [];
+        } catch (Throwable) {
+            $pageIds = [];
+        }
+        foreach ($pageIds as $pageId) {
+            $page = $kirby->site()->findPageOrDraft($pageId);
+            if (!$page instanceof Page) {
+                continue;
+            }
+            $parent = $page->parent();
+            $forms[] = [
+                'uuid'   => $page->uuid()->toString(),
+                'title'  => $page->title()->toString(),
+                'parent' => $parent instanceof Page ? $parent->title()->toString() : '',
+            ];
+        }
+        return self::formChoices($forms);
+    }
+
+    /**
      * Returns the distinct "Report as" columns in the given lists, each entry
      * of which may be a single column or several, comma-separated (as a tags
      * field or the form builder index stores them), sorted case-insensitively.

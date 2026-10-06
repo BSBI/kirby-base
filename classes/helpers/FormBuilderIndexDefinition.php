@@ -75,6 +75,17 @@ class FormBuilderIndexDefinition extends ContentIndexDefinition
     }
 
     /**
+     * Indexes every panel-built form, listed or not: forms are usually
+     * unlisted pages, and drafts while they are being built.
+     *
+     * @param Page $page
+     */
+    public function shouldIndex(Page $page): bool
+    {
+        return true;
+    }
+
+    /**
      * {@inheritDoc}
      */
     public function getRowData(Page $page, KirbyBaseHelper $helper): array

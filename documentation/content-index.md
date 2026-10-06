@@ -139,7 +139,7 @@ For each hook, the system:
 3. Calls `manager->indexPage()` or `manager->removePage()` for each manager
 4. Logs errors without interrupting the page save
 
-Only **listed pages** are indexed. Pages with `isListed() === false` (drafts, unlisted pages) are excluded.
+By default only **listed pages** are indexed: drafts and unlisted pages are excluded. A definition can override `shouldIndex(Page $page): bool` to include them (the `form_builders` index does, because forms are usually unlisted or drafts).
 
 ## Registration
 
@@ -288,7 +288,7 @@ This means schema additions are non-destructive, but removals/reorders require a
 ## Performance Considerations
 
 - **Indexed columns**: Define indexes on columns you'll frequently query. The `form_submissions` index includes `form_type` and `submitted_at`.
-- **Page limiting**: Only listed pages are indexed. Use `isListed()` to exclude drafts and unlisted pages.
+- **Page limiting**: Only listed pages are indexed unless the definition overrides `shouldIndex()`.
 - **Rebuild timing**: Full rebuilds iterate the entire collection and reconstruct the table. On large sites, rebuild times can be noticeable; consider running them during off-peak hours.
 - **Disk space**: SQLite uses WAL (write-ahead logging) for concurrency. Expect some additional disk space for WAL files.
 
