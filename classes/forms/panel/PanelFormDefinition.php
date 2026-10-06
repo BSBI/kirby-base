@@ -17,8 +17,10 @@ use Kirby\Cms\Page;
  *    with an optional `title` overriding the section's `legend`
  *  - `form-section-inline`: a section defined on the form itself, with a
  *    `title` and its own `formFields` blocks
- * Either may set `showWhenField` (a field key) and `showWhenValue`, to show
- * the section only when an earlier radio or dropdown field has that value.
+ * Either may set `showWhen` (`key:answer`, picked from conditionChoices()) to
+ * show the section only when an earlier radio or dropdown field has that
+ * answer. Content saved before that field existed uses `showWhenField` (a
+ * field key) and `showWhenValue` instead, which are still read.
  *
  * Everything downstream (resolving, rendering, submission handling) is the
  * same as for a hand-written definition. Bad content never stops the form
@@ -31,6 +33,9 @@ class PanelFormDefinition extends BaseFormDefinition
 
     /** @var array<string, array{label: string, column: string}> Filled by build() */
     private array $columns = [];
+
+    /** @var array<string, string> Filled by build() */
+    private array $conditionChoices = [];
 
     private FormProblems $problems;
 
@@ -79,6 +84,21 @@ class PanelFormDefinition extends BaseFormDefinition
     {
         $this->build();
         return $this->columns;
+    }
+
+    /**
+     * Returns the choices for a section's "Only show this section when…"
+     * select: one per answer of every radio and dropdown question kept on the
+     * form, in form order, as `key:answer` => "Section › Question: Answer".
+     * Keys never contain ":", so the stored value splits at the first one.
+     * Labels and answers are raw (the panel escapes option text).
+     *
+     * @return array<string, string>
+     */
+    public function conditionChoices(): array
+    {
+        $this->build();
+        return $this->conditionChoices;
     }
 
     /**
@@ -136,12 +156,19 @@ class PanelFormDefinition extends BaseFormDefinition
         foreach ($read as $section) {
             $specs = [];
             $earlier = $seen;
+            $sectionLabel = $section['legend'] !== '' ? $section['legend'] : sprintf('Section %d', $section['position']);
             foreach ($section['fields'] as $field) {
                 if (!$this->keyIsUsable($field, $section['name'], $seen)) {
                     continue;
                 }
                 $seen[$field->key] = $field;
                 $specs[] = $field->spec;
+                if ($field->canControlConditions()) {
+                    foreach ($field->options as $option) {
+                        $this->conditionChoices[$field->key . ':' . $option]
+                            = $sectionLabel . ' › ' . $field->label . ': ' . $option;
+                    }
+                }
                 if ($field->isSubmittable()) {
                     $this->columns[$field->key] = [
                         'label'  => $field->label,
@@ -158,6 +185,15 @@ class PanelFormDefinition extends BaseFormDefinition
             $this->sections[] = $formSection;
         }
 
+        // A stored choice that no longer matches stays choosable (and marked),
+        // so the select's value is always one of its options.
+        foreach ($blocks as $block) {
+            $choice = PanelContent::text($block->content(), 'showWhen');
+            if ($choice !== '' && !isset($this->conditionChoices[$choice])) {
+                $this->conditionChoices[$choice] = 'No longer on this form: ' . $choice;
+            }
+        }
+
         return $this->sections;
     }
 
@@ -167,7 +203,7 @@ class PanelFormDefinition extends BaseFormDefinition
      * @param Block              $block
      * @param int                $position      1-based position on the form
      * @param PanelSectionReader $sectionReader
-     * @return array{id: string, legend: string, name: string, block: Block, fields: PanelField[]}|null
+     * @return array{id: string, legend: string, name: string, position: int, block: Block, fields: PanelField[]}|null
      */
     private function readSection(Block $block, int $position, PanelSectionReader $sectionReader): ?array
     {
@@ -178,9 +214,10 @@ class PanelFormDefinition extends BaseFormDefinition
             $name = $title !== '' ? sprintf('Section "%s"', $title) : sprintf('Section %d', $position);
             return [
                 'id'     => $block->id(),
-                'legend' => $title,
-                'name'   => $name,
-                'block'  => $block,
+                'legend'   => $title,
+                'name'     => $name,
+                'position' => $position,
+                'block'    => $block,
                 'fields' => $sectionReader->readBlocks(
                     PanelContent::blocks($content, 'formFields', $this->problems, $block->id(), $name),
                     $name,
@@ -209,9 +246,10 @@ class PanelFormDefinition extends BaseFormDefinition
             $name = sprintf('Section "%s"', $pageTitle !== '' ? $pageTitle : $page->slug());
             return [
                 'id'     => $block->id(),
-                'legend' => $legend,
-                'name'   => $name,
-                'block'  => $block,
+                'legend'   => $legend,
+                'name'     => $name,
+                'position' => $position,
+                'block'    => $block,
                 'fields' => $sectionReader->read($page, $this->problems),
             ];
         }
@@ -222,6 +260,28 @@ class PanelFormDefinition extends BaseFormDefinition
             $block->type()
         ));
         return null;
+    }
+
+    /**
+     * Returns a section block's [field key, answer] condition as stored: the
+     * `showWhen` choice (`key:answer`, split at the first ":") when set,
+     * otherwise the older `showWhenField` / `showWhenValue` pair.
+     *
+     * @param Block $block A section block
+     * @return array{0: string, 1: string}
+     */
+    private static function conditionOf(Block $block): array
+    {
+        $choice = PanelContent::text($block->content(), 'showWhen');
+        if ($choice !== '') {
+            $parts = explode(':', $choice, 2);
+            return [trim($parts[0]), trim($parts[1] ?? '')];
+        }
+
+        return [
+            PanelContent::text($block->content(), 'showWhenField'),
+            PanelContent::text($block->content(), 'showWhenValue'),
+        ];
     }
 
     /**
@@ -271,8 +331,7 @@ class PanelFormDefinition extends BaseFormDefinition
      */
     private function checkedCondition(Block $block, string $sectionName, array $earlier, array $allKeys): ?array
     {
-        $fieldKey = PanelContent::text($block->content(), 'showWhenField');
-        $value    = PanelContent::text($block->content(), 'showWhenValue');
+        [$fieldKey, $value] = self::conditionOf($block);
 
         if ($fieldKey === '' && $value === '') {
             return null;

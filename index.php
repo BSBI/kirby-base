@@ -18,6 +18,8 @@ use BSBI\WebBase\helpers\SearchIndexHelper;
 use BSBI\WebBase\helpers\SearchService;
 use BSBI\WebBase\helpers\StyleGuideService;
 use BSBI\WebBase\helpers\UnhandledException;
+use BSBI\WebBase\forms\panel\KirbySectionPageResolver;
+use BSBI\WebBase\forms\panel\PanelFormDefinition;
 use BSBI\WebBase\forms\FormBuilderOptions;
 use BSBI\WebBase\forms\FormLibraryPanel;
 use BSBI\WebBase\helpers\FormBuilderIndexDefinition;
@@ -150,6 +152,18 @@ $pluginConfig = [
          */
         'formBuilderChoices' => function (): array {
             return FormBuilderOptions::formBuilderChoices(kirby());
+        },
+    ],
+    'pageMethods' => [
+        /**
+         * Choices for a form section's "Only show this section when…" select:
+         * `key:answer` => "Section › Question: Answer" for every radio and
+         * dropdown question on this (panel-built) form, as last saved.
+         *
+         * @return array<string, string>
+         */
+        'formConditionChoices' => function (): array {
+            return (new PanelFormDefinition($this, '', new KirbySectionPageResolver(kirby())))->conditionChoices();
         },
     ],
     'sections' => [

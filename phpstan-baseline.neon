@@ -2427,7 +2427,7 @@ parameters:
 		-
 			message: '#^Undefined variable\: \$this$#'
 			identifier: variable.undefined
-			count: 1
+			count: 2
 			path: index.php
 
 		-

@@ -10,13 +10,15 @@ fields:
     help: Shown above the section's questions. Optional.
   formFields:
     extends: fields/formFieldBlocks
-  showWhenField:
-    type: text
-    label: Only show when question (field name)
-    width: 1/2
-    help: The field name of a radio or dropdown question in an earlier section. Leave blank to always show.
-  showWhenValue:
-    type: text
-    label: …has the answer
-    width: 1/2
-    help: Must match one of that question's options exactly.
+  showWhen:
+    type: select
+    label: Only show this section when…
+    options:
+      type: query
+      query: page.formConditionChoices
+      value: "{{ item.key }}"
+      text: "{{ item.value }}"
+    help: >
+      Pick a question and answer from an earlier section, or leave blank to always
+      show. The list shows the radio and dropdown questions on this form as last saved,
+      so save first after adding a question.

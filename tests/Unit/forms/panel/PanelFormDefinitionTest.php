@@ -275,6 +275,130 @@ final class PanelFormDefinitionTest extends TestCase
         $this->assertSame([], $definition->validate());
     }
 
+    public function testConditionChoicesListEveryAnswerOfEveryRadioAndDropdown(): void
+    {
+        $contact = $this->sectionPage([
+            $this->blockData('form-radio-group', ['label' => 'Contact me by', 'name' => 'contact_by', 'options' => "Email\nPhone"]),
+            $this->blockData('form-textbox', ['label' => 'Email', 'name' => 'email']),
+        ], legend: 'Contact details', slug: 'contact');
+
+        $form = $this->formPage([
+            $this->sectionRef('page://contact'),
+            $this->sectionInline([
+                $this->blockData('form-select', ['label' => 'Visit', 'options' => "Fish & chips\nTea: green"], 'abcdef12-0000-4000-8000-000000000000'),
+                $this->blockData('form-checkbox-group', ['label' => 'Topics', 'name' => 'topics', 'options' => "A\nB"]),
+            ]),
+        ]);
+
+        $choices = (new PanelFormDefinition($form, 't', $this->resolver(['page://contact' => $contact])))->conditionChoices();
+
+        $this->assertSame([
+            'contact_by:Email'         => 'Contact details › Contact me by: Email',
+            'contact_by:Phone'         => 'Contact details › Contact me by: Phone',
+            'f_abcdef12:Fish & chips'  => 'Section 2 › Visit: Fish & chips',
+            'f_abcdef12:Tea: green'    => 'Section 2 › Visit: Tea: green',
+        ], $choices);
+    }
+
+    public function testConditionChoicesLeaveOutDroppedQuestions(): void
+    {
+        $form = $this->formPage([
+            $this->sectionInline([
+                $this->blockData('form-radio-group', ['label' => 'First', 'name' => 'dup', 'options' => "Yes\nNo"]),
+                $this->blockData('form-radio-group', ['label' => 'Second', 'name' => 'dup', 'options' => "Maybe"]),
+                $this->blockData('form-radio-group', ['label' => 'Bad', 'name' => '9bad', 'options' => "X"]),
+            ], title: 'Q'),
+        ]);
+
+        $choices = (new PanelFormDefinition($form, 't', $this->resolver([])))->conditionChoices();
+
+        $this->assertSame(['dup:Yes' => 'Q › First: Yes', 'dup:No' => 'Q › First: No'], $choices);
+    }
+
+    public function testAStoredConditionNoLongerOnTheFormStaysChoosableAndMarked(): void
+    {
+        // Otherwise the select's stored value would not be one of its options,
+        // and the panel could refuse to save the page.
+        $form = $this->formPage([
+            $this->sectionInline([
+                $this->blockData('form-radio-group', ['label' => 'By', 'name' => 'by', 'options' => "Email\nPhone"]),
+            ], title: 'Contact'),
+            $this->blockData('form-section-inline', ['title' => 'X', 'formFields' => '[]', 'showWhen' => 'by:Post']),
+        ]);
+        $definition = new PanelFormDefinition($form, 't', $this->resolver([]));
+
+        $choices = $definition->conditionChoices();
+        $this->assertSame('No longer on this form: by:Post', $choices['by:Post']);
+        // Also for a section left out of the form (its library section is gone).
+        $form = $this->formPage([
+            $this->blockData('form-section-ref', ['section' => '- page://gone', 'showWhen' => 'by:Email']),
+        ]);
+        $this->assertSame(
+            ['by:Email' => 'No longer on this form: by:Email'],
+            (new PanelFormDefinition($form, 't', $this->resolver([])))->conditionChoices()
+        );
+        $this->assertSame('Contact › By: Email', $choices['by:Email']);
+        $this->assertNotSame([], $definition->validate());
+    }
+
+    public function testShowWhenIsReadAsKeyAndAnswerSplitAtTheFirstColon(): void
+    {
+        $form = $this->formPage([
+            $this->sectionInline([
+                $this->blockData('form-radio-group', ['label' => 'When', 'name' => 'when', 'options' => "Time: morning\nTime: evening"]),
+            ]),
+            $this->blockData('form-section-inline', [
+                'title'      => 'Morning details',
+                'formFields' => '[]',
+                'showWhen'   => 'when:Time: morning',
+            ], 'sec-2'),
+        ]);
+        $definition = new PanelFormDefinition($form, 't', $this->resolver([]));
+
+        $groups = $definition->getFieldGroups($form);
+        $this->assertInstanceOf(ResolvedFormSection::class, $groups[1]);
+        $this->assertSame('when', $groups[1]->conditionField);
+        $this->assertSame('Time: morning', $groups[1]->conditionValue);
+        $this->assertSame([], $definition->validate());
+    }
+
+    public function testShowWhenTakesPrecedenceOverTheOldFields(): void
+    {
+        $form = $this->formPage([
+            $this->sectionInline([
+                $this->blockData('form-radio-group', ['label' => 'By', 'name' => 'by', 'options' => "Email\nPhone"]),
+            ]),
+            $this->blockData('form-section-inline', [
+                'title'         => 'X',
+                'formFields'    => '[]',
+                'showWhen'      => 'by:Phone',
+                'showWhenField' => 'by',
+                'showWhenValue' => 'Email',
+            ]),
+        ]);
+        $definition = new PanelFormDefinition($form, 't', $this->resolver([]));
+
+        $groups = $definition->getFieldGroups($form);
+        $this->assertInstanceOf(ResolvedFormSection::class, $groups[1]);
+        $this->assertSame('Phone', $groups[1]->conditionValue);
+    }
+
+    public function testAShowWhenWithoutAnAnswerIsReported(): void
+    {
+        $form = $this->formPage([
+            $this->sectionInline([
+                $this->blockData('form-radio-group', ['label' => 'By', 'name' => 'by', 'options' => "Email\nPhone"]),
+            ]),
+            $this->blockData('form-section-inline', ['title' => 'X', 'formFields' => '[]', 'showWhen' => 'by']),
+        ]);
+        $definition = new PanelFormDefinition($form, 't', $this->resolver([]));
+
+        $groups = $definition->getFieldGroups($form);
+        $this->assertInstanceOf(ResolvedFormSection::class, $groups[1]);
+        $this->assertFalse($groups[1]->isConditional());
+        $this->assertStringContainsString('needs both', $definition->validate()[0]);
+    }
+
     public function testSubmissionColumnsMapEachQuestionToItsRawLabelAndKey(): void
     {
         $form = $this->formPage([
