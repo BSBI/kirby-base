@@ -51,6 +51,14 @@ final class FormBuilderOptionsTest extends TestCase
         );
     }
 
+    public function testALibraryLabelWinsOverTheSameTypeInUse(): void
+    {
+        $this->assertSame(
+            ['event_feedback' => 'Event feedback'],
+            FormBuilderOptions::formTypeOptions(['Event feedback'], ['event_feedback', 'event_feedback'])
+        );
+    }
+
     public function testLibraryNamesThatNormaliseAlikeGiveOneOption(): void
     {
         $this->assertSame(

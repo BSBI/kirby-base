@@ -44,7 +44,7 @@ final class FormBuilderOptions
      * can be collated with an older one. Sorted by label, case-insensitively.
      *
      * @param string[] $libraryNames    Names from the library's Form types list
-     * @param string[] $submissionTypes Form types stored on submissions
+     * @param string[] $submissionTypes Form types already in use (submissions, forms)
      * @return array<string, string>
      */
     public static function formTypeOptions(array $libraryNames, array $submissionTypes): array
@@ -86,8 +86,10 @@ final class FormBuilderOptions
 
     /**
      * Returns the form type choices for the form type field: the library's
-     * Form types list plus the types stored on submissions (read from the
-     * content index, not the page tree).
+     * Form types list, plus types already in use (on submissions, and on
+     * panel-built forms) so a form whose type was later renamed or removed
+     * in the library still shows it. In-use types come from the content
+     * indexes, not the page tree.
      *
      * @param App $kirby
      * @return array<string, string> Stored value => label
@@ -102,7 +104,10 @@ final class FormBuilderOptions
             }
         }
 
-        return self::formTypeOptions($names, self::indexColumn('form_submissions', 'form_type'));
+        return self::formTypeOptions($names, array_merge(
+            self::indexColumn('form_submissions', 'form_type'),
+            self::indexColumn('form_builders', 'form_type')
+        ));
     }
 
     /**
