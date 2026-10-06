@@ -25,6 +25,32 @@ sections:
       section by reference, so editing a section here changes every form that
       uses it. To change a section for one form only, add a new section that is
       a variation of it.
+  formTypesSection:
+    type: fields
+    fields:
+      formTypes:
+        type: structure
+        label: Form types
+        help: >
+          The types a form built in the panel can be given. A form's type groups its
+          submissions in the site Forms tab and its CSV exports; give forms the same
+          type to collate them. Renaming a type here does not move existing
+          submissions, so add a new type rather than renaming one that is in use.
+        sortBy: name asc
+        columns:
+          name:
+            width: 1/3
+          description:
+            width: 2/3
+        fields:
+          name:
+            type: text
+            label: Name
+            required: true
+            help: Stored in lower case with underscores, e.g. "Event feedback" is stored as event_feedback.
+          description:
+            type: text
+            label: What it is for
   librarySections:
     label: Sections
     type: pages

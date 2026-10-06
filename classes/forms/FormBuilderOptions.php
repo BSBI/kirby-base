@@ -15,8 +15,10 @@ use Throwable;
  * editor-typed form type is stored.
  *
  * Form types group submissions in the site Forms tab and its exports, and
- * editors deliberately collate different forms under one type, so the form
- * type field offers every type already in use. "Report as" columns likewise
+ * editors deliberately collate different forms under one type. The types are
+ * managed in one place, the Form library's Form types list, and a form picks
+ * one (or a type already on older submissions), so near-duplicates cannot
+ * creep in. "Report as" columns likewise
  * offer the export columns already chosen elsewhere, so editors reuse a name
  * rather than inventing a near-duplicate.
  */
@@ -36,16 +38,31 @@ final class FormBuilderOptions
     }
 
     /**
-     * Returns the distinct, non-empty form types from the given sources,
-     * sorted case-insensitively. Values are kept as stored: an older
-     * submission's type is offered exactly, so a form can join its group.
+     * Returns the form type choices, stored value => label: each name in the
+     * library's Form types list (stored normalised, labelled as written), then
+     * any type found only on submissions, offered exactly as stored so a form
+     * can be collated with an older one. Sorted by label, case-insensitively.
      *
-     * @param string[] ...$sources Lists of form types
-     * @return list<string>
+     * @param string[] $libraryNames    Names from the library's Form types list
+     * @param string[] $submissionTypes Form types already in use (submissions, forms)
+     * @return array<string, string>
      */
-    public static function formTypes(array ...$sources): array
+    public static function formTypeOptions(array $libraryNames, array $submissionTypes): array
     {
-        return self::distinctSorted(array_merge(...$sources));
+        $options = [];
+        foreach ($libraryNames as $name) {
+            $value = self::normaliseFormType($name);
+            if ($value !== '' && !isset($options[$value])) {
+                $options[$value] = trim($name);
+            }
+        }
+        foreach ($submissionTypes as $type) {
+            if ($type !== '' && !isset($options[$type])) {
+                $options[$type] = $type;
+            }
+        }
+        uasort($options, 'strcasecmp');
+        return $options;
     }
 
     /**
@@ -68,17 +85,29 @@ final class FormBuilderOptions
     }
 
     /**
-     * Returns the form types in use: those stored on submissions and those set
-     * on panel-built forms (read from the content indexes, not the page tree).
+     * Returns the form type choices for the form type field: the library's
+     * Form types list, plus types already in use (on submissions, and on
+     * panel-built forms) so a form whose type was later renamed or removed
+     * in the library still shows it. In-use types come from the content
+     * indexes, not the page tree.
      *
-     * @return list<string>
+     * @param App $kirby
+     * @return array<string, string> Stored value => label
      */
-    public static function formTypesInUse(): array
+    public static function formTypeChoices(App $kirby): array
     {
-        return self::formTypes(
+        $names = [];
+        $library = $kirby->site()->findPageOrDraft(FormLibraryPanel::SLUG);
+        if ($library instanceof Page) {
+            foreach (PanelContent::field($library->content(), 'formTypes')->toStructure() as $row) {
+                $names[] = PanelContent::text($row->content(), 'name');
+            }
+        }
+
+        return self::formTypeOptions($names, array_merge(
             self::indexColumn('form_submissions', 'form_type'),
             self::indexColumn('form_builders', 'form_type')
-        );
+        ));
     }
 
     /**

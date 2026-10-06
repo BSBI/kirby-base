@@ -19,9 +19,9 @@ fields:
     type: info
     label: How sections are used
     text: >
-      A reusable group of questions. Forms and form templates include it by reference,
-      so any change here appears on every form that uses it. To add questions for one
-      use only, create a new section that is a variation of this one.
+      A reusable group of questions. Forms include it by reference, so any change
+      here appears on every form that uses it. To add questions for one use only,
+      create a new section that is a variation of this one.
   legend:
     type: text
     label: Title shown on forms

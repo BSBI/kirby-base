@@ -34,14 +34,36 @@ final class FormBuilderOptionsTest extends TestCase
         $this->assertSame($stored, FormBuilderOptions::normaliseFormType($typed));
     }
 
-    public function testFormTypesMergeSubmissionAndBuilderTypesDistinctAndSorted(): void
+    public function testFormTypeOptionsComeFromTheLibraryListByStoredValue(): void
     {
         $this->assertSame(
-            ['agm_vote', 'event_feedback', 'Legacy Type', 'training'],
-            FormBuilderOptions::formTypes(
-                ['training', '', 'event_feedback', 'Legacy Type'],
-                ['event_feedback', 'agm_vote', '']
-            )
+            ['event_feedback' => 'Event feedback', 'volunteer_survey' => 'Volunteer survey'],
+            FormBuilderOptions::formTypeOptions(['Volunteer survey', 'Event feedback', ''], [])
+        );
+    }
+
+    public function testTypesOnlyOnSubmissionsAreStillOfferedAsStored(): void
+    {
+        // So a panel-built form can be collated with an older hand-written one.
+        $this->assertSame(
+            ['agm_vote' => 'agm_vote', 'event_feedback' => 'Event feedback', 'training_feedback' => 'training_feedback'],
+            FormBuilderOptions::formTypeOptions(['Event feedback'], ['training_feedback', 'event_feedback', '', 'agm_vote'])
+        );
+    }
+
+    public function testALibraryLabelWinsOverTheSameTypeInUse(): void
+    {
+        $this->assertSame(
+            ['event_feedback' => 'Event feedback'],
+            FormBuilderOptions::formTypeOptions(['Event feedback'], ['event_feedback', 'event_feedback'])
+        );
+    }
+
+    public function testLibraryNamesThatNormaliseAlikeGiveOneOption(): void
+    {
+        $this->assertSame(
+            ['event_feedback' => 'Event feedback'],
+            FormBuilderOptions::formTypeOptions(['Event feedback', 'event-feedback', '!!!'], [])
         );
     }
 

@@ -307,15 +307,19 @@ Merging different columns at export time is specified separately (bsbi-web
 
 ### Form types
 
-Editors set a form's type (the Forms tab groups and exports by it, and editors deliberately
-collate different forms under one type). `site.formTypes` offers every type in use: those
-on submissions plus those on panel-built forms. Store an editor-typed type through
-`FormBuilderOptions::normaliseFormType()` (lower_snake: `Event Feedback` →
-`event_feedback`).
+Editors set a form's type: the Forms tab groups and exports by it, and editors deliberately
+collate different forms under one type. Types are managed in one place, the **Form types**
+list on the Form library page (`formTypes` structure: `name`, `description`). A form picks
+one from a select (`site.formTypes`, stored value => label), so near-duplicates can't be
+typed in. The stored value is the name in lower snake case
+(`FormBuilderOptions::normaliseFormType()`: `Event feedback` → `event_feedback`). Types
+found only on submissions (older hand-written forms) are offered too, exactly as stored,
+so a new form can be collated with one of those. `FormBuilderOptions::formTypeOptions()`
+merges the two lists.
 
 Panel-built form pages are indexed by the `form_builders` content index (form type and
 Report-as columns), for templates in the `forms.builderTemplates` option (default
-`['form_builder']`), so neither list walks the page tree. A new index fills as forms are
+`['form_builder']`), so the Report-as list never walks the page tree. A new index fills as forms are
 saved; rebuild it from the Indexes panel if needed.
 
 ### Library menu entry and form check
