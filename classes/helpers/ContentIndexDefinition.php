@@ -65,4 +65,16 @@ abstract class ContentIndexDefinition
      * @return array<string, mixed> Column values keyed by column name
      */
     abstract public function getRowData(Page $page, KirbyBaseHelper $helper): array;
+
+    /**
+     * Returns true if the page belongs in the index. By default only listed
+     * pages do (drafts and unlisted pages are left out); a definition whose
+     * pages are usually unlisted overrides this.
+     *
+     * @param Page $page A page using one of getTemplates()
+     */
+    public function shouldIndex(Page $page): bool
+    {
+        return $page->isListed();
+    }
 }

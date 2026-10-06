@@ -66,8 +66,8 @@ class ContentIndexManager
             // Remove existing entry first (handles slug changes and draft transitions)
             $this->removePage($page->id());
 
-            // Only index listed pages — exclude drafts and unlisted pages
-            if (!$page->isListed()) {
+            // Listed pages only, unless the definition says otherwise
+            if (!$this->definition->shouldIndex($page)) {
                 return false;
             }
 
@@ -140,8 +140,8 @@ class ContentIndexManager
             /** @var Page $page */
             foreach ($collection as $page) {
                 try {
-                    // Only index listed pages — skip drafts and unlisted pages
-                    if (!$page->isListed()) {
+                    // Listed pages only, unless the definition says otherwise
+                    if (!$this->definition->shouldIndex($page)) {
                         continue;
                     }
 

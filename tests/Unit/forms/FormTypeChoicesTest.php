@@ -29,6 +29,13 @@ final class FormTypeChoicesTest extends TestCase
         ]);
     }
 
+    public function testFormChoicesAreOnlyForTheLibraryRoles(): void
+    {
+        // Nobody is logged in here; other panel roles get the same empty list.
+        $this->assertNull(self::$app->user());
+        $this->assertSame([], FormBuilderOptions::formBuilderChoices(self::$app));
+    }
+
     public function testChoicesComeFromTheLibraryList(): void
     {
         $library = FormLibraryPanel::ensureLibrary(self::$app);

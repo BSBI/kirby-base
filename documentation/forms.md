@@ -319,8 +319,18 @@ merges the two lists.
 
 Panel-built form pages are indexed by the `form_builders` content index (form type and
 Report-as columns), for templates in the `forms.builderTemplates` option (default
-`['form_builder']`), so the Report-as list never walks the page tree. A new index fills as forms are
-saved; rebuild it from the Indexes panel if needed.
+`['form_builder']`), so none of these lists walks the page tree. Unlike other content
+indexes it includes unlisted pages and drafts (`shouldIndex()`), because forms usually are
+one or the other. It is kept up to date by the page hooks (create, update, duplicate,
+status, move, delete; a duplicate's copied sub-pages are not indexed); rebuild it from the Indexes panel after adding forms by other means
+(e.g. copying content files).
+
+### Starting a form from another
+
+`site.formBuilderChoices` lists every panel-built form, page UUID => "Title (Parent
+title)" (`FormBuilderOptions::formBuilderChoices()`, from the index), for a select such as
+a "Start from an existing form" field in the page-create dialog. Copying is the site's job
+(bsbi-web: `FormBuilderStarter` in a `page.create:after` hook).
 
 ### Library menu entry and form check
 

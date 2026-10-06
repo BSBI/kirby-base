@@ -269,6 +269,18 @@ return [
 
     'page.duplicate:after' => function (Kirby\Cms\Page $duplicatePage, Kirby\Cms\Page $originalPage) {
         forgetUuidMisses('page.duplicate');
+
+        // A duplicate is a new page but fires no page.create hook, so add it to
+        // the content indexes here (e.g. a duplicated form must be pickable at once).
+        try {
+            $helper = new KirbyInternalHelper();
+            foreach (ContentIndexRegistry::getManagersForTemplate($duplicatePage->intendedTemplate()->name()) as $manager) {
+                $manager->indexPage($duplicatePage, $helper);
+            }
+        } catch (Throwable $e) {
+            KirbyBaseHelper::writeToLogFile('search-index', 'Failed to add duplicated page to content index for page ' . $duplicatePage->id() . ': ' . $e->getMessage());
+        }
+
         return $duplicatePage;
     },
 

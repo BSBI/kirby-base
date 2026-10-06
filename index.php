@@ -122,6 +122,7 @@ $pluginConfig = [
     ],
     'collections' => [
         'formSubmissions' => require __DIR__ . '/collections/formSubmissions.php',
+        'formBuilders' => require __DIR__ . '/collections/formBuilders.php',
     ],
     'siteMethods' => [
         /**
@@ -140,6 +141,15 @@ $pluginConfig = [
          */
         'formReportColumns' => function (): array {
             return FormBuilderOptions::reportColumnsInUse(kirby());
+        },
+        /**
+         * Every panel-built form, page UUID => "Title (Parent)", e.g. to copy
+         * one when creating a new form.
+         *
+         * @return array<string, string>
+         */
+        'formBuilderChoices' => function (): array {
+            return FormBuilderOptions::formBuilderChoices(kirby());
         },
     ],
     'sections' => [

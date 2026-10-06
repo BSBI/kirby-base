@@ -6,6 +6,7 @@ namespace BSBI\WebBase\forms;
 
 use BSBI\WebBase\forms\panel\PanelContent;
 use BSBI\WebBase\helpers\ContentIndexRegistry;
+use BSBI\WebBase\helpers\KirbyBaseHelper;
 use Kirby\Cms\App;
 use Kirby\Cms\Page;
 use Throwable;
@@ -63,6 +64,65 @@ final class FormBuilderOptions
         }
         uasort($options, 'strcasecmp');
         return $options;
+    }
+
+    /**
+     * Returns choices for picking an existing panel-built form, page UUID =>
+     * "Title (Parent title)", sorted by that label case-insensitively. The
+     * parent tells apart forms with the same title.
+     *
+     * @param array<array{uuid: string, title: string, parent: string}> $forms
+     * @return array<string, string>
+     */
+    public static function formChoices(array $forms): array
+    {
+        $choices = [];
+        foreach ($forms as $form) {
+            $choices[$form['uuid']] = $form['parent'] !== ''
+                ? $form['title'] . ' (' . $form['parent'] . ')'
+                : $form['title'];
+        }
+        uasort($choices, 'strcasecmp');
+        return $choices;
+    }
+
+    /**
+     * Returns choices for every panel-built form (see formChoices()), read
+     * from the form_builders content index rather than the page tree. Only
+     * the roles that may use the form library (forms.libraryRoles) get any:
+     * the list names drafts too, and the field showing it is on every form
+     * page, which other panel roles can open.
+     *
+     * @param App $kirby
+     * @return array<string, string>
+     */
+    public static function formBuilderChoices(App $kirby): array
+    {
+        if (!FormLibraryPanel::isAllowed($kirby->user()?->role()->id(), FormLibraryPanel::roles($kirby))) {
+            return [];
+        }
+
+        $forms = [];
+        try {
+            $manager = ContentIndexRegistry::get('form_builders');
+            $pageIds = $manager !== null ? $manager->query()->getPageIds() : [];
+        } catch (Throwable $e) {
+            KirbyBaseHelper::writeToLogFile('search-index', 'Form builder choices: index unavailable: ' . $e->getMessage());
+            $pageIds = [];
+        }
+        foreach ($pageIds as $pageId) {
+            $page = $kirby->site()->findPageOrDraft($pageId);
+            if (!$page instanceof Page) {
+                continue;
+            }
+            $parent = $page->parent();
+            $forms[] = [
+                'uuid'   => $page->uuid()->toString(),
+                'title'  => $page->title()->toString(),
+                'parent' => $parent instanceof Page ? $parent->title()->toString() : '',
+            ];
+        }
+        return self::formChoices($forms);
     }
 
     /**
@@ -153,7 +213,8 @@ final class FormBuilderOptions
                 $values[] = is_scalar($value) ? (string) $value : '';
             }
             return $values;
-        } catch (Throwable) {
+        } catch (Throwable $e) {
+            KirbyBaseHelper::writeToLogFile('search-index', "Form options: index '{$index}' unavailable: " . $e->getMessage());
             return [];
         }
     }
