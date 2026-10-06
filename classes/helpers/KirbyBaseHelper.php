@@ -5,6 +5,7 @@ namespace BSBI\WebBase\helpers;
 use BSBI\WebBase\forms\BaseFormDefinition;
 use BSBI\WebBase\forms\FormPageInterface;
 use BSBI\WebBase\forms\FormSubmissionBuilder;
+use BSBI\WebBase\forms\FormSubmissionSlug;
 use BSBI\WebBase\models\ActionStatus;
 use BSBI\WebBase\models\BaseFilter;
 use BSBI\WebBase\models\BaseList;
@@ -5384,18 +5385,14 @@ abstract class KirbyBaseHelper
                     $columns
                 );
 
-                $slug = date('M-j-H.i.s');
-
-                if ($parentPage->findPageOrDraft($slug)) {
-                    $counter = 1;
-                    while ($parentPage->findPageOrDraft($slug . '-' . $counter)) {
-                        $counter++;
-                    }
-                    $slug = $slug . '-' . $counter;
-                }
+                $name = FormSubmissionSlug::next(
+                    date('M-j-H.i.s'),
+                    static fn(string $slug): bool => $parentPage->findPageOrDraft($slug) !== null
+                );
+                $slug = $name['slug'];
 
                 $content = [
-                    'title'      => 'Submission: ' . $slug,
+                    'title'      => $name['title'],
                     'submission' => Data::encode($formSubmission, 'yaml'),
                 ];
 

@@ -25,7 +25,7 @@ sections:
       section by reference, so editing a section here changes every form that
       uses it. To change a section for one form only, add a new section that is
       a variation of it.
-  sections:
+  librarySections:
     label: Sections
     type: pages
     template: form_section

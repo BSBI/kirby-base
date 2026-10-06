@@ -38,20 +38,24 @@ final class FormLibraryPanel
      */
     public static function area(App $kirby): array
     {
+        // The panel runs a view action with Closure::call($route), which rejects
+        // a static closure and moves its class scope to Route, so `self::` and
+        // private calls would fail there. All three closures follow the same
+        // rule, in case Kirby starts binding the others too.
         return [
             'label'   => 'Form library',
             'icon'    => 'layers',
-            'link'    => self::SLUG,
-            'menu'    => static fn(): bool => self::isAllowed($kirby->user()?->role()->id(), self::roles($kirby)),
-            'current' => static fn(): bool => self::isCurrentPath(
+            'link'    => FormLibraryPanel::SLUG,
+            'menu'    => fn(): bool => FormLibraryPanel::isAllowed($kirby->user()?->role()->id(), FormLibraryPanel::roles($kirby)),
+            'current' => fn(): bool => FormLibraryPanel::isCurrentPath(
                 $kirby->request()->path()->toString(),
-                self::panelSlug($kirby)
+                FormLibraryPanel::panelSlug($kirby)
             ),
             'views'   => [
                 [
-                    'pattern' => self::SLUG,
-                    'action'  => static function () use ($kirby): void {
-                        self::open($kirby);
+                    'pattern' => FormLibraryPanel::SLUG,
+                    'action'  => function () use ($kirby): void {
+                        FormLibraryPanel::open($kirby);
                     },
                 ],
             ],
@@ -130,9 +134,11 @@ final class FormLibraryPanel
     /**
      * Returns the panel's URL slug.
      *
+     * Public because the area closures call it (see area()).
+     *
      * @param App $kirby
      */
-    private static function panelSlug(App $kirby): string
+    public static function panelSlug(App $kirby): string
     {
         $slug = $kirby->option('panel.slug', 'panel');
         return is_string($slug) && $slug !== '' ? $slug : 'panel';
@@ -141,10 +147,12 @@ final class FormLibraryPanel
     /**
      * Returns the roles allowed to use the library.
      *
+     * Public because the area closures call it (see area()).
+     *
      * @param App $kirby
      * @return string[]
      */
-    private static function roles(App $kirby): array
+    public static function roles(App $kirby): array
     {
         $roles = $kirby->option('forms.libraryRoles', self::DEFAULT_ROLES);
         return is_array($roles) ? array_values(array_filter($roles, 'is_string')) : self::DEFAULT_ROLES;

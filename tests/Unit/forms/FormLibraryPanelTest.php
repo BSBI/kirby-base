@@ -7,6 +7,8 @@ namespace BSBI\WebBase\Tests\Unit\forms;
 use BSBI\WebBase\forms\FormLibraryPanel;
 use BSBI\WebBase\Testing\KirbyTestEnvironment;
 use Kirby\Cms\App;
+use Kirby\Exception\PermissionException;
+use Kirby\Http\Route;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -42,6 +44,32 @@ final class FormLibraryPanelTest extends TestCase
         $this->assertFalse(FormLibraryPanel::isCurrentPath('panel/pages/form-library-old', 'panel'));
         $this->assertFalse(FormLibraryPanel::isCurrentPath('panel/pages/events', 'panel'));
         $this->assertFalse(FormLibraryPanel::isCurrentPath('panel/site', 'panel'));
+    }
+
+    public function testAreaClosuresCanBeBoundByThePanel(): void
+    {
+        // The panel binds view actions (and may bind other area callbacks) to
+        // its own objects, which a static closure refuses at runtime.
+        $area = FormLibraryPanel::area(self::$app);
+        $closures = [$area['menu'], $area['current'], $area['views'][0]['action']];
+
+        foreach ($closures as $closure) {
+            $this->assertInstanceOf(\Closure::class, $closure);
+            $this->assertFalse((new \ReflectionFunction($closure))->isStatic());
+        }
+    }
+
+    public function testTheViewActionStillOpensTheLibraryWhenThePanelRebindsIt(): void
+    {
+        // The panel runs a view action with Closure::call($route), which also
+        // moves its class scope to Route: a `self::` call inside it would hit
+        // Route::__call and quietly return null (a 404 in the panel). With
+        // nobody logged in, reaching open() shows as its permission refusal.
+        $action = FormLibraryPanel::area(self::$app)['views'][0]['action'];
+        $this->assertInstanceOf(\Closure::class, $action);
+
+        $this->expectException(PermissionException::class);
+        $action->call(new Route('form-library', 'GET', static fn() => null));
     }
 
     public function testEnsureLibraryCreatesTheUnlistedPageOnce(): void
