@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BSBI\WebBase\Tests\Unit\forms\panel;
 
 use BSBI\WebBase\forms\BaseFormDefinition;
+use BSBI\WebBase\forms\FormBuilderOptions;
 use BSBI\WebBase\forms\FormFieldSpec;
 use BSBI\WebBase\forms\FormSection;
 use BSBI\WebBase\forms\panel\PanelFormDefinition;
@@ -293,11 +294,24 @@ final class PanelFormDefinitionTest extends TestCase
         $choices = (new PanelFormDefinition($form, 't', $this->resolver(['page://contact' => $contact])))->conditionChoices();
 
         $this->assertSame([
-            'contact_by:Email'         => 'Contact details › Contact me by: Email',
-            'contact_by:Phone'         => 'Contact details › Contact me by: Phone',
-            'f_abcdef12:Fish & chips'  => 'Section 2 › Visit: Fish & chips',
-            'f_abcdef12:Tea: green'    => 'Section 2 › Visit: Tea: green',
+            'contact_by:Email'         => 'Contact me by: Email (Contact details)',
+            'contact_by:Phone'         => 'Contact me by: Phone (Contact details)',
+            'f_abcdef12:Fish & chips'  => 'Visit: Fish & chips (Section 2)',
+            'f_abcdef12:Tea: green'    => 'Visit: Tea: green (Section 2)',
         ], $choices);
+    }
+
+    public function testConditionChoicesForAPageAreBuiltOncePerRequest(): void
+    {
+        $form = $this->formPage([
+            $this->sectionInline([
+                $this->blockData('form-radio-group', ['label' => 'By', 'name' => 'by', 'options' => "Email"]),
+            ], title: 'Contact'),
+        ]);
+
+        $first = FormBuilderOptions::conditionChoicesFor($form);
+        $this->assertSame(['by:Email' => 'By: Email (Contact)'], $first);
+        $this->assertSame($first, FormBuilderOptions::conditionChoicesFor($form));
     }
 
     public function testConditionChoicesLeaveOutDroppedQuestions(): void
@@ -312,7 +326,7 @@ final class PanelFormDefinitionTest extends TestCase
 
         $choices = (new PanelFormDefinition($form, 't', $this->resolver([])))->conditionChoices();
 
-        $this->assertSame(['dup:Yes' => 'Q › First: Yes', 'dup:No' => 'Q › First: No'], $choices);
+        $this->assertSame(['dup:Yes' => 'First: Yes (Q)', 'dup:No' => 'First: No (Q)'], $choices);
     }
 
     public function testAStoredConditionNoLongerOnTheFormStaysChoosableAndMarked(): void
@@ -337,7 +351,7 @@ final class PanelFormDefinitionTest extends TestCase
             ['by:Email' => 'No longer on this form: by:Email'],
             (new PanelFormDefinition($form, 't', $this->resolver([])))->conditionChoices()
         );
-        $this->assertSame('Contact › By: Email', $choices['by:Email']);
+        $this->assertSame('By: Email (Contact)', $choices['by:Email']);
         $this->assertNotSame([], $definition->validate());
     }
 

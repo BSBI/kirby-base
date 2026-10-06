@@ -19,6 +19,7 @@ fields:
   showWhen:
     type: select
     label: Only show this section when…
+    placeholder: Always show
     options:
       type: query
       query: page.formConditionChoices

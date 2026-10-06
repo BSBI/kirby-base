@@ -703,7 +703,8 @@ panel.plugin('open-foundations/kirby-base', {
         return {
           headline: 'Form check',
           problems: [],
-          announcement: ''
+          announcement: '',
+          failed: false
         }
       },
       created: function () {
@@ -722,6 +723,7 @@ panel.plugin('open-foundations/kirby-base', {
         refresh: async function (announce) {
           try {
             const response = await this.load();
+            this.failed = false;
             this.headline = response.headline;
             this.problems = response.problems || [];
             if (announce) {
@@ -731,6 +733,7 @@ panel.plugin('open-foundations/kirby-base', {
                 : 'Form check: ' + count + ' problem' + (count === 1 ? '' : 's') + ' found.';
             }
           } catch (error) {
+            this.failed = true;
             console.error("Failed to load form problems section:", error);
           }
         }
@@ -741,7 +744,8 @@ panel.plugin('open-foundations/kirby-base', {
             <h2 class="k-headline">{{ headline }}</h2>
           </header>
           <div role="status" aria-live="polite" class="sr-only" style="position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0;">{{ announcement }}</div>
-          <k-box v-if="problems.length > 0" theme="notice">
+          <k-box v-if="failed" theme="negative" text="The form check could not be loaded. Reload the page to try again." />
+          <k-box v-else-if="problems.length > 0" theme="notice">
             <div>
               <p style="margin-bottom: 0.5rem;">Some parts of this form have been left out until they are fixed:</p>
               <ul style="list-style: disc; padding-left: 1.25rem;">
@@ -760,7 +764,8 @@ panel.plugin('open-foundations/kirby-base', {
           headline: 'What forms get',
           questions: [],
           problems: [],
-          announcement: ''
+          announcement: '',
+          failed: false
         }
       },
       created: function () {
@@ -779,6 +784,7 @@ panel.plugin('open-foundations/kirby-base', {
         refresh: async function (announce) {
           try {
             const response = await this.load();
+            this.failed = false;
             this.headline = response.headline;
             this.questions = (response.check && response.check.questions) || [];
             this.problems = (response.check && response.check.problems) || [];
@@ -789,6 +795,7 @@ panel.plugin('open-foundations/kirby-base', {
                 : 'Section check: ' + count + ' problem' + (count === 1 ? '' : 's') + ' found.';
             }
           } catch (error) {
+            this.failed = true;
             console.error("Failed to load form section check:", error);
           }
         }
@@ -799,7 +806,8 @@ panel.plugin('open-foundations/kirby-base', {
             <h2 class="k-headline">{{ headline }}</h2>
           </header>
           <div role="status" aria-live="polite" class="sr-only" style="position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0;">{{ announcement }}</div>
-          <k-box v-if="problems.length > 0" theme="notice" style="margin-bottom: 0.75rem;">
+          <k-box v-if="failed" theme="negative" text="The section check could not be loaded. Reload the page to try again." style="margin-bottom: 0.75rem;" />
+          <k-box v-else-if="problems.length > 0" theme="notice" style="margin-bottom: 0.75rem;">
             <div>
               <p style="margin-bottom: 0.5rem;">Problems with this section (forms leave these parts out):</p>
               <ul style="list-style: disc; padding-left: 1.25rem;">
@@ -811,9 +819,8 @@ panel.plugin('open-foundations/kirby-base', {
           <p v-if="questions.length === 0" style="font-size: 0.875rem; color: var(--color-text-dimmed);">No questions yet.</p>
           <ol v-else style="list-style: decimal; padding-left: 1.25rem; font-size: 0.875rem;">
             <li v-for="(question, index) in questions" :key="index" style="margin-bottom: 0.4rem;">
-              <span>{{ question.label || '(no label)' }}</span>
-              <span style="color: var(--color-text-dimmed);"> · {{ question.type }}</span>
-              <span v-if="question.from" style="color: var(--color-text-dimmed);"> · from {{ question.from }}</span>
+              {{ question.label || 'Question ' + (index + 1) + ' (no label)' }}
+              <span style="color: var(--color-text-dimmed);">({{ question.type }}<template v-if="question.from">, from {{ question.from }}</template>)</span>
             </li>
           </ol>
         </section>

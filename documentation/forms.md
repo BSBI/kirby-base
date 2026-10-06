@@ -225,7 +225,7 @@ export) is the same as for a hand-written definition.
   the page method `page.formConditionChoices` (`PanelFormDefinition::conditionChoices()`):
   one per answer of every radio and dropdown question on the form as last saved, stored
   as `key:answer` (keys never contain `:`, so it splits at the first) and labelled
-  "Section › Question: Answer". A stored choice that no longer matches stays in the list
+  "Question: Answer (Section)". A stored choice that no longer matches stays in the list
   marked "No longer on this form", so the select's value is always an option (the Form
   check reports it). Content saved before 3.45.0 uses `showWhenField` (a field key) and
   `showWhenValue`. Those are still read, but they are no longer in the block blueprints,

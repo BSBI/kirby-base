@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace BSBI\WebBase\forms;
 
+use BSBI\WebBase\forms\panel\KirbySectionPageResolver;
 use BSBI\WebBase\forms\panel\PanelContent;
+use BSBI\WebBase\forms\panel\PanelFormDefinition;
 use BSBI\WebBase\helpers\ContentIndexRegistry;
 use BSBI\WebBase\helpers\KirbyBaseHelper;
 use Kirby\Cms\App;
@@ -64,6 +66,23 @@ final class FormBuilderOptions
         }
         uasort($options, 'strcasecmp');
         return $options;
+    }
+
+    /** @var array<string, array<string, string>> Condition choices built this request, by page id */
+    private static array $conditionChoices = [];
+
+    /**
+     * Returns a form page's show-when choices (PanelFormDefinition::
+     * conditionChoices()), built once per page per request: the panel asks
+     * once for every section block's select.
+     *
+     * @param Page $page A panel-built form page
+     * @return array<string, string>
+     */
+    public static function conditionChoicesFor(Page $page): array
+    {
+        return self::$conditionChoices[$page->id()]
+            ??= (new PanelFormDefinition($page, '', new KirbySectionPageResolver($page->kirby())))->conditionChoices();
     }
 
     /**

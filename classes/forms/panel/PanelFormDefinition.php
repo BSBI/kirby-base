@@ -89,7 +89,7 @@ class PanelFormDefinition extends BaseFormDefinition
     /**
      * Returns the choices for a section's "Only show this section when…"
      * select: one per answer of every radio and dropdown question kept on the
-     * form, in form order, as `key:answer` => "Section › Question: Answer".
+     * form, in form order, as `key:answer` => "Question: Answer (Section)".
      * Keys never contain ":", so the stored value splits at the first one.
      * Labels and answers are raw (the panel escapes option text).
      *
@@ -166,7 +166,7 @@ class PanelFormDefinition extends BaseFormDefinition
                 if ($field->canControlConditions()) {
                     foreach ($field->options as $option) {
                         $this->conditionChoices[$field->key . ':' . $option]
-                            = $sectionLabel . ' › ' . $field->label . ': ' . $option;
+                            = $field->label . ': ' . $option . ' (' . $sectionLabel . ')';
                     }
                 }
                 if ($field->isSubmittable()) {
