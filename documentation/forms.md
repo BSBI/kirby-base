@@ -211,14 +211,25 @@ export) is the same as for a hand-written definition.
   shown above its questions; `formFields` holds its questions (the `fields/formFieldBlocks`
   blocks field). It can set `extends` to another section, making it a **variation**: the
   base section's questions come first, then its own. Bases are read live, so editing a
-  section changes every variation of it and every form that uses any of them.
+  section changes every variation of it and every form that uses any of them. The
+  blueprint's **What forms get** section (`formsectioncheck`, `PanelSectionCheck`) lists
+  the questions a form receives, inherited ones marked with their section
+  (`PanelSectionReader::readWithOrigins()`), and the section's own problems.
 - **Form page**: a `formSections` blocks field holding, in order:
   - `form-section-ref`: a library section (`section` pages field), with an optional
     `title` overriding its legend
   - `form-section-inline`: a section written for this form only (`title`, `formFields`)
 
-  Either can set `showWhenField` (a field key) and `showWhenValue`, to show the section
-  only when a radio or dropdown question in an **earlier** section has that answer.
+  Either can set `showWhen` to show the section only when a radio or dropdown question
+  in an **earlier** section has a given answer. It is a select whose choices come from
+  the page method `page.formConditionChoices` (`PanelFormDefinition::conditionChoices()`):
+  one per answer of every radio and dropdown question on the form as last saved, stored
+  as `key:answer` (keys never contain `:`, so it splits at the first) and labelled
+  "Section › Question: Answer". A stored choice that no longer matches stays in the list
+  marked "No longer on this form", so the select's value is always an option (the Form
+  check reports it). Content saved before 3.45.0 uses `showWhenField` (a field key) and
+  `showWhenValue`. Those are still read, but they are no longer in the block blueprints,
+  so re-saving such a block without picking a choice drops the condition.
 
 Question blocks: `form-textbox` (with `inputType`: text, email, tel, number, date, url),
 `form-textarea`, `form-radio-group`, `form-checkbox-group`, `form-select`, `form-likert`,
