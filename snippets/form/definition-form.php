@@ -84,8 +84,18 @@ endif;
             <?php snippet('form/button', ['value' => 'Submit']) ?>
         </div>
 
-        <?php // Persistent live region: announces sections revealed or hidden by an answer. ?>
-        <div class="visually-hidden" role="status" aria-live="polite" data-form-section-announcer></div>
+        <?php
+        // Persistent live region: announces sections revealed or hidden by an
+        // answer. The wording is translatable; {sections} is the section titles.
+        $sectionMessages = [
+            'added'           => t('Questions added: {sections}.', 'Questions added: {sections}.'),
+            'removed'         => t('Questions removed: {sections}.', 'Questions removed: {sections}.'),
+            'addedUntitled'   => t('More questions added.', 'More questions added.'),
+            'removedUntitled' => t('Some questions removed.', 'Some questions removed.'),
+        ];
+        ?>
+        <div class="visually-hidden" role="status" aria-live="polite" data-form-section-announcer
+             data-messages="<?= htmlspecialchars((string) json_encode($sectionMessages), ENT_QUOTES, 'UTF-8') ?>"></div>
     </form>
 </div>
 
@@ -100,6 +110,12 @@ endif;
     // ── Conditional sections ──────────────────────────────────────────────
 
     const announcer = form.querySelector('[data-form-section-announcer]');
+    let messages = {};
+    try {
+        messages = JSON.parse(announcer ? announcer.dataset.messages : '{}') || {};
+    } catch (error) {
+        messages = {};
+    }
 
     // Shows or hides each conditional section for the current answers. With
     // announce set (after a change, not on load), tells screen reader users
@@ -131,17 +147,21 @@ endif;
         });
 
         if (announce && announcer && (shown.length > 0 || hidden.length > 0)) {
-            announcer.textContent = describeChange(shown, 'added') + describeChange(hidden, 'removed');
+            announcer.textContent = [describeChange(shown, 'added'), describeChange(hidden, 'removed')]
+                .filter(function (part) { return part !== ''; })
+                .join(' ');
         }
     }
 
-    // E.g. "Questions added: Tell us more. " or "More questions added. "
-    function describeChange(titles, verb) {
+    // E.g. "Questions added: Tell us more." or, for untitled sections only,
+    // "More questions added." (wording from data-messages, translated).
+    function describeChange(titles, kind) {
         if (titles.length === 0) { return ''; }
         const named = titles.filter(function (title) { return title !== ''; });
-        return named.length > 0
-            ? 'Questions ' + verb + ': ' + named.join(', ') + '. '
-            : (verb === 'added' ? 'More questions added. ' : 'Some questions removed. ');
+        if (named.length === 0) {
+            return messages[kind + 'Untitled'] || '';
+        }
+        return (messages[kind] || '').replace('{sections}', named.join(', '));
     }
 
     // ── Validation ────────────────────────────────────────────────────────
