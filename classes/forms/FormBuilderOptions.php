@@ -88,13 +88,20 @@ final class FormBuilderOptions
 
     /**
      * Returns choices for every panel-built form (see formChoices()), read
-     * from the form_builders content index rather than the page tree.
+     * from the form_builders content index rather than the page tree. Only
+     * the roles that may use the form library (forms.libraryRoles) get any:
+     * the list names drafts too, and the field showing it is on every form
+     * page, which other panel roles can open.
      *
      * @param App $kirby
      * @return array<string, string>
      */
     public static function formBuilderChoices(App $kirby): array
     {
+        if (!FormLibraryPanel::isAllowed($kirby->user()?->role()->id(), FormLibraryPanel::roles($kirby))) {
+            return [];
+        }
+
         $forms = [];
         try {
             $manager = ContentIndexRegistry::get('form_builders');
