@@ -20,7 +20,7 @@ sections:
     type: info
     label: Form library
     theme: info
-    text: >-
+    text: >
       Reusable groups of questions for forms built in the panel. A form uses a
       section by reference, so editing a section here changes every form that
       uses it. To change a section for one form only, add a new section that is
