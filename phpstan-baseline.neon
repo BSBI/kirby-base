@@ -2503,6 +2503,12 @@ parameters:
 			path: sections/formproblems.php
 
 		-
+			message: '#^Undefined variable\: \$this$#'
+			identifier: variable.undefined
+			count: 1
+			path: sections/formsectioncheck.php
+
+		-
 			message: '#^Cannot cast mixed to string\.$#'
 			identifier: cast.string
 			count: 1

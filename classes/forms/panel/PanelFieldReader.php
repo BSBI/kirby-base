@@ -85,7 +85,8 @@ final class PanelFieldReader
         }
 
         $key      = self::keyFor($block);
-        $rawLabel = $this->text($block, 'label');
+        // Display-only text has no label: carry its text, for panel summaries.
+        $rawLabel = $type === FormFieldSpec::TYPE_INFO ? $this->text($block, 'text') : $this->text($block, 'label');
         $label    = $this->escape($rawLabel);
         $options  = $this->lines($block, 'options');
 

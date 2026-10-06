@@ -41,7 +41,28 @@ final readonly class PanelSectionReader
      */
     public function read(Page $section, FormProblems $problems): array
     {
-        return $this->readChain($section, $problems, [], 0);
+        return array_column($this->readChain($section, $problems, [], 0), 'field');
+    }
+
+    /**
+     * Returns the section's fields as read(), each with the name of the
+     * section it comes from: blank for the section's own fields, otherwise
+     * the base section (at any depth) that defines it.
+     *
+     * @param Page         $section  The library section page
+     * @param FormProblems $problems Receives anything that had to be left out
+     * @return list<array{field: PanelField, from: string}>
+     */
+    public function readWithOrigins(Page $section, FormProblems $problems): array
+    {
+        $origins = [];
+        foreach ($this->readChain($section, $problems, [], 0) as $entry) {
+            $origins[] = [
+                'field' => $entry['field'],
+                'from'  => $entry['sectionId'] === $section->id() ? '' : $entry['sectionName'],
+            ];
+        }
+        return $origins;
     }
 
     /**
@@ -75,7 +96,7 @@ final readonly class PanelSectionReader
      * @param FormProblems $problems
      * @param string[]     $visited Ids of sections already on this chain
      * @param int          $depth
-     * @return PanelField[]
+     * @return list<array{field: PanelField, sectionId: string, sectionName: string}>
      */
     private function readChain(Page $section, FormProblems $problems, array $visited, int $depth): array
     {
@@ -109,11 +130,15 @@ final readonly class PanelSectionReader
         }
 
         $where = sprintf('Section "%s"', $name);
-        $own = $this->readBlocks(
+        $own = [];
+        $fields = $this->readBlocks(
             PanelContent::blocks($section->content(), 'formFields', $problems, $section->id(), $where),
             $where,
             $problems
         );
+        foreach ($fields as $field) {
+            $own[] = ['field' => $field, 'sectionId' => $section->id(), 'sectionName' => $name];
+        }
 
         return array_merge($inherited, $own);
     }

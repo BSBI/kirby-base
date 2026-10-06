@@ -168,6 +168,7 @@ $pluginConfig = [
     ],
     'sections' => [
         'formproblems' => require __DIR__ . '/sections/formproblems.php',
+        'formsectioncheck' => require __DIR__ . '/sections/formsectioncheck.php',
         'formsubmissionexport' => require __DIR__ . '/sections/formsubmissionexport.php',
         'formsubmissionsindex' => require __DIR__ . '/sections/formsubmissionsindex.php',
         'quicklinks' => require __DIR__ . '/sections/quicklinks.php',
