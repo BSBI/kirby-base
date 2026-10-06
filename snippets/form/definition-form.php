@@ -83,6 +83,9 @@ endif;
         <div class="container text-end">
             <?php snippet('form/button', ['value' => 'Submit']) ?>
         </div>
+
+        <?php // Persistent live region: announces sections revealed or hidden by an answer. ?>
+        <div class="visually-hidden" role="status" aria-live="polite" data-form-section-announcer></div>
     </form>
 </div>
 
@@ -96,8 +99,15 @@ endif;
 
     // ── Conditional sections ──────────────────────────────────────────────
 
-    function updateSections() {
-        form.querySelectorAll('fieldset[data-condition-field]').forEach(function (section) {
+    const announcer = form.querySelector('[data-form-section-announcer]');
+
+    // Shows or hides each conditional section for the current answers. With
+    // announce set (after a change, not on load), tells screen reader users
+    // which sections appeared or went away, by their titles.
+    function updateSections(announce) {
+        const shown = [];
+        const hidden = [];
+        form.querySelectorAll('[data-condition-field]').forEach(function (section) {
             const conditionField = section.dataset.conditionField;
             const conditionValue = section.dataset.conditionValue;
             const controlEl = form.querySelector('select[name="' + conditionField + '"]');
@@ -109,11 +119,29 @@ endif;
                 if (checked) { currentValue = checked.value; }
             }
             const shouldShow = (currentValue === conditionValue);
+            const wasShown = section.style.display !== 'none';
+            if (shouldShow !== wasShown) {
+                const legend = section.querySelector(':scope > legend');
+                (shouldShow ? shown : hidden).push(legend ? legend.textContent.trim() : '');
+            }
             section.style.display = shouldShow ? '' : 'none';
             section.querySelectorAll('input, select, textarea').forEach(function (el) {
                 el.disabled = !shouldShow;
             });
         });
+
+        if (announce && announcer && (shown.length > 0 || hidden.length > 0)) {
+            announcer.textContent = describeChange(shown, 'added') + describeChange(hidden, 'removed');
+        }
+    }
+
+    // E.g. "Questions added: Tell us more. " or "More questions added. "
+    function describeChange(titles, verb) {
+        if (titles.length === 0) { return ''; }
+        const named = titles.filter(function (title) { return title !== ''; });
+        return named.length > 0
+            ? 'Questions ' + verb + ': ' + named.join(', ') + '. '
+            : (verb === 'added' ? 'More questions added. ' : 'Some questions removed. ');
     }
 
     // ── Validation ────────────────────────────────────────────────────────
@@ -216,10 +244,10 @@ endif;
                 showBanner(remaining);
             }
         }
-        updateSections();
+        updateSections(true);
     });
 
-    // Initialise conditional section state on load
-    updateSections();
+    // Initialise conditional section state on load (silently)
+    updateSections(false);
 }());
 </script>

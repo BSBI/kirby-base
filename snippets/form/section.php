@@ -6,8 +6,10 @@ use BSBI\WebBase\forms\ResolvedFormField;
 use BSBI\WebBase\forms\ResolvedFormSection;
 
 /**
- * Renders a form section as a <fieldset>, optionally with a <legend> and
- * data attributes for client-side conditional show/hide.
+ * Renders a form section, with data attributes for client-side conditional
+ * show/hide. A titled section is a <fieldset> named by its <legend>; an
+ * untitled one is a plain <div>, because a fieldset with no legend is an
+ * unnamed group to a screen reader (WCAG 1.3.1).
  *
  * Expected variable:
  *   $section  ResolvedFormSection  The resolved section to render
@@ -27,8 +29,10 @@ if ($section->isConditional()) :
     $attrs .= ' style="display:none"';
 endif;
 
+$tag = $section->title !== '' ? 'fieldset' : 'div';
+
 ?>
-<fieldset <?= $attrs ?>>
+<<?= $tag ?> <?= $attrs ?>>
     <?php if ($section->title !== '') : ?>
         <legend class="fw-semibold mb-2"><?= htmlspecialchars($section->title, ENT_QUOTES, 'UTF-8') ?></legend>
     <?php endif; ?>
@@ -42,4 +46,4 @@ endif;
         </div>
         <hr>
     <?php endforeach; ?>
-</fieldset>
+</<?= $tag ?>>
