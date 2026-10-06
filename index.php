@@ -125,12 +125,13 @@ $pluginConfig = [
     ],
     'siteMethods' => [
         /**
-         * Form types in use, offered by the form type field on panel-built forms.
+         * Form type choices for panel-built forms (stored value => label): the
+         * Form library's Form types list, plus types on older submissions.
          *
-         * @return list<string>
+         * @return array<string, string>
          */
         'formTypes' => function (): array {
-            return FormBuilderOptions::formTypesInUse();
+            return FormBuilderOptions::formTypeChoices(kirby());
         },
         /**
          * "Report as" export columns in use, offered on form questions.

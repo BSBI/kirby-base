@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace BSBI\WebBase\Tests\Unit\forms;
 
+use BSBI\WebBase\forms\FormBuilderOptions;
 use BSBI\WebBase\forms\FormLibraryPanel;
 use BSBI\WebBase\Testing\KirbyTestEnvironment;
 use Kirby\Cms\App;
+use Kirby\Data\Yaml;
 use Kirby\Exception\PermissionException;
 use Kirby\Http\Route;
 use PHPUnit\Framework\TestCase;
@@ -85,5 +87,23 @@ final class FormLibraryPanelTest extends TestCase
         $this->assertTrue($created->isUnlisted());
         $this->assertSame($created->id(), $again->id());
         $this->assertCount(1, self::$app->site()->childrenAndDrafts());
+    }
+
+    // Runs last: it relies on the library the test above created.
+    public function testFormTypeChoicesComeFromTheLibraryList(): void
+    {
+        $library = FormLibraryPanel::ensureLibrary(self::$app);
+        $library = self::$app->impersonate('kirby', fn() => $library->update([
+            'formTypes' => Yaml::encode([
+                ['name' => 'Volunteer survey', 'description' => ''],
+                ['name' => 'Event feedback', 'description' => 'After any event'],
+            ]),
+        ]));
+        $this->assertInstanceOf(\Kirby\Cms\Page::class, $library);
+
+        $this->assertSame(
+            ['event_feedback' => 'Event feedback', 'volunteer_survey' => 'Volunteer survey'],
+            FormBuilderOptions::formTypeChoices(self::$app)
+        );
     }
 }
