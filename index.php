@@ -152,8 +152,21 @@ $pluginConfig = [
             return FormBuilderOptions::formBuilderChoices(kirby());
         },
     ],
+    'pageMethods' => [
+        /**
+         * Choices for a form section's "Only show this section when…" select:
+         * `key:answer` => "Question: Answer (Section)" for every radio and
+         * dropdown question on this (panel-built) form, as last saved.
+         *
+         * @return array<string, string>
+         */
+        'formConditionChoices' => function (): array {
+            return FormBuilderOptions::conditionChoicesFor($this);
+        },
+    ],
     'sections' => [
         'formproblems' => require __DIR__ . '/sections/formproblems.php',
+        'formsectioncheck' => require __DIR__ . '/sections/formsectioncheck.php',
         'formsubmissionexport' => require __DIR__ . '/sections/formsubmissionexport.php',
         'formsubmissionsindex' => require __DIR__ . '/sections/formsubmissionsindex.php',
         'quicklinks' => require __DIR__ . '/sections/quicklinks.php',

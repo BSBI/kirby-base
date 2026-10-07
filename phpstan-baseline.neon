@@ -2427,7 +2427,7 @@ parameters:
 		-
 			message: '#^Undefined variable\: \$this$#'
 			identifier: variable.undefined
-			count: 1
+			count: 2
 			path: index.php
 
 		-
@@ -2501,6 +2501,12 @@ parameters:
 			identifier: variable.undefined
 			count: 2
 			path: sections/formproblems.php
+
+		-
+			message: '#^Undefined variable\: \$this$#'
+			identifier: variable.undefined
+			count: 1
+			path: sections/formsectioncheck.php
 
 		-
 			message: '#^Cannot cast mixed to string\.$#'
