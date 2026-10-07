@@ -355,3 +355,36 @@ a "Start from an existing form" field in the page-create dialog. Copying is the 
   `formSections`) lists what `validate()` reports, on the form page, refreshed after each
   save. It is a section rather than an `info` field because problem messages quote editor
   text, which an info field would run through KirbyText.
+
+### Locked questions
+
+Once a form's stored responses use a question's key, that key is **locked**: renaming the
+question's `name`, or removing the question (which includes deleting it and adding it again,
+because the new block id gives a new key), would break the CSV column. Labels, help text,
+options and order are never locked. Keys no response uses yet (a question added since the
+last response) stay free.
+
+- **The save is refused.** A `page.update:before` hook (`guardFormKeys()` in `hooks.php`)
+  runs `FormKeyLockGuard::check()` for the `forms.builderTemplates` pages and `form_section`
+  pages. It reads the page as it would be after the save (an in-memory clone with the saved
+  values over its content; nothing is written) and compares question keys before and
+  after. A loss of a key that responses use throws `FormKeyLockedException`, a Kirby
+  `InvalidArgumentException` whose message the panel shows, naming the questions and the
+  forms. Any other failure while checking is logged and the save goes ahead.
+- **Responses are read only when a key would be lost.** `KirbyResponseKeySource` reads
+  the `key` of each item on the form's `form_submission` children, stopping once every
+  key it was asked about is found. Hand-written forms store items without keys and are
+  never checked.
+- **Library sections.** A section save that loses any of the section's keys finds the
+  forms using it (directly or through a variation) from the `form_builders` index's
+  `section_ids` column (`IndexedFormsUsingSection`), and compares each form with
+  responses as it would be with the edited section (`SectionOverrideResolver`). After a
+  section save, the forms using it are re-indexed so their `section_ids` follow a
+  variation pointed at another base.
+- **Shown before a save.** The `formproblems` section lists the form's locked questions
+  under "Locked by responses", and `formsectioncheck` lists a section's locked questions
+  with the forms whose responses use them.
+
+**After deploying a release that adds `section_ids`**, rebuild the `form_builders` index
+(Indexes panel, or `/content-index-rebuild?name=form_builders`). Until then the column is
+empty, and library-section saves aren't checked (form saves are).
