@@ -1,5 +1,6 @@
 name: Section from the library
 icon: layers
+label: "{{ title }}"
 preview: fields
 wysiwyg: true
 

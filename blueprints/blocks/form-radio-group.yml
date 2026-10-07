@@ -1,5 +1,6 @@
 name: Form Radio Group
 icon: circle
+label: "{{ label }}"
 
 fields:
   label:

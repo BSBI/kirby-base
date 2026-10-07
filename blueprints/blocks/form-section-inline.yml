@@ -1,5 +1,6 @@
 name: Section written for this form
 icon: text-left
+label: "{{ title }}"
 preview: fields
 wysiwyg: true
 

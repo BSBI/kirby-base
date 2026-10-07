@@ -1,5 +1,6 @@
 name: Form Checkbox Group
 icon: list-bullet
+label: "{{ label }}"
 
 fields:
   label:

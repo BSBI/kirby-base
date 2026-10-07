@@ -1,5 +1,6 @@
 name: Form Rating Grid
 icon: grid
+label: "{{ label }}"
 
 fields:
   label:
