@@ -66,6 +66,29 @@ final readonly class PanelSectionReader
     }
 
     /**
+     * Returns the ids of the section and every base section it extends, at
+     * any depth, stopping where read() does (missing base, loop, too deep).
+     *
+     * @param Page $section The library section page
+     * @return list<string>
+     */
+    public function chainIds(Page $section): array
+    {
+        $ids = [$section->id()];
+        $current = $section;
+        while (count($ids) <= self::MAX_DEPTH) {
+            $reference = PanelContent::firstReference($current->content(), 'extends');
+            $base = $reference !== null ? $this->resolver->resolve($reference) : null;
+            if ($base === null || in_array($base->id(), $ids, true)) {
+                break;
+            }
+            $ids[] = $base->id();
+            $current = $base;
+        }
+        return $ids;
+    }
+
+    /**
      * Reads the fields of blocks directly, for sections defined inline on a form.
      *
      * @param Blocks       $blocks   Field blocks

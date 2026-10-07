@@ -1,5 +1,8 @@
 <?php
 
+use BSBI\WebBase\forms\panel\FormKeyLockedException;
+use BSBI\WebBase\forms\panel\FormKeyLockGuard;
+use BSBI\WebBase\forms\panel\IndexedFormsUsingSection;
 use BSBI\WebBase\helpers\ContentIndexRegistry;
 use BSBI\WebBase\helpers\FileArchiveService;
 use BSBI\WebBase\helpers\FileLinkIndexHelper;
@@ -59,6 +62,56 @@ function removeFromFileLinkIndex(string $pageId): void
             'file-link-index',
             'Failed to remove page from file-link index for page ' . $pageId . ': ' . $e->getMessage()
         );
+    }
+}
+
+/**
+ * Refuses a save of a panel-built form or library section that would rename
+ * or remove a question whose key stored responses use (FormKeyLockGuard).
+ *
+ * Only the lock refuses a save: any other failure while checking is logged
+ * and the save goes ahead.
+ *
+ * @param Kirby\Cms\Page        $page         The page as it is.
+ * @param array<string, mixed>  $strings      The values being saved, as stored strings.
+ * @param string|null           $languageCode The language being saved.
+ * @return void
+ * @throws FormKeyLockedException
+ */
+function guardFormKeys(Kirby\Cms\Page $page, array $strings, ?string $languageCode): void
+{
+    try {
+        FormKeyLockGuard::forKirby(kirby())->check($page, $strings, $languageCode);
+    } catch (FormKeyLockedException $e) {
+        throw $e;
+    } catch (Throwable $e) {
+        KirbyBaseHelper::writeToLogFile('search-index', 'Form key lock check failed for page ' . $page->id() . ': ' . $e->getMessage());
+    }
+}
+
+/**
+ * Re-indexes the forms using a saved library section, so their recorded
+ * section ids follow a variation pointed at a different base. Best-effort.
+ *
+ * @param Kirby\Cms\Page $section The saved page; ignored unless a library section.
+ * @return void
+ */
+function reindexFormsUsingSection(Kirby\Cms\Page $section): void
+{
+    if ($section->intendedTemplate()->name() !== FormKeyLockGuard::SECTION_TEMPLATE) {
+        return;
+    }
+    try {
+        $manager = ContentIndexRegistry::get('form_builders');
+        if ($manager === null) {
+            return;
+        }
+        $helper = new KirbyInternalHelper();
+        foreach ((new IndexedFormsUsingSection(kirby()))->forms($section) as $form) {
+            $manager->indexPage($form, $helper);
+        }
+    } catch (Throwable $e) {
+        KirbyBaseHelper::writeToLogFile('search-index', 'Failed to re-index forms using section ' . $section->id() . ': ' . $e->getMessage());
     }
 }
 
@@ -284,9 +337,14 @@ return [
         return $duplicatePage;
     },
 
+    'page.update:before' => function (Kirby\Cms\Page $page, array $strings, ?string $languageCode = null) {
+        guardFormKeys($page, $strings, $languageCode);
+    },
+
     'page.update:after' => function ($newPage, $oldPage) {
         $result = handlePageChange($newPage, $oldPage);
         syncScheduledPublishQueue($result instanceof Kirby\Cms\Page ? $result : $newPage);
+        reindexFormsUsingSection($result instanceof Kirby\Cms\Page ? $result : $newPage);
         return $result;
     },
 

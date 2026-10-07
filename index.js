@@ -703,6 +703,7 @@ panel.plugin('open-foundations/kirby-base', {
         return {
           headline: 'Form check',
           problems: [],
+          locked: [],
           announcement: '',
           failed: false
         }
@@ -726,6 +727,7 @@ panel.plugin('open-foundations/kirby-base', {
             this.failed = false;
             this.headline = response.headline;
             this.problems = response.problems || [];
+            this.locked = response.locked || [];
             if (announce) {
               const count = this.problems.length;
               this.announcement = count === 0
@@ -754,6 +756,16 @@ panel.plugin('open-foundations/kirby-base', {
             </div>
           </k-box>
           <k-box v-else theme="positive" text="No problems found." />
+          <div v-if="locked.length > 0" style="margin-top: 0.75rem; font-size: 0.875rem;">
+            <h3 style="font-weight: var(--font-bold); margin-bottom: 0.25rem;">Locked by responses</h3>
+            <p style="margin-bottom: 0.4rem;">This form has responses, so these questions can't be renamed or removed. Their labels, help text and options can still change.</p>
+            <ul style="list-style: disc; padding-left: 1.25rem;">
+              <li v-for="question in locked" :key="question.key">
+                {{ question.label || 'No label' }}
+                <span style="color: var(--color-text-dimmed);">(field name {{ question.key }})</span>
+              </li>
+            </ul>
+          </div>
         </section>
       `
     },
@@ -764,6 +776,7 @@ panel.plugin('open-foundations/kirby-base', {
           headline: 'What forms get',
           questions: [],
           problems: [],
+          locked: [],
           announcement: '',
           failed: false
         }
@@ -788,6 +801,7 @@ panel.plugin('open-foundations/kirby-base', {
             this.headline = response.headline;
             this.questions = (response.check && response.check.questions) || [];
             this.problems = (response.check && response.check.problems) || [];
+            this.locked = response.locked || [];
             if (announce) {
               const count = this.problems.length;
               this.announcement = count === 0
@@ -823,6 +837,16 @@ panel.plugin('open-foundations/kirby-base', {
               <span style="color: var(--color-text-dimmed);">({{ question.type }}<template v-if="question.from">, from {{ question.from }}</template>)</span>
             </li>
           </ol>
+          <div v-if="locked.length > 0" style="margin-top: 0.75rem; font-size: 0.875rem;">
+            <h3 style="font-weight: var(--font-bold); margin-bottom: 0.25rem;">Locked by responses</h3>
+            <p style="margin-bottom: 0.4rem;">Forms using this section have responses to these questions, so they can't be renamed or removed. Their labels, help text and options can still change.</p>
+            <ul style="list-style: disc; padding-left: 1.25rem;">
+              <li v-for="question in locked" :key="question.key">
+                {{ question.label || 'No label' }}
+                <span style="color: var(--color-text-dimmed);">(field name {{ question.key }}; responses to {{ question.forms.join(', ') }})</span>
+              </li>
+            </ul>
+          </div>
         </section>
       `
     },

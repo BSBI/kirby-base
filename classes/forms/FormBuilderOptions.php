@@ -212,6 +212,19 @@ final class FormBuilderOptions
     }
 
     /**
+     * Returns the templates of panel-built form pages: the
+     * `forms.builderTemplates` option, default `form_builder`.
+     *
+     * @param App $kirby
+     * @return list<string>
+     */
+    public static function builderTemplates(App $kirby): array
+    {
+        $templates = $kirby->option('forms.builderTemplates', ['form_builder']);
+        return is_array($templates) ? array_values(array_filter($templates, 'is_string')) : ['form_builder'];
+    }
+
+    /**
      * Returns one column's values from every row of a content index, or an
      * empty list if the index is not available.
      *

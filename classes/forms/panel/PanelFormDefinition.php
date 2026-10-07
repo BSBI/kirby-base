@@ -37,6 +37,9 @@ class PanelFormDefinition extends BaseFormDefinition
     /** @var array<string, string> Filled by build() */
     private array $conditionChoices = [];
 
+    /** @var array<string, true> Library section ids used, filled by build() */
+    private array $sectionIds = [];
+
     private FormProblems $problems;
 
     /**
@@ -99,6 +102,18 @@ class PanelFormDefinition extends BaseFormDefinition
     {
         $this->build();
         return $this->conditionChoices;
+    }
+
+    /**
+     * Returns the ids of the library sections the form uses, including every
+     * base section their variations extend, in first-use order.
+     *
+     * @return list<string>
+     */
+    public function sectionIds(): array
+    {
+        $this->build();
+        return array_keys($this->sectionIds);
     }
 
     /**
@@ -240,6 +255,9 @@ class PanelFormDefinition extends BaseFormDefinition
                     $position
                 ));
                 return null;
+            }
+            foreach ($sectionReader->chainIds($page) as $sectionId) {
+                $this->sectionIds[$sectionId] = true;
             }
             $legend = $title !== '' ? $title : PanelContent::text($page->content(), 'legend');
             $pageTitle = PanelContent::text($page->content(), 'title');
