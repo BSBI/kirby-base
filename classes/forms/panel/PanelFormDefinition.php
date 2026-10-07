@@ -268,20 +268,19 @@ class PanelFormDefinition extends BaseFormDefinition
      * otherwise the older `showWhenField` / `showWhenValue` pair.
      *
      * @param Block $block A section block
-     * @return array{0: string, 1: string}
+     * @return array{0: string, 1: string, 2: bool} Field key, answer, and whether it is the old pair
      */
     private static function conditionOf(Block $block): array
     {
         $choice = PanelContent::text($block->content(), 'showWhen');
         if ($choice !== '') {
             $parts = explode(':', $choice, 2);
-            return [trim($parts[0]), trim($parts[1] ?? '')];
+            return [trim($parts[0]), trim($parts[1] ?? ''), false];
         }
 
-        return [
-            PanelContent::text($block->content(), 'showWhenField'),
-            PanelContent::text($block->content(), 'showWhenValue'),
-        ];
+        $field = PanelContent::text($block->content(), 'showWhenField');
+        $value = PanelContent::text($block->content(), 'showWhenValue');
+        return [$field, $value, $field !== '' || $value !== ''];
     }
 
     /**
@@ -331,7 +330,7 @@ class PanelFormDefinition extends BaseFormDefinition
      */
     private function checkedCondition(Block $block, string $sectionName, array $earlier, array $allKeys): ?array
     {
-        [$fieldKey, $value] = self::conditionOf($block);
+        [$fieldKey, $value, $isOldStyle] = self::conditionOf($block);
 
         if ($fieldKey === '' && $value === '') {
             return null;
@@ -355,6 +354,19 @@ class PanelFormDefinition extends BaseFormDefinition
         if ($problem !== null) {
             $this->problems->add(sprintf('%s: %s, so it is always shown.', $sectionName, $problem));
             return null;
+        }
+
+        if ($isOldStyle && $controller !== null) {
+            // Still applied, but the select can't show it, and the old fields are
+            // no longer in the blueprint: re-saving the block would drop it.
+            $this->problems->add(sprintf(
+                '%s: its "show when" was set the old way, so "Only show this section when…" shows '
+                . '"Always show". Pick it again there ("%s", answer "%s") and save, or it will be lost '
+                . 'the next time this section is saved.',
+                $sectionName,
+                $controller->label !== '' ? $controller->label : $fieldKey,
+                $value
+            ));
         }
 
         return [$fieldKey, $value];

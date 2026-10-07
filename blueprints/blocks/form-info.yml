@@ -1,5 +1,6 @@
 name: Form Information Text
 icon: info
+label: "{{ text }}"
 
 fields:
   text:

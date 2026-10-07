@@ -1,5 +1,6 @@
 name: Form Text Input
 icon: title
+label: "{{ label }}"
 
 fields:
   label:

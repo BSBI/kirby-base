@@ -747,7 +747,7 @@ panel.plugin('open-foundations/kirby-base', {
           <k-box v-if="failed" theme="negative" text="The form check could not be loaded. Reload the page to try again." />
           <k-box v-else-if="problems.length > 0" theme="notice">
             <div>
-              <p style="margin-bottom: 0.5rem;">Some parts of this form have been left out until they are fixed:</p>
+              <p style="margin-bottom: 0.5rem;">Things to check on this form:</p>
               <ul style="list-style: disc; padding-left: 1.25rem;">
                 <li v-for="(problem, index) in problems" :key="index">{{ problem }}</li>
               </ul>

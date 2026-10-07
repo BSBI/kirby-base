@@ -100,8 +100,7 @@ trait PanelFormFixtures
         return $this->blockData('form-section-ref', [
             'section'       => "- " . $reference,
             'title'         => $title,
-            'showWhenField' => $showField,
-            'showWhenValue' => $showValue,
+            'showWhen'      => self::showWhen($showField, $showValue),
         ], $id);
     }
 
@@ -125,9 +124,17 @@ trait PanelFormFixtures
         return $this->blockData('form-section-inline', [
             'title'         => $title,
             'formFields'    => Json::encode($fieldBlocks),
-            'showWhenField' => $showField,
-            'showWhenValue' => $showValue,
+            'showWhen'      => self::showWhen($showField, $showValue),
         ], $id);
+    }
+
+    /**
+     * Returns a section's stored `showWhen` choice (`key:answer`) for the given
+     * field and answer, or blank when neither is set.
+     */
+    private static function showWhen(string $field, string $value): string
+    {
+        return $field === '' && $value === '' ? '' : $field . ':' . $value;
     }
 
     /**

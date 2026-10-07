@@ -1,5 +1,6 @@
 name: Form Likert Scale
 icon: star
+label: "{{ label }}"
 
 fields:
   label:

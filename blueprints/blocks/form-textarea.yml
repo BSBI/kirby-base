@@ -1,5 +1,6 @@
 name: Form Text Area
 icon: text
+label: "{{ label }}"
 
 fields:
   label:

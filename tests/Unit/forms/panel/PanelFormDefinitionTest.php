@@ -397,6 +397,45 @@ final class PanelFormDefinitionTest extends TestCase
         $this->assertSame('Phone', $groups[1]->conditionValue);
     }
 
+    public function testAnOldStyleConditionStillWorksButIsFlagged(): void
+    {
+        $form = $this->formPage([
+            $this->sectionInline([
+                $this->blockData('form-radio-group', ['label' => 'By', 'name' => 'by', 'options' => "Email\nPhone"]),
+            ]),
+            $this->blockData('form-section-inline', [
+                'title'         => 'Phone details',
+                'formFields'    => '[]',
+                'showWhenField' => 'by',
+                'showWhenValue' => 'Phone',
+            ]),
+        ]);
+        $definition = new PanelFormDefinition($form, 't', $this->resolver([]));
+
+        $groups = $definition->getFieldGroups($form);
+        $this->assertInstanceOf(ResolvedFormSection::class, $groups[1]);
+        $this->assertSame('Phone', $groups[1]->conditionValue);
+        $this->assertCount(1, $definition->validate());
+        $this->assertStringContainsString('Section "Phone details"', $definition->validate()[0]);
+        $this->assertStringContainsString('set the old way', $definition->validate()[0]);
+        $this->assertStringContainsString('Only show this section when', $definition->validate()[0]);
+    }
+
+    public function testAnUnusableOldStyleConditionIsReportedOnceAsUnusable(): void
+    {
+        $form = $this->formPage([
+            $this->sectionInline([$this->blockData('form-textbox', ['label' => 'Name', 'name' => 'name'])]),
+            $this->blockData('form-section-inline', [
+                'title' => 'X', 'formFields' => '[]', 'showWhenField' => 'nope', 'showWhenValue' => 'Yes',
+            ]),
+        ]);
+
+        $problems = (new PanelFormDefinition($form, 't', $this->resolver([])))->validate();
+
+        $this->assertCount(1, $problems);
+        $this->assertStringContainsString('"nope"', $problems[0]);
+    }
+
     public function testAShowWhenWithoutAnAnswerIsReported(): void
     {
         $form = $this->formPage([

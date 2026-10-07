@@ -1,5 +1,6 @@
 name: Form Select (Dropdown)
 icon: angle-down
+label: "{{ label }}"
 
 fields:
   label:
