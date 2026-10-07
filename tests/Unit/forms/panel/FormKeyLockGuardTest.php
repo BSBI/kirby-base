@@ -119,6 +119,8 @@ final class FormKeyLockGuardTest extends TestCase
 
         $this->assertSame('saved', $edited->content()->get('formsections')->value());
         $this->assertSame('Spring survey', $edited->content()->get('title')->value());
+        // Held in memory only, so checking a save can never write content.
+        $this->assertInstanceOf(\Kirby\Content\MemoryStorage::class, $edited->storage());
     }
 
     public function testRenamingAKeyInALibrarySectionAFormsResponsesUseIsRefused(): void

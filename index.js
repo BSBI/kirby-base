@@ -716,6 +716,10 @@ panel.plugin('open-foundations/kirby-base', {
         this.$panel.events.off('model.update', this.refreshAfterSave);
       },
       methods: {
+        lockedAnnouncement: function () {
+          const locked = this.locked.length;
+          return locked === 0 ? '' : ' ' + locked + ' question' + (locked === 1 ? ' is' : 's are') + ' locked by responses.';
+        },
         refreshAfterSave: function () {
           this.refresh(true);
         },
@@ -730,9 +734,10 @@ panel.plugin('open-foundations/kirby-base', {
             this.locked = response.locked || [];
             if (announce) {
               const count = this.problems.length;
-              this.announcement = count === 0
+              this.announcement = (count === 0
                 ? 'Form check: no problems found.'
-                : 'Form check: ' + count + ' problem' + (count === 1 ? '' : 's') + ' found.';
+                : 'Form check: ' + count + ' problem' + (count === 1 ? '' : 's') + ' found.')
+                + this.lockedAnnouncement();
             }
           } catch (error) {
             this.failed = true;
@@ -789,6 +794,10 @@ panel.plugin('open-foundations/kirby-base', {
         this.$panel.events.off('model.update', this.refreshAfterSave);
       },
       methods: {
+        lockedAnnouncement: function () {
+          const locked = this.locked.length;
+          return locked === 0 ? '' : ' ' + locked + ' question' + (locked === 1 ? ' is' : 's are') + ' locked by responses.';
+        },
         refreshAfterSave: function () {
           this.refresh(true);
         },
@@ -804,9 +813,10 @@ panel.plugin('open-foundations/kirby-base', {
             this.locked = response.locked || [];
             if (announce) {
               const count = this.problems.length;
-              this.announcement = count === 0
+              this.announcement = (count === 0
                 ? 'Section check: no problems found.'
-                : 'Section check: ' + count + ' problem' + (count === 1 ? '' : 's') + ' found.';
+                : 'Section check: ' + count + ' problem' + (count === 1 ? '' : 's') + ' found.')
+                + this.lockedAnnouncement();
             }
           } catch (error) {
             this.failed = true;
