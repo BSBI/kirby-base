@@ -229,7 +229,8 @@ export) is the same as for a hand-written definition.
   marked "No longer on this form", so the select's value is always an option (the Form
   check reports it). Content saved before 3.45.0 uses `showWhenField` (a field key) and
   `showWhenValue`. Those are still read, but they are no longer in the block blueprints,
-  so re-saving such a block without picking a choice drops the condition.
+  so re-saving such a block without picking a choice drops the condition. The Form check
+  flags each one (since 3.45.1), naming the question and answer to pick again.
 
 Question blocks: `form-textbox` (with `inputType`: text, email, tel, number, date, url),
 `form-textarea`, `form-radio-group`, `form-checkbox-group`, `form-select`, `form-likert`,
