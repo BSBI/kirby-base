@@ -15,7 +15,8 @@ use Kirby\Cms\Page;
  *
  * Records each form's (normalised) form type and the "Report as" columns its
  * questions use, so the panel can offer them as choices without walking the
- * whole site. The templates default to `form_builder`; a site with another
+ * whole site, and the library sections it uses (with the bases of
+ * variations), so a section edit can find the forms it affects. The templates default to `form_builder`; a site with another
  * name passes its own.
  *
  * @package BSBI\WebBase\helpers
@@ -61,6 +62,7 @@ class FormBuilderIndexDefinition extends ContentIndexDefinition
         return [
             'form_type'      => 'TEXT NOT NULL DEFAULT ""',
             'report_columns' => 'TEXT NOT NULL DEFAULT ""',
+            'section_ids'    => 'TEXT NOT NULL DEFAULT ""',
         ];
     }
 
@@ -96,10 +98,12 @@ class FormBuilderIndexDefinition extends ContentIndexDefinition
     /**
      * Returns the index row for a panel-built form page: its normalised form
      * type and its "Report as" columns (questions that set one, including those
-     * in library sections it uses), comma-separated.
+     * in library sections it uses), comma-separated, and the ids of the
+     * library sections it uses, including bases of variations, comma-separated
+     * without spaces (ContentIndexQuery::whereContains() matches them).
      *
      * @param Page $page A panel-built form page
-     * @return array{page_id: string, form_type: string, report_columns: string}
+     * @return array{page_id: string, form_type: string, report_columns: string, section_ids: string}
      */
     public function rowFor(Page $page): array
     {
@@ -117,6 +121,7 @@ class FormBuilderIndexDefinition extends ContentIndexDefinition
             'page_id'        => $page->id(),
             'form_type'      => $formType,
             'report_columns' => implode(', ', array_values(array_unique($reportColumns))),
+            'section_ids'    => implode(',', $definition->sectionIds()),
         ];
     }
 }

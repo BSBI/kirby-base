@@ -86,5 +86,11 @@ final class FormBuilderIndexDefinitionTest extends TestCase
         $this->assertSame('my-form', $row['page_id']);
         $this->assertSame('event_feedback', $row['form_type']);
         $this->assertSame('overall, Enjoyed', $row['report_columns']);
+        $this->assertSame('', $row['section_ids']);
+    }
+
+    public function testDefinesASectionIdsColumn(): void
+    {
+        $this->assertArrayHasKey('section_ids', (new FormBuilderIndexDefinition())->getColumns());
     }
 }

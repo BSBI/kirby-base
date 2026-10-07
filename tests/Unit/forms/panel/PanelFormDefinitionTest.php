@@ -500,6 +500,24 @@ final class PanelFormDefinitionTest extends TestCase
         $this->assertSame(['dup' => ['label' => 'First', 'column' => 'dup']], $columns);
     }
 
+    public function testSectionIdsListLibrarySectionsAndTheirBases(): void
+    {
+        $base = $this->sectionPage([$this->blockData('form-textbox', ['label' => 'A', 'name' => 'a'])], slug: 'base');
+        $variation = $this->sectionPage([], extends: 'page://base', slug: 'variation');
+        $other = $this->sectionPage([$this->blockData('form-textbox', ['label' => 'B', 'name' => 'b'])], slug: 'other');
+        $form = $this->formPage([
+            $this->sectionRef('page://variation'),
+            $this->sectionInline([$this->blockData('form-textbox', ['label' => 'C', 'name' => 'c'])]),
+            $this->sectionRef('page://other'),
+            $this->sectionRef('page://base'),
+        ]);
+        $resolver = $this->resolver(['page://base' => $base, 'page://variation' => $variation, 'page://other' => $other]);
+
+        $ids = (new PanelFormDefinition($form, 't', $resolver))->sectionIds();
+
+        $this->assertSame(['variation', 'base', 'other'], $ids);
+    }
+
     /**
      * @param array<FormFieldSpec|FormSection> $groups
      */

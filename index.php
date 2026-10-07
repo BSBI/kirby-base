@@ -800,10 +800,7 @@ try {
 
 // Register the panel-built forms index (form types and Report-as columns in use)
 try {
-    $formBuilderTemplates = option('forms.builderTemplates', ['form_builder']);
-    ContentIndexRegistry::register(new FormBuilderIndexDefinition(
-        is_array($formBuilderTemplates) ? array_values(array_filter($formBuilderTemplates, 'is_string')) : ['form_builder']
-    ));
+    ContentIndexRegistry::register(new FormBuilderIndexDefinition(FormBuilderOptions::builderTemplates(kirby())));
 } catch (Throwable $e) {
     error_log('Failed to register form builder content index: ' . $e->getMessage());
 }

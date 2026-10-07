@@ -2499,13 +2499,13 @@ parameters:
 		-
 			message: '#^Undefined variable\: \$this$#'
 			identifier: variable.undefined
-			count: 2
+			count: 3
 			path: sections/formproblems.php
 
 		-
 			message: '#^Undefined variable\: \$this$#'
 			identifier: variable.undefined
-			count: 1
+			count: 2
 			path: sections/formsectioncheck.php
 
 		-

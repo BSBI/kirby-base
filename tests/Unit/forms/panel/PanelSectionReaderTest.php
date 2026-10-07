@@ -96,6 +96,28 @@ final class PanelSectionReaderTest extends TestCase
         $this->assertStringContainsString('loop', $problems->all()[0]);
     }
 
+    public function testChainIdsFollowEveryBase(): void
+    {
+        $a = $this->sectionPage([], slug: 'a');
+        $b = $this->sectionPage([], extends: 'page://a', slug: 'b');
+        $c = $this->sectionPage([], extends: 'page://b', slug: 'c');
+
+        $ids = (new PanelSectionReader($this->resolver(['page://a' => $a, 'page://b' => $b])))->chainIds($c);
+
+        $this->assertSame(['c', 'b', 'a'], $ids);
+    }
+
+    public function testChainIdsStopAtALoopOrAMissingBase(): void
+    {
+        $a = $this->sectionPage([], extends: 'page://b', slug: 'a');
+        $b = $this->sectionPage([], extends: 'page://a', slug: 'b');
+        $orphan = $this->sectionPage([], extends: 'page://gone', slug: 'orphan');
+        $reader = new PanelSectionReader($this->resolver(['page://a' => $a, 'page://b' => $b]));
+
+        $this->assertSame(['a', 'b'], $reader->chainIds($a));
+        $this->assertSame(['orphan'], $reader->chainIds($orphan));
+    }
+
     public function testMissingBaseIsReportedAndOwnFieldsStillRead(): void
     {
         $variation = $this->sectionPage([
