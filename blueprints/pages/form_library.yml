@@ -1,8 +1,9 @@
-title: Form library
+title: Forms
 icon: layers
 
-# Panel-only store of reusable form sections, opened from the "Form library"
-# side-menu entry (forms.libraryPanel). Never shown on the site.
+# The panel's Forms page, opened from the "Forms" side-menu entry
+# (forms.libraryPanel): every form type's submissions, and the store of reusable
+# form sections. Never shown on the site.
 options:
   changeTemplate: false
   changeSlug: false
@@ -15,48 +16,59 @@ options:
     "*": false
   changeTitle: *libraryRoles
 
-sections:
-  info:
-    type: info
-    label: Form library
-    theme: info
-    text: >
-      Reusable groups of questions for forms built in the panel. A form uses a
-      section by reference, so editing a section here changes every form that
-      uses it. To change a section for one form only, add a new section that is
-      a variation of it.
-  formTypesSection:
-    type: fields
-    fields:
-      formTypes:
-        type: structure
-        label: Form types
-        help: >
-          The types a form built in the panel can be given. A form's type groups its
-          submissions in the site Forms tab and its CSV exports; give forms the same
-          type to collate them. Renaming a type here does not move existing
-          submissions, so add a new type rather than renaming one that is in use.
-        sortBy: name asc
-        columns:
-          name:
-            width: 1/3
-          description:
-            width: 2/3
+tabs:
+  submissions:
+    label: Submissions
+    icon: email
+    sections:
+      formSubmissionsIndex:
+        type: formsubmissionsindex
+        headline: Submissions by form type
+  library:
+    label: Library
+    icon: layers
+    sections:
+      info:
+        type: info
+        label: Library
+        theme: info
+        text: >
+          Reusable groups of questions for forms built in the panel. A form uses a
+          section by reference, so editing a section here changes every form that
+          uses it. To change a section for one form only, add a new section that is
+          a variation of it.
+      formTypesSection:
+        type: fields
         fields:
-          name:
-            type: text
-            label: Name
-            required: true
-            help: Stored in lower case with underscores, e.g. "Event feedback" is stored as event_feedback.
-          description:
-            type: text
-            label: What it is for
-  librarySections:
-    label: Sections
-    type: pages
-    template: form_section
-    status: all
-    create: form_section
-    sortBy: title asc
-    info: "{{ page.legend }}"
-    empty: No sections yet
+          formTypes:
+            type: structure
+            label: Form types
+            help: >
+              The types a form built in the panel can be given. A form's type groups its
+              submissions on the Forms page and its CSV exports; give forms the same
+              type to collate them. Renaming a type here does not move existing
+              submissions, so add a new type rather than renaming one that is in use.
+            sortBy: name asc
+            columns:
+              name:
+                width: 1/3
+              description:
+                width: 2/3
+            fields:
+              name:
+                type: text
+                label: Name
+                required: true
+                help: Stored in lower case with underscores, e.g. "Event feedback" is stored as event_feedback.
+              description:
+                type: text
+                label: What it is for
+      librarySections:
+        label: Sections
+        type: pages
+        template: form_section
+        status: all
+        create: form_section
+        sortBy: title asc
+        info: "{{ page.legend }}"
+        empty: No sections yet

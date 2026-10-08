@@ -13,4 +13,5 @@ snippet('form/likert', [
     'middleLabel' => $block->middleLabel()->value(),
     'rightLabel'  => $block->rightLabel()->isNotEmpty() ? $block->rightLabel()->value() : 'Strongly agree',
     'required'    => $block->required()->isTrue(),
+    ...\BSBI\WebBase\forms\panel\PanelFieldReader::scale($block),
 ]);

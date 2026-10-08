@@ -115,20 +115,94 @@ final class FormSubmissionExporterTest extends TestCase
         ], $rows);
     }
 
-    public function testLegacyAndNewItemsSitSideBySide(): void
+    public function testAnOldItemJoinsTheColumnOfTheKeyItWasStoredUnder(): void
     {
+        // Old items were stored with the key title-cased as the question, so
+        // "Event Name" was the key event_name.
         $rows = (new FormSubmissionExporter())->wide([
-            $this->submission('Old', [['question' => 'Email', 'answer' => 'old@example.org']]),
-            $this->submission('New', [$this->item('Email', 'new@example.org', 'email')]),
+            $this->submission('Old', [['question' => 'Event Name', 'answer' => 'Bioblitz']], 'feedback', '2025-01-01'),
+            $this->submission('New', [$this->item('What was the name of the event?', 'Walk', 'event_name')], 'feedback', '2026-01-01'),
         ], false);
 
-        // A legacy "Email" question and a keyed "email" field are different
-        // columns, even when their headers read the same.
         $this->assertSame([
-            ['Submission', 'Email', 'Email'],
-            ['Old', 'old@example.org', ''],
-            ['New', '', 'new@example.org'],
+            ['Submission', 'What was the name of the event?'],
+            ['Old', 'Bioblitz'],
+            ['New', 'Walk'],
         ], $rows);
+    }
+
+    public function testMatchingIgnoresCaseAndHyphens(): void
+    {
+        $rows = (new FormSubmissionExporter())->wide([
+            $this->submission('Old', [
+                ['question' => 'FAV COLOUR', 'answer' => 'Blue'],
+                ['question' => 'How Heard', 'answer' => 'Friend'],
+            ], 't'),
+            $this->submission('New', [
+                $this->item('Favourite colour', 'Red', 'FAV_COLOUR'),
+                $this->item('How did you hear?', 'Poster', 'how-heard', 'heard'),
+            ], 't'),
+        ], false);
+
+        $this->assertSame(['Submission', 'Favourite colour', 'heard'], $rows[0]);
+        $this->assertSame(['Old', 'Blue', 'Friend'], $rows[1]);
+    }
+
+    public function testAnOldItemWithNoMatchingKeyKeepsItsOwnColumn(): void
+    {
+        $rows = (new FormSubmissionExporter())->wide([
+            $this->submission('Old', [['question' => 'Name', 'answer' => 'Ann']]),
+            $this->submission('New', [$this->item('Your name', 'Bob', 'full_name')]),
+        ], false);
+
+        $this->assertSame([
+            ['Submission', 'Name', 'Your name'],
+            ['Old', 'Ann', ''],
+            ['New', '', 'Bob'],
+        ], $rows);
+    }
+
+    public function testAnAmbiguousMatchKeepsItsOwnColumn(): void
+    {
+        // Two keys title-case alike, or one key filed under two columns on
+        // different forms: either way the old item can't be placed.
+        $rows = (new FormSubmissionExporter())->wide([
+            $this->submission('Old', [['question' => 'Event Name', 'answer' => 'Bioblitz']], 't'),
+            $this->submission('A', [$this->item('Event', 'Walk', 'event_name', 'event')], 't'),
+            $this->submission('B', [$this->item('Event', 'Talk', 'event_name', 'meeting')], 't'),
+        ], false);
+
+        $this->assertSame(['Submission', 'Event Name', 'event', 'meeting'], $rows[0]);
+    }
+
+    public function testKeysOnlyMatchOldItemsOfTheSameFormType(): void
+    {
+        $rows = (new FormSubmissionExporter())->wide([
+            $this->submission('Old', [['question' => 'Email', 'answer' => 'old@example.org']], 'edi'),
+            $this->submission('New', [$this->item('Email', 'new@example.org', 'email')], 'feedback'),
+        ], true);
+
+        $this->assertSame(['Form Type', 'Submission', 'Email', 'Email'], $rows[0]);
+    }
+
+    public function testOldRatingMatrixRowsKeepTheirOwnColumns(): void
+    {
+        $rows = (new FormSubmissionExporter())->wide([
+            $this->submission('Old', [['question' => 'Event Rating: Venue', 'answer' => '5']], 'feedback'),
+            $this->submission('New', [$this->item('Rate the event', 'Venue: 4', 'event_rating')], 'feedback'),
+        ], false);
+
+        $this->assertSame(['Submission', 'Event Rating: Venue', 'Rate the event'], $rows[0]);
+    }
+
+    public function testTheLongFormatFilesMatchedOldItemsUnderTheColumn(): void
+    {
+        $rows = (new FormSubmissionExporter())->long([
+            $this->submission('Old', [['question' => 'Event Name', 'answer' => 'Bioblitz']], 'feedback', '2025-01-01'),
+            $this->submission('New', [$this->item('Name of the event', 'Walk', 'event_name')], 'feedback', '2026-01-01'),
+        ]);
+
+        $this->assertSame(['feedback', 'Old', '2025-01-01', 'event_name', 'Event Name', 'Bioblitz'], $rows[1]);
     }
 
     public function testLongFormatHasOneRowPerAnswer(): void

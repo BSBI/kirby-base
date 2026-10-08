@@ -30,3 +30,16 @@ fields:
       Pick a question and answer from an earlier section, or leave blank to always
       show. The list shows the radio and dropdown questions on this form as last saved,
       so save first after adding a question.
+  alsoSaveAs:
+    type: select
+    label: Also save these answers as a separate response of type
+    placeholder: No separate response
+    options:
+      type: query
+      query: site.formTypes
+      value: "{{ item.key }}"
+      text: "{{ item.value }}"
+    help: >
+      Optional. When this section is shown and answered, its answers are also saved
+      on their own as a response of the chosen type, so they can be collated across
+      forms (e.g. equality questions as "edi"). They stay on this form's response too.

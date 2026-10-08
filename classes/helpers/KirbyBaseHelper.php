@@ -5,7 +5,8 @@ namespace BSBI\WebBase\helpers;
 use BSBI\WebBase\forms\BaseFormDefinition;
 use BSBI\WebBase\forms\FormPageInterface;
 use BSBI\WebBase\forms\FormSubmissionBuilder;
-use BSBI\WebBase\forms\FormSubmissionSlug;
+use BSBI\WebBase\forms\FormSubmissionWriter;
+use BSBI\WebBase\forms\KirbySessionSlots;
 use BSBI\WebBase\models\ActionStatus;
 use BSBI\WebBase\models\BaseFilter;
 use BSBI\WebBase\models\BaseList;
@@ -5373,11 +5374,23 @@ abstract class KirbyBaseHelper
      *                           The definition's getSubmissionColumns(): when given, only
      *                           these keys are stored, with label and export column.
      *                           Empty keeps the original store-every-POST-key behaviour.
+     * @param array<string, list<string>> $copies
+     *                           The definition's separateCopies(): each form type => keys
+     *                           whose answers are also saved as a separate response of
+     *                           that type. Needs $columns (the items carry their keys).
+     * @param bool   $updateWithinSession
+     *                           Update the responses saved earlier in this session (main
+     *                           and copies) instead of adding new ones
      * @return ActionStatus
      * @throws KirbyRetrievalException
      */
-    protected function createFormSubmission(Page $parentPage, string $formType = '', array $columns = []): ActionStatus
-    {
+    protected function createFormSubmission(
+        Page $parentPage,
+        string $formType = '',
+        array $columns = [],
+        array $copies = [],
+        bool $updateWithinSession = false
+    ): ActionStatus {
         if ($this->kirby->request()->is('POST')) {
             if (csrf(get('csrf')) === true) {
                 $formSubmission = (new FormSubmissionBuilder())->items(
@@ -5385,29 +5398,21 @@ abstract class KirbyBaseHelper
                     $columns
                 );
 
-                $name = FormSubmissionSlug::next(
-                    date('M-j-H.i.s'),
-                    static fn(string $slug): bool => $parentPage->findPageOrDraft($slug) !== null
-                );
-                $slug = $name['slug'];
-
-                $content = [
-                    'title'      => $name['title'],
-                    'submission' => Data::encode($formSubmission, 'yaml'),
-                ];
-
-                if ($formType !== '') {
-                    $content['form_type'] = $formType;
+                $writer = new FormSubmissionWriter($updateWithinSession ? new KirbySessionSlots($this->kirby) : null);
+                try {
+                    $writer->write($parentPage, $formType, $formSubmission);
+                    foreach ($columns === [] ? [] : $copies as $copyType => $keys) {
+                        $copyItems = array_values(array_filter(
+                            $formSubmission,
+                            static fn(array $item): bool => in_array($item['key'] ?? null, $keys, true)
+                        ));
+                        if ($copyItems !== []) {
+                            $writer->write($parentPage, $copyType, $copyItems);
+                        }
+                    }
+                } catch (Throwable $e) {
+                    throw new KirbyRetrievalException($e->getMessage());
                 }
-
-                $this->createPage($parentPage,
-                    [
-                        'slug'     => $slug,
-                        'template' => 'form_submission',
-                        'content'  => $content,
-                    ],
-                    true
-                );
 
                 if ($this->isPageFieldNotEmpty($parentPage, 'emailRecepient')) {
                     try {

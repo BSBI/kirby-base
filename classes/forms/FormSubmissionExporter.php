@@ -30,6 +30,9 @@ final readonly class FormSubmissionExporter
     /** Shown for submissions stored without a form type. */
     public const UNTYPED = '(untyped)';
 
+    /** Marks an old item filed under a key by matchOldItems(). */
+    private const MATCHED = '_matched';
+
     /**
      * Reads a form_submission page into the shape the export methods take.
      *
@@ -71,15 +74,18 @@ final readonly class FormSubmissionExporter
         $headerDates = [];
         $rows = [];
 
-        foreach ($submissions as $submission) {
+        foreach ($this->matchOldItems($submissions) as $submission) {
             $answers = [];
             foreach ($submission['items'] as $item) {
                 [$id, $header, $fixed] = $this->column($item);
+                $isOld = isset($item[self::MATCHED]);
 
                 if (!isset($headers[$id])) {
                     $headers[$id] = $header;
-                    $headerDates[$id] = $submission['date'];
-                } elseif (!$fixed && $submission['date'] >= $headerDates[$id]) {
+                    // An old item's question is only its key title-cased, so any
+                    // real label replaces it, whatever the dates.
+                    $headerDates[$id] = $isOld ? '' : $submission['date'];
+                } elseif (!$fixed && !$isOld && $submission['date'] >= $headerDates[$id]) {
                     $headers[$id] = $header;
                     $headerDates[$id] = $submission['date'];
                 }
@@ -115,7 +121,7 @@ final readonly class FormSubmissionExporter
     {
         $csvRows = [['Form Type', 'Submission', 'Date', 'Column', 'Question', 'Answer']];
 
-        foreach ($submissions as $submission) {
+        foreach ($this->matchOldItems($submissions) as $submission) {
             foreach ($submission['items'] as $item) {
                 $question = $this->string($item['question'] ?? '');
                 $column = $this->string($item['column'] ?? '');
@@ -131,6 +137,68 @@ final readonly class FormSubmissionExporter
         }
 
         return $csvRows;
+    }
+
+    /**
+     * Files old items (stored without a key, the question being the key
+     * title-cased) under the key they were stored for, where keyed items of
+     * the same form type show which key and column that is. Matching ignores
+     * case and treats "_" and "-" as spaces. An old item whose question fits no
+     * key, or fits more than one key or column, is left as it is.
+     *
+     * Old per-row rating-matrix items ("Event Rating: Venue") never fit a key,
+     * so they keep their own columns.
+     *
+     * @param list<Submission> $submissions
+     * @return list<Submission>
+     */
+    private function matchOldItems(array $submissions): array
+    {
+        /** @var array<string, array<string, array{key: string, column: string}|false>> $byType */
+        $byType = [];
+        foreach ($submissions as $submission) {
+            foreach ($submission['items'] as $item) {
+                $key = $this->string($item['key'] ?? '');
+                $column = $this->string($item['column'] ?? '');
+                if ($key === '' || $column === '') {
+                    continue;
+                }
+                $title = self::oldTitle($key);
+                $known = $byType[$submission['formType']][$title] ?? null;
+                if ($known === null) {
+                    $byType[$submission['formType']][$title] = ['key' => $key, 'column' => $column];
+                } elseif ($known !== false && ($known['key'] !== $key || $known['column'] !== $column)) {
+                    $byType[$submission['formType']][$title] = false;
+                }
+            }
+        }
+        if ($byType === []) {
+            return $submissions;
+        }
+
+        foreach ($submissions as $s => $submission) {
+            foreach ($submission['items'] as $i => $item) {
+                if ($this->string($item['column'] ?? '') !== '') {
+                    continue;
+                }
+                $title = self::oldTitle($this->string($item['question'] ?? ''));
+                $match = $byType[$submission['formType']][$title] ?? false;
+                if ($match !== false) {
+                    $submissions[$s]['items'][$i] = $item + $match + [self::MATCHED => true];
+                }
+            }
+        }
+        return $submissions;
+    }
+
+    /**
+     * Returns a key, or an old item's question, normalised for matching the
+     * two: lower case, with "_", "-" and runs of spaces as single spaces.
+     */
+    private static function oldTitle(string $keyOrQuestion): string
+    {
+        $spaced = str_replace(['_', '-'], ' ', mb_strtolower(trim($keyOrQuestion)));
+        return (string) preg_replace('/\s+/', ' ', $spaced);
     }
 
     /**

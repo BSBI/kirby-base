@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BSBI\WebBase\forms\panel;
 
 use BSBI\WebBase\forms\BaseFormDefinition;
+use BSBI\WebBase\forms\FormBuilderOptions;
 use BSBI\WebBase\forms\FormSection;
 use Kirby\Cms\Block;
 use Kirby\Cms\Page;
@@ -36,6 +37,9 @@ class PanelFormDefinition extends BaseFormDefinition
 
     /** @var array<string, string> Filled by build() */
     private array $conditionChoices = [];
+
+    /** @var list<array{type: string, keys: list<string>, condition: array{0: string, 1: string}|null}> Filled by build() */
+    private array $copySections = [];
 
     /** @var array<string, true> Library section ids used, filled by build() */
     private array $sectionIds = [];
@@ -106,6 +110,39 @@ class PanelFormDefinition extends BaseFormDefinition
     {
         $this->build();
         return $this->conditionChoices;
+    }
+
+    /**
+     * Returns the separate responses this submission also makes: for each
+     * section marked "also save as" that was shown (its condition met) and
+     * has at least one answer, its form type => its question keys. Sections
+     * with the same type share one response.
+     *
+     * @param array<mixed> $postData
+     * @return array<string, list<string>>
+     */
+    public function separateCopies(array $postData): array
+    {
+        $this->build();
+
+        $copies = [];
+        foreach ($this->copySections as $section) {
+            if ($section['condition'] !== null) {
+                $answer = $postData[$section['condition'][0]] ?? null;
+                if (!is_scalar($answer) || (string) $answer !== $section['condition'][1]) {
+                    continue;
+                }
+            }
+            $answered = array_filter(
+                $section['keys'],
+                static fn(string $key): bool => !in_array($postData[$key] ?? null, [null, '', []], true)
+                    && !(is_string($postData[$key]) && trim($postData[$key]) === '')
+            );
+            if ($answered !== []) {
+                $copies[$section['type']] = array_values(array_unique(array_merge($copies[$section['type']] ?? [], $section['keys'])));
+            }
+        }
+        return $copies;
     }
 
     /**
@@ -200,6 +237,16 @@ class PanelFormDefinition extends BaseFormDefinition
             $condition = $this->checkedCondition($section['block'], $section['name'], $earlier, $allKeys);
             if ($condition !== null) {
                 $formSection->showWhen($condition[0], $condition[1]);
+            }
+            $copyType = FormBuilderOptions::normaliseFormType(PanelContent::text($section['block']->content(), 'alsoSaveAs'));
+            if ($copyType !== '') {
+                $keys = [];
+                foreach ($section['fields'] as $field) {
+                    if (isset($seen[$field->key]) && $seen[$field->key] === $field && $field->isSubmittable()) {
+                        $keys[] = $field->key;
+                    }
+                }
+                $this->copySections[] = ['type' => $copyType, 'keys' => $keys, 'condition' => $condition];
             }
             $this->sections[] = $formSection;
         }

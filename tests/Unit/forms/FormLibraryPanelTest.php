@@ -72,6 +72,11 @@ final class FormLibraryPanelTest extends TestCase
         $action->call(new Route('form-library', 'GET', static fn() => null));
     }
 
+    public function testTheSideMenuEntryIsCalledForms(): void
+    {
+        $this->assertSame('Forms', FormLibraryPanel::area(self::$app)['label']);
+    }
+
     public function testEnsureLibraryCreatesTheUnlistedPageOnce(): void
     {
         $this->assertNull(self::$app->site()->findPageOrDraft(FormLibraryPanel::SLUG));
@@ -81,9 +86,22 @@ final class FormLibraryPanelTest extends TestCase
 
         $this->assertSame('form-library', $created->id());
         $this->assertSame('form_library', $created->intendedTemplate()->name());
-        $this->assertSame('Form library', $created->blueprint()->title(), 'the real blueprint is in force');
+        $this->assertSame('Forms', $created->blueprint()->title(), 'the real blueprint is in force');
+        $this->assertSame('Forms', $created->title()->value());
         $this->assertTrue($created->isUnlisted());
         $this->assertSame($created->id(), $again->id());
         $this->assertCount(1, self::$app->site()->childrenAndDrafts());
+    }
+
+    public function testALibraryStillCalledFormLibraryIsRenamedFormsAndOtherTitlesKept(): void
+    {
+        $library = FormLibraryPanel::ensureLibrary(self::$app);
+        self::$app->impersonate('kirby', static fn() => $library->changeTitle('Form library'));
+
+        $this->assertSame('Forms', FormLibraryPanel::ensureLibrary(self::$app)->title()->value());
+
+        $renamed = self::$app->impersonate('kirby', static fn() => FormLibraryPanel::ensureLibrary(self::$app)->changeTitle('Our forms'));
+        $this->assertInstanceOf(\Kirby\Cms\Page::class, $renamed);
+        $this->assertSame('Our forms', FormLibraryPanel::ensureLibrary(self::$app)->title()->value());
     }
 }

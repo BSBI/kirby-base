@@ -27,6 +27,23 @@ fields:
     type: text
     label: Right label
     placeholder: Strongly agree
+  scaleMin:
+    type: number
+    label: Scale starts at
+    default: 1
+    min: 0
+    max: 9
+    step: 1
+    width: 1/2
+  scaleMax:
+    type: number
+    label: Scale ends at
+    default: 5
+    min: 1
+    max: 10
+    step: 1
+    width: 1/2
+    help: Whole numbers from 0 to 10. Blank, or an end not above the start, gives 1 to 5.
   help:
     type: text
     label: Help text

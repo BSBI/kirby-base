@@ -10,7 +10,7 @@ use Kirby\Exception\PermissionException;
 use Kirby\Panel\Panel;
 
 /**
- * The "Form library" side-menu entry in the panel, opt-in via the
+ * The "Forms" side-menu entry in the panel (once "Form library"), opt-in via the
  * `forms.libraryPanel` option.
  *
  * The library is an ordinary unlisted page (slug `form-library`) holding the
@@ -26,6 +26,12 @@ final class FormLibraryPanel
 
     /** Template of the library page. */
     public const TEMPLATE = 'form_library';
+
+    /** The side-menu label and the page's title. */
+    public const TITLE = 'Forms';
+
+    /** The page's title before it was renamed; a page still called this is renamed. */
+    private const OLD_TITLE = 'Form library';
 
     /** Roles that see the entry when `forms.libraryRoles` is not set. */
     public const DEFAULT_ROLES = ['admin', 'editor'];
@@ -43,7 +49,7 @@ final class FormLibraryPanel
         // private calls would fail there. All three closures follow the same
         // rule, in case Kirby starts binding the others too.
         return [
-            'label'   => 'Form library',
+            'label'   => FormLibraryPanel::TITLE,
             'icon'    => 'layers',
             'link'    => FormLibraryPanel::SLUG,
             'menu'    => fn(): bool => FormLibraryPanel::isAllowed($kirby->user()?->role()->id(), FormLibraryPanel::roles($kirby)),
@@ -105,7 +111,9 @@ final class FormLibraryPanel
 
     /**
      * Returns the library page, creating it (unlisted) if it does not exist.
-     * Creation runs as the Kirby superuser: callers check the role first.
+     * A page still titled "Form library" (its name before it became the Forms
+     * page) is renamed; any other title an editor gave it is kept. Creating
+     * and renaming run as the Kirby superuser: callers check the role first.
      *
      * @param App $kirby
      */
@@ -113,7 +121,11 @@ final class FormLibraryPanel
     {
         $existing = $kirby->site()->findPageOrDraft(self::SLUG);
         if ($existing instanceof Page) {
-            return $existing;
+            if ($existing->title()->value() !== self::OLD_TITLE) {
+                return $existing;
+            }
+            $renamed = $kirby->impersonate('kirby', static fn(): Page => $existing->changeTitle(self::TITLE));
+            return $renamed instanceof Page ? $renamed : $existing;
         }
 
         $library = $kirby->impersonate('kirby', static function () use ($kirby): Page {
@@ -122,7 +134,7 @@ final class FormLibraryPanel
                 'slug'     => self::SLUG,
                 'template' => self::TEMPLATE,
                 'draft'    => false,
-                'content'  => ['title' => 'Form library'],
+                'content'  => ['title' => self::TITLE],
             ]);
         });
         if (!$library instanceof Page) {
