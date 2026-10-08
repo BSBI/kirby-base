@@ -19,7 +19,7 @@ use Kirby\Cms\Page;
  * folder (for copying a form between servers).
  *
  * Responses come from the `form_submissions` index (each response's parent).
- * The list is cached for ten minutes; refresh() rebuilds it.
+ * The list is cached for ten minutes; cached(refresh: true) rebuilds it.
  */
 final readonly class FormsInUse
 {

@@ -31,6 +31,9 @@ final class FormsInUseTest extends TestCase
             'mystery/default.txt'                               => "Title: Mystery page",
             'mystery/1_r/form_submission.txt'                   => "Title: R",
             'about/default.txt'                                 => "Title: Not a form",
+            '3_a/a.txt'                                         => "Title: Level A",
+            '3_a/1_b/b.txt'                                     => "Title: Level B",
+            '3_a/1_b/1_c/form_builder.txt'                      => "Title: Deep form",
         ];
         foreach ($files as $path => $text) {
             if (!is_dir(dirname($fixture . '/' . $path))) {
@@ -47,7 +50,7 @@ final class FormsInUseTest extends TestCase
         $scanner = new ContentTemplateScanner((string) self::$kirby->root('content'));
 
         $this->assertSame(
-            ['take-part/draft-form', 'take-part/old-form', 'take-part/survey'],
+            ['a/b/c', 'take-part/draft-form', 'take-part/old-form', 'take-part/survey'],
             $scanner->pageIds(['form_builder', 'form_training'])
         );
         $this->assertSame('a/b/c', ContentTemplateScanner::idFor('1_a/_drafts/b/20260101_c'));
@@ -57,7 +60,7 @@ final class FormsInUseTest extends TestCase
     {
         $rows = $this->rows();
 
-        $this->assertSame(['take-part/survey', 'mystery', 'take-part/draft-form', 'take-part/old-form'], array_column($rows, 'id'));
+        $this->assertSame(['take-part/survey', 'mystery', 'take-part/draft-form', 'a/b/c', 'take-part/old-form'], array_column($rows, 'id'));
         $survey = $rows[0];
         $this->assertSame('Spring survey', $survey['title']);
         $this->assertSame('Take part', $survey['where']);
@@ -76,6 +79,16 @@ final class FormsInUseTest extends TestCase
 
         $this->assertSame('Other page with responses (default)', $mystery['kind']);
         $this->assertSame(1, $mystery['responses']);
+    }
+
+    public function testWhereReadsFromTheTopOfTheSiteDown(): void
+    {
+        $this->assertSame('Level A › Level B', $this->row('a/b/c')['where']);
+    }
+
+    public function testADraftInsideAPublishedPageGetsItsResponses(): void
+    {
+        $this->assertSame(3, $this->row('take-part/draft-form')['responses']);
     }
 
     public function testDraftsAndFormsWithoutResponsesAreListed(): void
@@ -98,6 +111,8 @@ final class FormsInUseTest extends TestCase
             static fn(): array => [
                 'take-part/survey' => ['count' => 2, 'last' => '2026-10-01 09:00:00'],
                 'mystery'          => ['count' => 1, 'last' => '2026-09-01 09:00:00'],
+                // A response's form is its parent's id, which leaves out _drafts.
+                'take-part/draft-form' => ['count' => 3, 'last' => '2026-08-01 09:00:00'],
             ],
         );
         return $forms->rows();
