@@ -514,10 +514,13 @@ and a date range. **Refresh** rebuilds the cached result (kept ten minutes).
   has a **Show as table** toggle.
 - **EDI small counts:** for the `edi` type, and for questions in sections saved as
   `edi`, counts from 1 to 4 show as "fewer than 5" (`FormSubmissionAnalyser::SMALL_COUNT`),
-  with their percentages. Where that hides just one count in a question, grid row or
-  scale, the next smallest is hidden too (`suppress()`, secondary suppression), so the
-  hidden one can't be recovered by subtracting the shown counts from "answered by". If
-  it is the only answer given, every count is hidden, so it can't be told which it was. A
+  with their percentages. When any count is hidden, zeros are hidden too, and the
+  smallest shown counts join them until the hidden ones total at least 5 with two of
+  them non-zero (`suppress()`, secondary suppression). That way no count can be
+  recovered from "answered by", e.g. two hidden counts totalling 2 can't be pinned as
+  1 each. Charts draw the hidden answers together as one grey part, so the shown counts
+  keep their true share: a donut out of everyone who answered, and a grid row out of its
+  answers. A
   Likert mean and median are left out when counts are hidden. Comparing two overlapping
   date ranges can still narrow a count down; that's accepted for a view limited to
   admins and editors.
