@@ -1,0 +1,12 @@
+type: fields
+fields:
+  extraSections:
+    type: blocks
+    label: Extra sections
+    fieldsets:
+      - form-section-ref
+      - form-section-inline
+    help: >
+      Questions to add to this form's fixed questions: sections from the Form library,
+      or sections for this form only. A section can be shown only when an earlier extra
+      question has a given answer.

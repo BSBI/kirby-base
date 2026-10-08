@@ -71,13 +71,14 @@ trait PanelFormFixtures
     }
 
     /**
-     * Returns a form page whose formSections blocks field holds the given blocks.
+     * Returns a form page whose sections blocks field holds the given blocks.
      *
      * @param array<int, array<string, mixed>> $sectionBlocks Raw section block data
+     * @param string                           $field         The blocks field's name
      */
-    private function formPage(array $sectionBlocks): Page
+    private function formPage(array $sectionBlocks, string $field = 'formSections'): Page
     {
-        return (new KirbyContentBuilder())->page(['formSections' => Json::encode($sectionBlocks)]);
+        return (new KirbyContentBuilder())->page([$field => Json::encode($sectionBlocks)]);
     }
 
     /**

@@ -102,13 +102,19 @@ function reindexFormsUsingSection(Kirby\Cms\Page $section): void
         return;
     }
     try {
-        $manager = ContentIndexRegistry::get('form_builders');
-        if ($manager === null) {
-            return;
-        }
         $helper = new KirbyInternalHelper();
-        foreach ((new IndexedFormsUsingSection(kirby()))->forms($section) as $form) {
-            $manager->indexPage($form, $helper);
+        $forms = (new IndexedFormsUsingSection(kirby()))->forms($section);
+        foreach (IndexedFormsUsingSection::INDEXES as $index) {
+            $manager = ContentIndexRegistry::get($index);
+            if ($manager === null) {
+                continue;
+            }
+            $templates = $manager->getDefinition()->getTemplates();
+            foreach ($forms as $form) {
+                if (in_array($form->intendedTemplate()->name(), $templates, true)) {
+                    $manager->indexPage($form, $helper);
+                }
+            }
         }
     } catch (Throwable $e) {
         KirbyBaseHelper::writeToLogFile('search-index', 'Failed to re-index forms using section ' . $section->id() . ': ' . $e->getMessage());

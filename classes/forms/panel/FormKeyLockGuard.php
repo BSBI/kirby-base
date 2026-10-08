@@ -9,8 +9,9 @@ use Kirby\Cms\App;
 use Kirby\Cms\Page;
 
 /**
- * Applies key locking to panel saves of panel-built forms and library
- * sections, and lists what is locked for the panel checks.
+ * Applies key locking to panel saves of panel-built forms (and hand-written
+ * forms' extra sections) and library sections, and lists what is locked for
+ * the panel checks.
  *
  * A save is read as the page would be after it (its content with the saved
  * values over it, held in memory) and compared with the page as it is. On a
@@ -29,15 +30,14 @@ final readonly class FormKeyLockGuard
      * @param ResponseKeySource   $responses     Reads the keys stored responses use
      * @param SectionPageResolver $resolver      Finds referenced library sections
      * @param FormsUsingSection   $forms         Finds the forms using a section
-     * @param string[]            $formTemplates Templates of panel-built form pages
-     * @param string              $sectionsField Name of a form's blocks field of sections
+     * @param array<string, string> $sectionsFields Form template => its blocks field of sections
+     *                                              (FormBuilderOptions::sectionsFields())
      */
     public function __construct(
         private ResponseKeySource $responses,
         private SectionPageResolver $resolver,
         private FormsUsingSection $forms,
-        private array $formTemplates = ['form_builder'],
-        private string $sectionsField = 'formSections',
+        private array $sectionsFields = ['form_builder' => 'formSections'],
     ) {
         $this->lock = new FormKeyLock($responses);
     }
@@ -53,7 +53,7 @@ final readonly class FormKeyLockGuard
             new KirbyResponseKeySource(),
             new KirbySectionPageResolver($kirby),
             new IndexedFormsUsingSection($kirby),
-            FormBuilderOptions::builderTemplates($kirby)
+            FormBuilderOptions::sectionsFields($kirby)
         );
     }
 
@@ -71,7 +71,7 @@ final readonly class FormKeyLockGuard
         $template = $page->intendedTemplate()->name();
         if ($template === self::SECTION_TEMPLATE) {
             $changes = $this->sectionChanges($page, self::edited($page, $strings, $languageCode));
-        } elseif (in_array($template, $this->formTemplates, true)) {
+        } elseif (isset($this->sectionsFields[$template])) {
             $changes = $this->formChanges($page, self::edited($page, $strings, $languageCode));
         } else {
             return;
@@ -189,7 +189,8 @@ final readonly class FormKeyLockGuard
     }
 
     /**
-     * Returns a form's questions as stored on submissions.
+     * Returns a form's panel questions as stored on submissions, read from
+     * its template's sections field.
      *
      * @param Page                $form
      * @param SectionPageResolver $resolver
@@ -197,7 +198,8 @@ final readonly class FormKeyLockGuard
      */
     private function columns(Page $form, SectionPageResolver $resolver): array
     {
-        return (new PanelFormDefinition($form, '', $resolver, $this->sectionsField))->getSubmissionColumns();
+        $field = $this->sectionsFields[$form->intendedTemplate()->name()] ?? 'formSections';
+        return (new PanelFormDefinition($form, '', $resolver, $field))->getSubmissionColumns();
     }
 
     /**

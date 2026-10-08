@@ -22,6 +22,9 @@ final class FormKeyLockGuardTest extends TestCase
 
     private const QUESTION_ID = 'aaaaaaaa-0000-4000-8000-000000000001';
 
+    /** A sections-field map with a hand-written feedback form taking extra sections. */
+    private const WITH_FEEDBACK = ['form_builder' => 'formSections', 'form_event_feedback' => 'extraSections'];
+
     public static function setUpBeforeClass(): void
     {
         KirbyTestEnvironment::boot('kirby-base-form-key-lock-guard-' . uniqid());
@@ -123,6 +126,39 @@ final class FormKeyLockGuardTest extends TestCase
         $this->assertInstanceOf(\Kirby\Content\MemoryStorage::class, $edited->storage());
     }
 
+    public function testRenamingAnExtraQuestionOnAHandWrittenFormIsRefused(): void
+    {
+        $form = $this->feedbackForm([$this->inline([$this->textbox('Dietary needs', 'diet')])]);
+        $guard = $this->guard(['feedback' => ['diet']], sectionsFields: self::WITH_FEEDBACK);
+
+        $this->expectException(FormKeyLockedException::class);
+        $this->expectExceptionMessage('"Dietary needs" (field name "diet") is used by responses to "Course feedback"');
+
+        $guard->check($form, ['extraSections' => Json::encode([$this->inline([$this->textbox('Dietary needs', 'diet_needs')])])]);
+    }
+
+    public function testAHandWrittenFormNotInTheMapIsNotChecked(): void
+    {
+        $form = $this->feedbackForm([$this->inline([$this->textbox('Dietary needs', 'diet')])]);
+
+        $this->guard(['feedback' => ['diet']])
+            ->check($form, ['extraSections' => Json::encode([])]);
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testALibrarySectionUsedAsAnExtraSectionIsLocked(): void
+    {
+        $section = $this->section('diet', [$this->textbox('Dietary needs', 'diet')]);
+        $form = $this->feedbackForm([$this->sectionRef('page://diet')]);
+
+        $this->expectException(FormKeyLockedException::class);
+        $this->expectExceptionMessage('used by responses to "Course feedback"');
+
+        $this->guard(['feedback' => ['diet']], ['page://diet' => $section], [$form], self::WITH_FEEDBACK)
+            ->check($section, ['formFields' => Json::encode([$this->textbox('Dietary needs', 'diet_needs')])]);
+    }
+
     public function testRenamingAKeyInALibrarySectionAFormsResponsesUseIsRefused(): void
     {
         $section = $this->section('contact', [$this->textbox('Email', 'email')]);
@@ -203,9 +239,14 @@ final class FormKeyLockGuardTest extends TestCase
      * @param array<string, list<string>> $responses Form id => keys its responses use
      * @param array<string, Page>          $sections  Reference => section page
      * @param list<Page>                   $forms     Forms using any section
+     * @param array<string, string>        $sectionsFields Form template => sections field
      */
-    private function guard(array $responses, array $sections = [], array $forms = []): FormKeyLockGuard
-    {
+    private function guard(
+        array $responses,
+        array $sections = [],
+        array $forms = [],
+        array $sectionsFields = ['form_builder' => 'formSections']
+    ): FormKeyLockGuard {
         $finder = new class ($forms) implements FormsUsingSection {
             /** @param list<Page> $forms */
             public function __construct(private readonly array $forms)
@@ -217,7 +258,21 @@ final class FormKeyLockGuardTest extends TestCase
                 return $this->forms;
             }
         };
-        return new FormKeyLockGuard(new FakeResponseKeySource($responses), $this->resolver($sections), $finder);
+        return new FormKeyLockGuard(new FakeResponseKeySource($responses), $this->resolver($sections), $finder, $sectionsFields);
+    }
+
+    /**
+     * A hand-written feedback form whose extra sections hold the given blocks.
+     *
+     * @param array<int, array<string, mixed>> $sections Raw section block data
+     */
+    private function feedbackForm(array $sections): Page
+    {
+        return Page::factory([
+            'slug'     => 'feedback',
+            'template' => 'form_event_feedback',
+            'content'  => ['title' => 'Course feedback', 'extraSections' => Json::encode($sections)],
+        ]);
     }
 
     /**

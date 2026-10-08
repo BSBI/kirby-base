@@ -11,12 +11,16 @@ use Kirby\Cms\Page;
 use Throwable;
 
 /**
- * Finds the forms that use a library section from the `form_builders`
- * content index, whose `section_ids` column lists every library section a
- * form uses, including the bases its variations extend. No page-tree walk.
+ * Finds the forms that use a library section from the `form_builders` and
+ * `form_extra_sections` content indexes, whose `section_ids` column lists
+ * every library section a form uses, including the bases its variations
+ * extend. No page-tree walk.
  */
 final readonly class IndexedFormsUsingSection implements FormsUsingSection
 {
+    /** Content indexes recording the library sections forms use. */
+    public const INDEXES = ['form_builders', 'form_extra_sections'];
+
     /**
      * @param App $kirby The Kirby app to look the forms up in
      */
@@ -34,10 +38,17 @@ final readonly class IndexedFormsUsingSection implements FormsUsingSection
     public function forms(Page $section): array
     {
         try {
-            $manager = ContentIndexRegistry::get('form_builders');
-            $pageIds = $manager !== null
-                ? $manager->query()->whereContains('section_ids', $section->id())->getPageIds()
-                : [];
+            $pageIds = [];
+            foreach (self::INDEXES as $index) {
+                $manager = ContentIndexRegistry::get($index);
+                if ($manager !== null) {
+                    $pageIds = array_merge(
+                        $pageIds,
+                        $manager->query()->whereContains('section_ids', $section->id())->getPageIds()
+                    );
+                }
+            }
+            $pageIds = array_values(array_unique($pageIds));
         } catch (Throwable $e) {
             KirbyBaseHelper::writeToLogFile('search-index', 'Forms using section: index unavailable: ' . $e->getMessage());
             return [];

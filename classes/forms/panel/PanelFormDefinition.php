@@ -47,12 +47,16 @@ class PanelFormDefinition extends BaseFormDefinition
      * @param string              $formType      Stored on every submission (see getFormType())
      * @param SectionPageResolver $resolver      Finds referenced library sections
      * @param string              $sectionsField Name of the blocks field holding the sections
+     * @param list<string>        $reservedKeys  Keys the form already uses for fixed questions
+     *                                           (extra sections on a hand-written form); a panel
+     *                                           question with one of these keys is left out
      */
     public function __construct(
         private readonly Page $page,
         private readonly string $formType,
         private readonly SectionPageResolver $resolver,
         private readonly string $sectionsField = 'formSections',
+        private readonly array $reservedKeys = [],
     ) {
         $this->problems = new FormProblems();
     }
@@ -315,6 +319,16 @@ class PanelFormDefinition extends BaseFormDefinition
             $this->problems->add(sprintf(
                 '%s: the field name "%s" is not allowed (use letters, digits and underscores, '
                 . 'starting with a letter); the field has been left out.',
+                $sectionName,
+                $field->key
+            ));
+            return false;
+        }
+
+        if (in_array($field->key, $this->reservedKeys, true)) {
+            $this->problems->add(sprintf(
+                '%s: the field name "%s" is a question this form always asks, so it has been left out; '
+                . 'give it a different field name.',
                 $sectionName,
                 $field->key
             ));

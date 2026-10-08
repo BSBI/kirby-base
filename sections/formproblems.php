@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use BSBI\WebBase\forms\FormBuilderOptions;
 use BSBI\WebBase\forms\panel\FormKeyLockGuard;
 use BSBI\WebBase\forms\panel\KirbySectionPageResolver;
 use BSBI\WebBase\forms\panel\PanelFormDefinition;
@@ -9,9 +10,10 @@ use BSBI\WebBase\forms\panel\PanelFormDefinition;
 /**
  * Form Problems Panel Section
  *
- * Lists what had to be left out of a panel-built form (missing library
- * sections, duplicate field names, unusable conditions), so the editor can fix
- * it. Shown on the form page; the live form keeps working meanwhile. Also
+ * Lists what had to be left out of a panel-built form, or of a hand-written
+ * form's extra sections (set `field: extraSections`): missing library
+ * sections, duplicate field names, names that clash with the form's fixed
+ * questions, unusable conditions. So the editor can fix it. Shown on the form page; the live form keeps working meanwhile. Also
  * lists the questions stored responses lock (FormKeyLockGuard).
  *
  * A section rather than an info field: problem messages quote editor text, and
@@ -38,7 +40,13 @@ return [
             if (!$model instanceof \Kirby\Cms\Page) {
                 return [];
             }
-            $definition = new PanelFormDefinition($model, '', new KirbySectionPageResolver(kirby()), $this->field);
+            $definition = new PanelFormDefinition(
+                $model,
+                '',
+                new KirbySectionPageResolver(kirby()),
+                $this->field,
+                FormBuilderOptions::reservedKeysFor($model)
+            );
             return $definition->validate();
         },
 

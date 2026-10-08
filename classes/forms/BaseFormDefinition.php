@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BSBI\WebBase\forms;
 
+use BSBI\WebBase\forms\panel\PanelFormDefinition;
 use Kirby\Cms\Page;
 
 /**
@@ -28,9 +29,19 @@ use Kirby\Cms\Page;
  * For backward compatibility, overriding defineFields() (which returns only
  * FormFieldSpec objects) is still supported; defineForm() delegates to it by
  * default.  New code should override defineForm() directly.
+ *
+ * Editors can add questions to a hand-written form through panel sections
+ * (an `extraSections` blocks field read by a PanelFormDefinition): see
+ * withExtraSections(). They go where extraSectionsAt() says, and every
+ * resolving method (getFields(), getFieldGroups(), getFieldNames()) includes
+ * them. getSubmissionColumns() stays the hand-written form's own; handlers
+ * store the extras using extraSubmissionColumns().
  */
 abstract class BaseFormDefinition
 {
+    /** Panel sections added to this form, if any. */
+    private ?PanelFormDefinition $extraSections = null;
+
     /**
      * Returns the ordered list of FormFieldSpec and/or FormSection objects
      * that make up this form.
@@ -99,6 +110,44 @@ abstract class BaseFormDefinition
     }
 
     /**
+     * Adds editor-defined panel sections to this form, at extraSectionsAt().
+     *
+     * Build the panel definition with this form's getFieldNames() as its
+     * reserved keys, so an extra question can't take a fixed question's key.
+     *
+     * @param PanelFormDefinition $extraSections The panel sections to add
+     * @return static
+     */
+    public function withExtraSections(PanelFormDefinition $extraSections): static
+    {
+        $this->extraSections = $extraSections;
+        return $this;
+    }
+
+    /**
+     * Returns each extra (panel) question's label and export column, keyed by
+     * POST key, or an empty array when the form has no extra sections. A
+     * submission handler stores these keys as a panel-built form does.
+     *
+     * @return array<string, array{label: string, column: string}>
+     */
+    public function extraSubmissionColumns(): array
+    {
+        return $this->extraSections?->getSubmissionColumns() ?? [];
+    }
+
+    /**
+     * Returns where extra sections go: the number of defineForm() items that
+     * come before them. Null (the default) puts them at the end.
+     *
+     * @return int|null
+     */
+    protected function extraSectionsAt(): ?int
+    {
+        return null;
+    }
+
+    /**
      * Resolves all fixed fields against panel-supplied overrides from the given
      * Kirby page and returns an array of ready-to-render ResolvedFormField objects.
      *
@@ -131,7 +180,7 @@ abstract class BaseFormDefinition
     {
         $groups = [];
 
-        foreach ($this->defineForm() as $item) {
+        foreach ($this->formItems() as $item) {
             if ($item instanceof FormSection) {
                 $groups[] = $item->resolve($page, fn(FormFieldSpec $s, Page $p) => $this->resolveSpec($s, $p));
             } else {
@@ -176,7 +225,7 @@ abstract class BaseFormDefinition
     {
         $fields = [];
 
-        foreach ($this->getAllSpecs() as $spec) {
+        foreach ($this->getAllSpecs(false) as $spec) {
             $fields = array_merge($fields, $spec->toBlueprintFields());
         }
 
@@ -186,16 +235,36 @@ abstract class BaseFormDefinition
     // ── Private helpers ─────────────────────────────────────────────────────
 
     /**
-     * Returns a flat list of all FormFieldSpec objects from defineForm(),
+     * Returns defineForm() with any extra sections inserted at extraSectionsAt().
+     *
+     * @param bool $withExtras False for the hand-written items only
+     * @return array<FormFieldSpec|FormSection>
+     */
+    private function formItems(bool $withExtras = true): array
+    {
+        $items = $this->defineForm();
+        if (!$withExtras || $this->extraSections === null) {
+            return $items;
+        }
+
+        $extras = $this->extraSections->defineForm();
+        $at = $this->extraSectionsAt() ?? count($items);
+        array_splice($items, max(0, min($at, count($items))), 0, $extras);
+        return $items;
+    }
+
+    /**
+     * Returns a flat list of all FormFieldSpec objects from formItems(),
      * extracting specs from inside FormSection objects.
      *
+     * @param bool $withExtras False for the hand-written fields only
      * @return FormFieldSpec[]
      */
-    private function getAllSpecs(): array
+    private function getAllSpecs(bool $withExtras = true): array
     {
         $specs = [];
 
-        foreach ($this->defineForm() as $item) {
+        foreach ($this->formItems($withExtras) as $item) {
             if ($item instanceof FormSection) {
                 foreach ($item->getFields() as $spec) {
                     $specs[] = $spec;
