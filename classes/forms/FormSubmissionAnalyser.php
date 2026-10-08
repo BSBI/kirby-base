@@ -13,12 +13,14 @@ namespace BSBI\WebBase\forms;
  * columns are exactly the CSV's, old answers included. Each column's shape
  * comes from the forms' definitions (FormAnalysis); a column with no shape
  * (an old question, or a hand-written form) is inferred: a few distinct
- * answers that repeat make a choice question, anything else free text.
+ * whole numbers from 0 to 10 make a scale, a few distinct answers that
+ * repeat make a choice question, anything else free text.
  *
  * Small counts on EDI questions are hidden: a count from 1 to SMALL_COUNT - 1
  * becomes null, with its percentage, so a small event can't single anyone out.
  * When that hides only one count, the next smallest is hidden too, so it
- * can't be recovered by subtraction from "answered by" (suppress()); a Likert
+ * can't be recovered by subtraction from "answered by", and when it is the
+ * only answer given, every count is hidden (suppress()); a Likert
  * mean and median with counts hidden are left out for the same reason.
  *
  * @phpstan-type Shape array{
@@ -100,6 +102,9 @@ final readonly class FormSubmissionAnalyser
         $given = array_values(array_filter($answers, static fn(array $a): bool => $a['text'] !== ''));
         $shape = $this->shapes[$id] ?? null;
         $inferred = $shape === null;
+        if ($shape === null) {
+            $shape = self::inferredScale($given);
+        }
         if ($shape === null) {
             // A choice question's answers repeat; names and free text mostly don't.
             $distinct = count(array_unique(array_column($given, 'text')));
@@ -230,6 +235,33 @@ final readonly class FormSubmissionAnalyser
     }
 
     /**
+     * Returns a Likert shape for answers that are all whole numbers from 0 to
+     * 10 (an old scale question), or null. The scale starts at 0 if anyone
+     * answered 0, else 1, and runs to at least 5.
+     *
+     * @param list<array{text: string, date: string}> $given
+     * @return Shape|null
+     */
+    private static function inferredScale(array $given): ?array
+    {
+        if (count($given) < 2) {
+            return null;
+        }
+        $values = [];
+        foreach ($given as $answer) {
+            if (preg_match('/^\d{1,2}$/', $answer['text']) !== 1 || (int) $answer['text'] > 10) {
+                return null;
+            }
+            $values[] = (int) $answer['text'];
+        }
+        return [
+            'kind'     => 'likert',
+            'scaleMin' => min($values) === 0 ? 0 : 1,
+            'scaleMax' => max(5, max($values)),
+        ];
+    }
+
+    /**
      * @return array{label: string, count: int|null, percent: int|null}
      */
     private static function counted(string $label, ?int $count, int $of): array
@@ -262,6 +294,10 @@ final readonly class FormSubmissionAnalyser
             }
             if ($partner !== null) {
                 $shown[$partner] = null;
+            } else {
+                // It is the only answer given, so "answered by" is its count:
+                // hide the zeros too, so it can't be told which answer it was.
+                $shown = array_fill(0, count($shown), null);
             }
         }
         return array_values($shown);

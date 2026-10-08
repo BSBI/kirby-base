@@ -667,10 +667,9 @@ panel.plugin('open-foundations/kirby-base', {
           this.fetch(false);
         },
         toggle: function (key) {
-          this.$set ? this.$set(this.open, key, !this.open[key]) : (this.open = Object.assign({}, this.open, { [key]: !this.open[key] }));
+          this.open = Object.assign({}, this.open, { [key]: !this.open[key] });
         },
-        // An id safe to reference as url(#id) in every browser: Safari rejects
-        // a fragment with ":" (column ids are "c:key"), drawing the fill black.
+        // An element id safe in every browser (column ids are "c:key").
         uid: function (name) {
           return 'fa-' + this._uid + '-' + String(name).replace(/[^A-Za-z0-9_-]/g, '-');
         },
@@ -712,9 +711,13 @@ panel.plugin('open-foundations/kirby-base', {
             if (!o.count || total === 0) return;
             const sweep = o.count / total * Math.PI * 2;
             const a0 = angle + gap / 2, a1 = angle + sweep - gap / 2;
+            const mid = angle + sweep / 2, rm = (R + r) / 2;
+            // Its percentage on the slice, where there's room (8% or more).
+            const showLabel = o.count / total >= 0.08 && o.percent !== null;
+            const lx = (cx + rm * Math.cos(mid)).toFixed(2), ly = (cy + rm * Math.sin(mid)).toFixed(2);
             angle += sweep;
             if (sweep >= Math.PI * 2 - 0.0001) {
-              slices.push({ i: i, label: o.label, full: true });
+              slices.push({ i: i, label: o.label, full: true, showLabel: o.percent !== null, lx: cx, ly: cy - rm });
               return;
             }
             const large = a1 - a0 > Math.PI ? 1 : 0;
@@ -722,6 +725,9 @@ panel.plugin('open-foundations/kirby-base', {
             slices.push({
               i: i,
               label: o.label,
+              showLabel: showLabel,
+              lx: lx,
+              ly: ly,
               d: 'M ' + p(R, a0) + ' A ' + R + ' ' + R + ' 0 ' + large + ' 1 ' + p(R, a1) + ' L ' + p(r, a1) + ' A ' + r + ' ' + r + ' 0 ' + large + ' 0 ' + p(r, a0) + ' Z'
             });
           });
@@ -747,10 +753,11 @@ panel.plugin('open-foundations/kirby-base', {
             @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .k-fa { --fa-1:#3987e5; --fa-2:#d95926; --fa-3:#199e70; --fa-4:#c98500; --fa-5:#d55181; --fa-track: var(--color-gray-800, #333); } }
             :root[data-theme="dark"] .k-fa { --fa-1:#3987e5; --fa-2:#d95926; --fa-3:#199e70; --fa-4:#c98500; --fa-5:#d55181; --fa-track: var(--color-gray-800, #333); }
             .k-fa .fa-s1 { background-color: var(--fa-1); }
-            .k-fa .fa-s2 { background-color: var(--fa-2); background-image: repeating-linear-gradient(45deg, rgba(255,255,255,.45) 0 2px, transparent 2px 6px); }
-            .k-fa .fa-s3 { background-color: var(--fa-3); background-image: radial-gradient(rgba(255,255,255,.55) 1.2px, transparent 1.6px); background-size: 5px 5px; }
-            .k-fa .fa-s4 { background-color: var(--fa-4); background-image: repeating-linear-gradient(135deg, rgba(0,0,0,.35) 0 2px, transparent 2px 6px); }
-            .k-fa .fa-s5 { background-color: var(--fa-5); background-image: repeating-linear-gradient(0deg, rgba(255,255,255,.5) 0 2px, transparent 2px 5px); }
+            .k-fa .fa-s2 { background-color: var(--fa-2); }
+            .k-fa .fa-s3 { background-color: var(--fa-3); }
+            .k-fa .fa-s4 { background-color: var(--fa-4); }
+            .k-fa .fa-s5 { background-color: var(--fa-5); }
+            .k-fa .fa-on-mark { color: #111; font-size: 0.7rem; font-weight: 600; line-height: 1rem; text-align: center; overflow: hidden; white-space: nowrap; }
             .k-fa .fa-swatch { display:inline-block; width:0.9rem; height:0.9rem; border-radius:3px; vertical-align:middle; margin-right:0.4rem; }
             .k-fa table.fa-table { border-collapse: collapse; margin-top: 0.5rem; font-size: 0.8rem; }
             .k-fa table.fa-table th, .k-fa table.fa-table td { border-bottom: 1px solid var(--color-border); padding: 0.3rem 0.6rem; text-align: left; }
@@ -814,16 +821,11 @@ panel.plugin('open-foundations/kirby-base', {
               <div v-if="q.chart === 'donut'" style="display:flex; flex-wrap:wrap; gap:1rem 2rem; align-items:center;">
                 <p v-if="q.suppressed && q.answered > 0 && donut(q.options).length === 0" style="font-size:0.8rem; color:var(--fa-muted); max-width:14rem;">No chart: every count is under 5, so the counts are hidden.</p>
                 <svg v-else role="img" :aria-label="summary(q)" viewBox="0 0 120 120" width="140" height="140">
-                  <defs>
-                    <pattern :id="uid(q.id + '-p2')" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)"><rect width="6" height="6" fill="var(--fa-2)"/><rect width="2" height="6" fill="rgba(255,255,255,.45)"/></pattern>
-                    <pattern :id="uid(q.id + '-p3')" patternUnits="userSpaceOnUse" width="5" height="5"><rect width="5" height="5" fill="var(--fa-3)"/><circle cx="2.5" cy="2.5" r="1.2" fill="rgba(255,255,255,.55)"/></pattern>
-                    <pattern :id="uid(q.id + '-p4')" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(135)"><rect width="6" height="6" fill="var(--fa-4)"/><rect width="2" height="6" fill="rgba(0,0,0,.35)"/></pattern>
-                    <pattern :id="uid(q.id + '-p5')" patternUnits="userSpaceOnUse" width="5" height="5"><rect width="5" height="5" fill="var(--fa-5)"/><rect width="5" height="2" fill="rgba(255,255,255,.5)"/></pattern>
-                  </defs>
                   <circle v-if="q.answered === 0 || donut(q.options).length === 0" cx="60" cy="60" r="45" fill="none" stroke="var(--fa-track)" stroke-width="22"/>
                   <template v-for="slice in donut(q.options)">
-                    <circle v-if="slice.full" :key="slice.i" cx="60" cy="60" r="45" fill="none" stroke-width="22" :stroke="slice.i === 0 ? 'var(--fa-1)' : 'url(#' + uid(q.id + '-p' + (slice.i + 1)) + ')'"><title>{{ slice.label }}</title></circle>
-                    <path v-else :key="slice.i" :d="slice.d" :fill="slice.i === 0 ? 'var(--fa-1)' : 'url(#' + uid(q.id + '-p' + (slice.i + 1)) + ')'"><title>{{ slice.label }}: {{ withPercent(q.options[slice.i]) }}</title></path>
+                    <circle v-if="slice.full" :key="'c' + slice.i" cx="60" cy="60" r="45" fill="none" stroke-width="22" :stroke="'var(--fa-' + (slice.i + 1) + ')'"><title>{{ slice.label }}</title></circle>
+                    <path v-else :key="'p' + slice.i" :d="slice.d" :fill="'var(--fa-' + (slice.i + 1) + ')'"><title>{{ slice.label }}: {{ withPercent(q.options[slice.i]) }}</title></path>
+                    <text v-if="slice.showLabel" :key="'t' + slice.i" :x="slice.lx" :y="slice.ly" text-anchor="middle" dominant-baseline="central" font-size="9" font-weight="600" fill="#111" aria-hidden="true">{{ q.options[slice.i].percent }}%</text>
                   </template>
                 </svg>
                 <ul style="list-style:none; padding:0; margin:0; font-size:0.85rem;">
@@ -858,7 +860,9 @@ panel.plugin('open-foundations/kirby-base', {
                   <div v-for="row in q.rows" :key="row.label" style="display:grid; grid-template-columns:minmax(6rem, 14rem) 1fr; gap:0.75rem; align-items:center; font-size:0.85rem; margin:0.3rem 0;">
                     <span>{{ row.label }} <span style="color:var(--fa-muted);">({{ row.answered }})</span></span>
                     <span style="display:flex; gap:2px; height:1rem;">
-                      <span v-for="(n, i) in row.counts" v-if="n" :key="i" :class="'fa-s' + (i % 5 + 1)" :title="q.columns[i] + ': ' + n" :style="{ flex: n + ' 0 0', borderRadius: '3px' }"></span>
+                      <template v-for="(n, i) in row.counts">
+                        <span v-if="n" :key="i" :class="'fa-s' + (i % 5 + 1) + ' fa-on-mark'" :title="q.columns[i] + ': ' + n" :style="{ flex: n + ' 0 0', borderRadius: '3px' }"><span v-if="n / row.answered >= 0.1" aria-hidden="true">{{ n }}</span></span>
+                      </template>
                     </span>
                   </div>
                 </div>

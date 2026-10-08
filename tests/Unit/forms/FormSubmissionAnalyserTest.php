@@ -156,6 +156,21 @@ final class FormSubmissionAnalyserTest extends TestCase
         $this->assertSame('text', $analyser->analyse($this->table($names))['questions'][0]['kind']);
     }
 
+    public function testAnUnshapedColumnOfSmallWholeNumbersIsInferredAsAScale(): void
+    {
+        $responses = [];
+        foreach (['5', '4', '5', '3', '5', '1'] as $score) {
+            $responses[] = ['date' => '2026-01-01 00:00:00', 'items' => [['question' => 'Objectives Comms', 'answer' => $score]]];
+        }
+
+        $question = (new FormSubmissionAnalyser([]))->analyse($this->table($responses))['questions'][0];
+
+        $this->assertSame('likert', $question['kind']);
+        $this->assertTrue($question['inferred']);
+        $this->assertSame([1, 2, 3, 4, 5], array_column($question['points'], 'value'));
+        $this->assertSame([1, 0, 1, 1, 3], array_column($question['points'], 'count'));
+    }
+
     public function testSmallEdiCountsAreHiddenAndOtherQuestionsStayExact(): void
     {
         $analyser = new FormSubmissionAnalyser(
@@ -191,7 +206,9 @@ final class FormSubmissionAnalyserTest extends TestCase
             'nothing small'               => [[10, 7, 0], [10, 7, 0]],
             'two small: no extra needed'  => [[10, 3, 2], [10, null, null]],
             'one small: next smallest too' => [[10, 7, 3, 0], [10, null, null, 0]],
-            'one small, nothing else to hide' => [[3, 0, 0], [null, 0, 0]],
+            // "Answered by 3" would give it away, so which answer it was is hidden too.
+            'the only answer is small'    => [[3, 0, 0], [null, null, null]],
+            'only small answers, one each' => [[0, 2, 0], [null, null, null]],
             'all small'                   => [[1, 4, 2], [null, null, null]],
         ];
     }
