@@ -21,6 +21,7 @@ use BSBI\WebBase\helpers\UnhandledException;
 use BSBI\WebBase\forms\FormBuilderOptions;
 use BSBI\WebBase\forms\FormLibraryPanel;
 use BSBI\WebBase\helpers\FormBuilderIndexDefinition;
+use BSBI\WebBase\helpers\FormExtraSectionsIndexDefinition;
 use BSBI\WebBase\helpers\maintenance\CacheClearTask;
 use BSBI\WebBase\helpers\maintenance\LogRetentionTask;
 use BSBI\WebBase\helpers\maintenance\MaintenancePanel;
@@ -123,6 +124,7 @@ $pluginConfig = [
     'collections' => [
         'formSubmissions' => require __DIR__ . '/collections/formSubmissions.php',
         'formBuilders' => require __DIR__ . '/collections/formBuilders.php',
+        'formExtraSections' => require __DIR__ . '/collections/formExtraSections.php',
     ],
     'siteMethods' => [
         /**
@@ -803,6 +805,15 @@ try {
     ContentIndexRegistry::register(new FormBuilderIndexDefinition(FormBuilderOptions::builderTemplates(kirby())));
 } catch (Throwable $e) {
     error_log('Failed to register form builder content index: ' . $e->getMessage());
+}
+
+// Register the index of library sections used as extra sections on hand-written forms
+try {
+    ContentIndexRegistry::register(
+        new FormExtraSectionsIndexDefinition(FormBuilderOptions::extraSectionsTemplates(kirby()))
+    );
+} catch (Throwable $e) {
+    error_log('Failed to register form extra sections content index: ' . $e->getMessage());
 }
 
 // Register content indexes from site configuration

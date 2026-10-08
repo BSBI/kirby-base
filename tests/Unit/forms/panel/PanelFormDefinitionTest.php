@@ -128,6 +128,24 @@ final class PanelFormDefinitionTest extends TestCase
         $this->assertStringContainsString('"email" is used more than once', $definition->validate()[0]);
     }
 
+    public function testReservedKeyIsDroppedAndReportedAndTheRestKept(): void
+    {
+        $form = $this->formPage([
+            $this->sectionInline([
+                $this->blockData('form-textbox', ['label' => 'Your email', 'name' => 'email']),
+                $this->blockData('form-textarea', ['label' => 'Dietary needs', 'name' => 'diet']),
+            ], title: 'Extras'),
+        ]);
+        $definition = new PanelFormDefinition($form, 't', $this->resolver([]), reservedKeys: ['email', 'first_name']);
+
+        $this->assertSame(['diet'], $definition->getFieldNames());
+        $this->assertSame(['diet'], array_keys($definition->getSubmissionColumns()));
+        $problems = $definition->validate();
+        $this->assertCount(1, $problems);
+        $this->assertStringContainsString('"email"', $problems[0]);
+        $this->assertStringContainsString('always asks', $problems[0]);
+    }
+
     public function testInvalidNameIsDroppedAndReported(): void
     {
         $form = $this->formPage([

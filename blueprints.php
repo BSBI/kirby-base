@@ -76,6 +76,7 @@ return [
 
     //section blueprints
     'sections/corePageFields' => __DIR__ . '/blueprints/sections/corePageFields.yml',
+    'sections/extraSections' => __DIR__ . '/blueprints/sections/extraSections.yml',
     'sections/formFields' => __DIR__ . '/blueprints/sections/formFields.yml',
     'sections/menuFields' => __DIR__ . '/blueprints/sections/menuFields.yml',
     'sections/publicationFields' => __DIR__ . '/blueprints/sections/publicationFields.yml',

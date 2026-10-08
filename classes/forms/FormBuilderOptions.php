@@ -74,15 +74,22 @@ final class FormBuilderOptions
     /**
      * Returns a form page's show-when choices (PanelFormDefinition::
      * conditionChoices()), built once per page per request: the panel asks
-     * once for every section block's select.
+     * once for every section block's select. For a hand-written form with
+     * extra sections, the choices are the extra questions.
      *
-     * @param Page $page A panel-built form page
+     * @param Page $page A panel-built form page, or one with extra sections
      * @return array<string, string>
      */
     public static function conditionChoicesFor(Page $page): array
     {
         return self::$conditionChoices[$page->id()]
-            ??= (new PanelFormDefinition($page, '', new KirbySectionPageResolver($page->kirby())))->conditionChoices();
+            ??= (new PanelFormDefinition(
+                $page,
+                '',
+                new KirbySectionPageResolver($page->kirby()),
+                self::sectionsFieldFor($page),
+                self::reservedKeysFor($page)
+            ))->conditionChoices();
     }
 
     /**
@@ -222,6 +229,82 @@ final class FormBuilderOptions
     {
         $templates = $kirby->option('forms.builderTemplates', ['form_builder']);
         return is_array($templates) ? array_values(array_filter($templates, 'is_string')) : ['form_builder'];
+    }
+
+    /**
+     * Returns the blocks field holding panel sections, by template: every
+     * builder template uses `formSections`, plus the `forms.sectionsFields`
+     * option (template => field) for hand-written forms that take extra
+     * sections (see BaseFormDefinition::withExtraSections()).
+     *
+     * @param App $kirby
+     * @return array<string, string>
+     */
+    public static function sectionsFields(App $kirby): array
+    {
+        return self::sectionsFieldsFrom(self::builderTemplates($kirby), $kirby->option('forms.sectionsFields', []));
+    }
+
+    /**
+     * Builds sectionsFields() from the builder templates and the raw
+     * `forms.sectionsFields` option; entries that aren't template => field
+     * names, or that name a builder template, are ignored.
+     *
+     * @param list<string> $builderTemplates
+     * @param mixed        $configured
+     * @return array<string, string>
+     */
+    public static function sectionsFieldsFrom(array $builderTemplates, mixed $configured): array
+    {
+        $fields = array_fill_keys($builderTemplates, 'formSections');
+        foreach (is_array($configured) ? $configured : [] as $template => $field) {
+            if (is_string($template) && is_string($field) && $field !== '' && !isset($fields[$template])) {
+                $fields[$template] = $field;
+            }
+        }
+        return $fields;
+    }
+
+    /**
+     * Returns the templates of hand-written forms that take extra sections:
+     * those in sectionsFields() that are not builder templates.
+     *
+     * @param App $kirby
+     * @return list<string>
+     */
+    public static function extraSectionsTemplates(App $kirby): array
+    {
+        return array_values(array_diff(array_keys(self::sectionsFields($kirby)), self::builderTemplates($kirby)));
+    }
+
+    /**
+     * Returns the name of the blocks field holding the page's panel sections,
+     * `formSections` for a template not in sectionsFields().
+     *
+     * @param Page $page
+     */
+    public static function sectionsFieldFor(Page $page): string
+    {
+        return self::sectionsFields($page->kirby())[$page->intendedTemplate()->name()] ?? 'formSections';
+    }
+
+    /**
+     * Returns the keys of a hand-written form's fixed questions, which its
+     * extra sections may not use: the `forms.reservedKeys` option, a callable
+     * given the page and returning the keys. Empty without the option, or for
+     * a page it returns nothing for (as for every panel-built form).
+     *
+     * @param Page $page
+     * @return list<string>
+     */
+    public static function reservedKeysFor(Page $page): array
+    {
+        $reader = $page->kirby()->option('forms.reservedKeys');
+        if (!is_callable($reader)) {
+            return [];
+        }
+        $keys = $reader($page);
+        return is_array($keys) ? array_values(array_filter($keys, 'is_string')) : [];
     }
 
     /**
