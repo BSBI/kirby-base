@@ -355,7 +355,22 @@ a "Start from an existing form" field in the page-create dialog. Copying is the 
   the unlisted `form-library` page (template `form_library`) if missing, and renames one
   still titled "Form library". The page has two tabs: **Submissions** (the
   `formsubmissionsindex` section: count, CSV and Long CSV per form type) and **Library**
-  (form types and sections). The site blueprint's `tabs/forms` remains for other sites. The library and its
+  (form types and sections). The site blueprint's `tabs/forms` remains for other sites.
+- **Forms in use** (third tab, `formsinuse` section): every form on the site, with where it
+  is, its kind, form type, status, responses, latest response and content folder, latest
+  responses first, drafts behind a toggle. `FormsInUse` builds it:
+  - **Finding the pages:** it finds pages by **content file name**
+    (`ContentTemplateScanner`), never loading the page tree, for the templates in
+    `FormsInUse::kindsFor()`: builder and extra-sections templates, plus the
+    `forms.inUseTemplates` option (template => kind label). It also lists any other page
+    that has responses, so nothing is missed.
+  - **Responses:** counts and dates come from the `form_submissions` index.
+  - **Caching:** the list is cached for ten minutes, and the tab's Refresh rebuilds it.
+  - **API:** `GET /api/forms/in-use` (`?refresh=1`), for the roles in
+    `forms.libraryRoles`.
+- Looking up a page by id: `findPageOrDraft()` misses a draft inside a published page, so
+  `FormsInUse` and `IndexedFormsUsingSection` fall back to `draft($id)`, which walks
+  both. The library and its
   `form_section` pages render the 404 page on the site, and their blueprints allow only
   admin and editor to change them.
 - The `formproblems` section (`type: formproblems`, optional `field`, default

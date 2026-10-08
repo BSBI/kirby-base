@@ -56,7 +56,8 @@ final readonly class IndexedFormsUsingSection implements FormsUsingSection
 
         $forms = [];
         foreach ($pageIds as $pageId) {
-            $form = $this->kirby->site()->findPageOrDraft($pageId);
+            // findPageOrDraft() misses a draft inside a published page; draft() walks both.
+            $form = $this->kirby->site()->findPageOrDraft($pageId) ?? $this->kirby->site()->draft($pageId);
             if ($form instanceof Page) {
                 $forms[] = $form;
             }
