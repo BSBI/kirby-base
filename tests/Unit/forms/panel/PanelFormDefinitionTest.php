@@ -203,6 +203,133 @@ final class PanelFormDefinitionTest extends TestCase
         return new PanelFormDefinition($form, 'feedback', $this->resolver([]));
     }
 
+    public function testALibrarySectionCanLeaveOutQuestionsOnThisFormOnly(): void
+    {
+        $section = $this->sectionPage([
+            $this->blockData('form-textbox', ['label' => 'Event name', 'name' => 'event_name']),
+            $this->blockData('form-textbox', ['label' => 'Leader', 'name' => 'event_leader']),
+            $this->blockData('form-textarea', ['label' => 'Comments', 'name' => 'comments']),
+        ], legend: 'About the event', slug: 'start');
+        $resolver = $this->resolver(['page://start' => $section]);
+
+        $short = $this->formPage([$this->sectionRefLeavingOut('page://start', 'event_leader, comments')]);
+        $full = $this->formPage([$this->sectionRef('page://start')]);
+
+        $this->assertSame(['event_name'], (new PanelFormDefinition($short, 't', $resolver))->getFieldNames());
+        $this->assertSame([], (new PanelFormDefinition($short, 't', $resolver))->validate());
+        $this->assertSame(['event_name', 'event_leader', 'comments'], (new PanelFormDefinition($full, 't', $resolver))->getFieldNames());
+    }
+
+    public function testLeavingOutAQuestionTheSectionNoLongerHasIsReported(): void
+    {
+        $section = $this->sectionPage([$this->blockData('form-textbox', ['label' => 'Event name', 'name' => 'event_name'])], slug: 'start');
+        $form = $this->formPage([$this->sectionRefLeavingOut('page://start', 'old_question')]);
+
+        $definition = new PanelFormDefinition($form, 't', $this->resolver(['page://start' => $section]));
+
+        $this->assertSame(['event_name'], $definition->getFieldNames());
+        $this->assertStringContainsString('"old_question"', $definition->validate()[0]);
+        $this->assertStringContainsString('isn\'t one of its questions', $definition->validate()[0]);
+    }
+
+    public function testTheLeaveOutChoicesAreEveryLibraryQuestionOnTheForm(): void
+    {
+        $start = $this->sectionPage([
+            $this->blockData('form-textbox', ['label' => 'Event name', 'name' => 'event_name']),
+            $this->blockData('form-info', ['text' => 'Some help']),
+        ], legend: 'About the event', slug: 'start');
+        $form = $this->formPage([
+            $this->sectionRefLeavingOut('page://start', 'event_name, gone'),
+            $this->sectionInline([$this->blockData('form-textbox', ['label' => 'Inline', 'name' => 'inline'])]),
+        ]);
+
+        $choices = (new PanelFormDefinition($form, 't', $this->resolver(['page://start' => $start])))->leaveOutChoices();
+
+        $this->assertSame([
+            'event_name' => 'Event name (About the event)',
+            'gone'       => 'No longer in its section: gone',
+        ], $choices);
+    }
+
+    public function testLeaveOutNamesWithoutSpacesAndBlankEntriesAreRead(): void
+    {
+        $section = $this->sectionPage([
+            $this->blockData('form-textbox', ['label' => 'A', 'name' => 'a']),
+            $this->blockData('form-textbox', ['label' => 'B', 'name' => 'b']),
+            $this->blockData('form-textbox', ['label' => 'C', 'name' => 'c']),
+        ], slug: 's');
+        $form = $this->formPage([$this->sectionRefLeavingOut('page://s', 'a,b, ,')]);
+
+        $this->assertSame(['c'], (new PanelFormDefinition($form, 't', $this->resolver(['page://s' => $section])))->getFieldNames());
+    }
+
+    public function testASectionShownWhenALeftOutQuestionIsAnsweredIsReportedPlainly(): void
+    {
+        $start = $this->sectionPage([
+            $this->blockData('form-radio-group', ['label' => 'Member?', 'name' => 'member', 'options' => "Yes\nNo"]),
+        ], slug: 'start');
+        $form = $this->formPage([
+            $this->sectionRefLeavingOut('page://start', 'member'),
+            $this->sectionInline([$this->blockData('form-textbox', ['label' => 'Member number', 'name' => 'number'])], 'Members', 'member', 'Yes'),
+        ]);
+
+        $problems = (new PanelFormDefinition($form, 't', $this->resolver(['page://start' => $start])))->validate();
+
+        $this->assertCount(1, $problems);
+        $this->assertStringContainsString('"member" is left out on this form', $problems[0]);
+        $this->assertStringContainsString('always shown', $problems[0]);
+    }
+
+    public function testAStaleNameInOneBlockDoesNotMislabelARealQuestionInAnother(): void
+    {
+        $first = $this->sectionPage([$this->blockData('form-textbox', ['label' => 'A', 'name' => 'a'])], legend: 'First', slug: 'first');
+        $second = $this->sectionPage([$this->blockData('form-textbox', ['label' => 'Shared', 'name' => 'shared'])], legend: 'Second', slug: 'second');
+        $form = $this->formPage([
+            $this->sectionRefLeavingOut('page://first', 'shared'),
+            $this->sectionRef('page://second'),
+        ]);
+
+        $choices = (new PanelFormDefinition($form, 't', $this->resolver(['page://first' => $first, 'page://second' => $second])))->leaveOutChoices();
+
+        $this->assertSame('Shared (Second)', $choices['shared']);
+    }
+
+    public function testOnlyUsableFieldNamesAreOfferedToLeaveOut(): void
+    {
+        $section = $this->sectionPage([
+            $this->blockData('form-textbox', ['label' => 'Good', 'name' => 'good']),
+            $this->blockData('form-textbox', ['label' => 'Bad', 'name' => 'a, b']),
+        ], legend: 'S', slug: 's');
+        $form = $this->formPage([$this->sectionRef('page://s')]);
+
+        $choices = (new PanelFormDefinition($form, 't', $this->resolver(['page://s' => $section])))->leaveOutChoices();
+
+        $this->assertSame(['good' => 'Good (S)'], $choices);
+    }
+
+    public function testTheSameSectionTwiceCanLeaveOutQuestionsInOneBlockOnly(): void
+    {
+        $section = $this->sectionPage([
+            $this->blockData('form-textbox', ['label' => 'A', 'name' => 'a']),
+            $this->blockData('form-textbox', ['label' => 'B', 'name' => 'b']),
+        ], slug: 's');
+        $form = $this->formPage([$this->sectionRefLeavingOut('page://s', 'a'), $this->sectionRef('page://s')]);
+
+        // The second copy asks "a"; "b" is only kept once (duplicate keys keep the first).
+        $definition = new PanelFormDefinition($form, 't', $this->resolver(['page://s' => $section]));
+        $this->assertSame(['b', 'a'], $definition->getFieldNames());
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function sectionRefLeavingOut(string $reference, string $leaveOut): array
+    {
+        $block = $this->sectionRef($reference);
+        $block['content']['leaveOut'] = $leaveOut;
+        return $block;
+    }
+
     public function testInvalidNameIsDroppedAndReported(): void
     {
         $form = $this->formPage([

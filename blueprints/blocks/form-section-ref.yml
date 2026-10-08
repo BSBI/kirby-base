@@ -43,3 +43,19 @@ fields:
       Optional. When this section is shown and answered, its answers are also saved
       on their own as a response of the chosen type, so they can be collated across
       forms (e.g. equality questions as "edi"). They stay on this form's response too.
+  leaveOut:
+    type: multiselect
+    label: Leave out these questions
+    options:
+      type: query
+      query: page.formLeaveOutChoices
+      value: "{{ item.key }}"
+      text: "{{ item.value }}"
+    help: >
+      Optional. Questions of this library section that this form doesn't ask; other
+      forms using the section still do. The list shows the questions of every library
+      section on this form, as last saved: pick ones from this block's section (each
+      shows its section in brackets), and save first after choosing a section. A
+      question this form's responses have answered can't be left out (its column would
+      be lost). If the section's question is later renamed, it comes back on this form
+      and the Form check says so.
