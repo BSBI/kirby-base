@@ -610,6 +610,289 @@ panel.plugin('open-foundations/kirby-base', {
       `
     },
 
+    formanalysis: {
+      data: function () {
+        return {
+          headline: 'Analysis',
+          types: [],
+          type: '',
+          form: '',
+          from: '',
+          to: '',
+          result: null,
+          loading: false,
+          status: '',
+          open: {}
+        }
+      },
+      created: async function () {
+        try {
+          const response = await this.load();
+          this.headline = response.headline || this.headline;
+          this.types = response.formTypes || [];
+        } catch (error) {
+          console.error('Failed to load the analysis section:', error);
+        }
+        const asked = new URLSearchParams(window.location.search).get('type');
+        const known = this.types.map(function (t) { return t.type; });
+        this.type = asked && known.indexOf(asked) !== -1 ? asked : (known[0] || '');
+        if (this.type) {
+          this.fetch(false);
+        } else {
+          this.status = 'No responses to analyse yet.';
+        }
+      },
+      methods: {
+        fetch: async function (refresh) {
+          if (!this.type) return;
+          this.loading = true;
+          this.status = 'Loading the analysis…';
+          const query = { type: this.type };
+          if (this.form) query.form = this.form;
+          if (this.from) query.from = this.from;
+          if (this.to) query.to = this.to;
+          if (refresh) query.refresh = '1';
+          try {
+            this.result = await this.$api.get('forms/analysis', query);
+            this.open = {};
+            this.status = 'Showing ' + this.result.total + ' responses of ' + this.type + (this.form ? ', one form' : '') + '.';
+          } catch (error) {
+            this.status = 'The analysis could not be loaded.';
+            console.error('Failed to load the analysis:', error);
+          }
+          this.loading = false;
+        },
+        changeType: function () {
+          this.form = '';
+          this.fetch(false);
+        },
+        toggle: function (key) {
+          this.$set ? this.$set(this.open, key, !this.open[key]) : (this.open = Object.assign({}, this.open, { [key]: !this.open[key] }));
+        },
+        uid: function (name) {
+          return 'fa-' + this._uid + '-' + name;
+        },
+        count: function (value) {
+          return value === null ? 'fewer than 5' : String(value);
+        },
+        withPercent: function (option) {
+          return option.count === null ? 'fewer than 5' : option.count + ' (' + option.percent + '%)';
+        },
+        biggest: function (options) {
+          let best = null;
+          options.forEach(function (o) { if (o.count !== null && (best === null || o.count > best.count)) best = o; });
+          return best;
+        },
+        summary: function (q) {
+          if (q.chart === 'donut' || q.chart === 'bars') {
+            const best = this.biggest(q.options);
+            return q.label + ': ' + q.options.length + ' options' + (best && best.count > 0 ? '; most chosen: ' + best.label + ', ' + best.count + ' of ' + q.answered : '') + '.';
+          }
+          if (q.chart === 'columns') {
+            return q.label + ': answers from ' + q.points[0].value + ' to ' + q.points[q.points.length - 1].value + (q.mean !== null ? '; mean ' + q.mean + ', median ' + q.median : '') + '.';
+          }
+          if (q.chart === 'stacked') {
+            return q.label + ': ' + q.rows.length + ' rows, each answered with one of ' + q.columns.join(', ') + '.';
+          }
+          return q.label;
+        },
+        barWidth: function (option, options) {
+          let max = 0;
+          options.forEach(function (o) { if (o.count !== null && o.count > max) max = o.count; });
+          return option.count === null || max === 0 ? 0 : Math.max(1, Math.round(option.count * 100 / max));
+        },
+        donut: function (options) {
+          const total = options.reduce(function (sum, o) { return sum + (o.count || 0); }, 0);
+          const cx = 60, cy = 60, R = 56, r = 34, gap = options.filter(function (o) { return o.count; }).length > 1 ? 0.03 : 0;
+          let angle = -Math.PI / 2;
+          const slices = [];
+          options.forEach(function (o, i) {
+            if (!o.count || total === 0) return;
+            const sweep = o.count / total * Math.PI * 2;
+            const a0 = angle + gap / 2, a1 = angle + sweep - gap / 2;
+            angle += sweep;
+            if (sweep >= Math.PI * 2 - 0.0001) {
+              slices.push({ i: i, label: o.label, full: true });
+              return;
+            }
+            const large = a1 - a0 > Math.PI ? 1 : 0;
+            const p = function (rad, a) { return (cx + rad * Math.cos(a)).toFixed(2) + ' ' + (cy + rad * Math.sin(a)).toFixed(2); };
+            slices.push({
+              i: i,
+              label: o.label,
+              d: 'M ' + p(R, a0) + ' A ' + R + ' ' + R + ' 0 ' + large + ' 1 ' + p(R, a1) + ' L ' + p(r, a1) + ' A ' + r + ' ' + r + ' 0 ' + large + ' 0 ' + p(r, a0) + ' Z'
+            });
+          });
+          return slices;
+        },
+        columns: function (points) {
+          let max = 0;
+          points.forEach(function (p) { if (p.count !== null && p.count > max) max = p.count; });
+          const width = 36, height = 90;
+          return points.map(function (p, i) {
+            const h = p.count === null || max === 0 ? 0 : Math.max(p.count > 0 ? 2 : 0, Math.round(p.count / max * height));
+            return { x: i * width + 6, w: width - 12, h: h, y: 16 + height - h, label: p.label, value: p.value, count: p.count };
+          });
+        },
+        months: function (perMonth) {
+          return perMonth.map(function (m) { return { label: m.month, value: m.month, count: m.count }; });
+        }
+      },
+      template: `
+        <section class="k-section k-formanalysis-section k-fa">
+          <component is="style">
+            .k-fa { --fa-1:#2a78d6; --fa-2:#eb6834; --fa-3:#1baf7a; --fa-4:#eda100; --fa-5:#e87ba4; --fa-ink: var(--color-text); --fa-muted: var(--color-text-dimmed); --fa-track: var(--color-gray-200, #e5e5e5); --fa-gap: var(--color-background, #fff); }
+            @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .k-fa { --fa-1:#3987e5; --fa-2:#d95926; --fa-3:#199e70; --fa-4:#c98500; --fa-5:#d55181; --fa-track: var(--color-gray-800, #333); } }
+            :root[data-theme="dark"] .k-fa { --fa-1:#3987e5; --fa-2:#d95926; --fa-3:#199e70; --fa-4:#c98500; --fa-5:#d55181; --fa-track: var(--color-gray-800, #333); }
+            .k-fa .fa-s1 { background-color: var(--fa-1); }
+            .k-fa .fa-s2 { background-color: var(--fa-2); background-image: repeating-linear-gradient(45deg, rgba(255,255,255,.45) 0 2px, transparent 2px 6px); }
+            .k-fa .fa-s3 { background-color: var(--fa-3); background-image: radial-gradient(rgba(255,255,255,.55) 1.2px, transparent 1.6px); background-size: 5px 5px; }
+            .k-fa .fa-s4 { background-color: var(--fa-4); background-image: repeating-linear-gradient(135deg, rgba(0,0,0,.35) 0 2px, transparent 2px 6px); }
+            .k-fa .fa-s5 { background-color: var(--fa-5); background-image: repeating-linear-gradient(0deg, rgba(255,255,255,.5) 0 2px, transparent 2px 5px); }
+            .k-fa .fa-swatch { display:inline-block; width:0.9rem; height:0.9rem; border-radius:3px; vertical-align:middle; margin-right:0.4rem; }
+            .k-fa table.fa-table { border-collapse: collapse; margin-top: 0.5rem; font-size: 0.8rem; }
+            .k-fa table.fa-table th, .k-fa table.fa-table td { border-bottom: 1px solid var(--color-border); padding: 0.3rem 0.6rem; text-align: left; }
+            .k-fa table.fa-table td.num { text-align: right; }
+            .k-fa .fa-question { border-top: 1px solid var(--color-border); padding: 1rem 0; }
+            .k-fa .fa-link { background: none; border: none; padding: 0; color: var(--color-text); text-decoration: underline; cursor: pointer; font-size: 0.8rem; }
+          </component>
+
+          <header class="k-section-header" style="display:flex; flex-wrap:wrap; gap:0.75rem 1rem; align-items:flex-end;">
+            <div style="display:flex; flex-direction:column; font-size:0.8rem;">
+              <label :for="uid('type')">Form type</label>
+              <select :id="uid('type')" v-model="type" @change="changeType" style="font-size:0.875rem; padding:0.3rem;">
+                <option v-for="t in types" :key="t.type" :value="t.type">{{ t.type }} ({{ t.count }})</option>
+              </select>
+            </div>
+            <div style="display:flex; flex-direction:column; font-size:0.8rem;">
+              <label :for="uid('form')">Form</label>
+              <select :id="uid('form')" v-model="form" @change="fetch(false)" style="font-size:0.875rem; padding:0.3rem; max-width:22rem;">
+                <option value="">All forms of this type</option>
+                <option v-for="f in (result ? result.forms : [])" :key="f.id" :value="f.id">{{ f.title }}</option>
+              </select>
+            </div>
+            <div style="display:flex; flex-direction:column; font-size:0.8rem;">
+              <label :for="uid('from')">From</label>
+              <input :id="uid('from')" type="date" v-model="from" @change="fetch(false)" style="font-size:0.875rem; padding:0.25rem;">
+            </div>
+            <div style="display:flex; flex-direction:column; font-size:0.8rem;">
+              <label :for="uid('to')">To</label>
+              <input :id="uid('to')" type="date" v-model="to" @change="fetch(false)" style="font-size:0.875rem; padding:0.25rem;">
+            </div>
+            <k-button icon="refresh" variant="filled" size="sm" :disabled="loading || !type" @click="fetch(true)">Refresh</k-button>
+          </header>
+
+          <div role="status" aria-live="polite" style="font-size:0.8rem; color:var(--fa-muted); margin:0.5rem 0;">{{ status }}</div>
+
+          <div v-if="result && result.total > 0">
+            <div class="fa-question" style="border-top:none;">
+              <h2 style="font-size:1rem; font-weight:600;">{{ result.total }} responses<span v-if="result.first">, {{ result.first }} to {{ result.last }}</span></h2>
+              <svg role="img" :aria-label="'Responses per month, ' + result.perMonth.length + ' months'" :viewBox="'0 0 ' + (result.perMonth.length * 36 + 12) + ' 130'" :width="Math.min(result.perMonth.length * 36 + 12, 900)" height="130" style="max-width:100%; display:block; margin-top:0.5rem;">
+                <g v-for="c in columns(months(result.perMonth))" :key="c.value">
+                  <rect :x="c.x" :y="c.y" :width="c.w" :height="c.h" rx="3" fill="var(--fa-1)"><title>{{ c.label }}: {{ c.count }}</title></rect>
+                  <text :x="c.x + c.w / 2" :y="c.y - 3" text-anchor="middle" font-size="9" fill="var(--fa-ink)">{{ c.count }}</text>
+                  <text :x="c.x + c.w / 2" y="122" text-anchor="middle" font-size="8" fill="var(--fa-muted)">{{ c.label.slice(2) }}</text>
+                </g>
+              </svg>
+              <button type="button" class="fa-link" :aria-expanded="open.months ? 'true' : 'false'" @click="toggle('months')">{{ open.months ? 'Hide table' : 'Show as table' }}</button>
+              <table v-if="open.months" class="fa-table">
+                <caption class="visually-hidden">Responses per month</caption>
+                <thead><tr><th scope="col">Month</th><th scope="col">Responses</th></tr></thead>
+                <tbody><tr v-for="m in result.perMonth" :key="m.month"><th scope="row">{{ m.month }}</th><td class="num">{{ m.count }}</td></tr></tbody>
+              </table>
+            </div>
+
+            <div v-for="q in result.questions" :key="q.id" class="fa-question">
+              <h3 style="font-size:0.95rem; font-weight:600;">{{ q.label }}</h3>
+              <p style="font-size:0.8rem; color:var(--fa-muted); margin:0.2rem 0 0.6rem;">
+                Answered by {{ q.answered }} of {{ q.total }}<span v-if="q.multiple"> · more than one answer allowed, so percentages can add up to more than 100</span><span v-if="q.suppressed"> · counts under 5 are hidden, so no one can be singled out</span><span v-if="q.inferred"> · question type guessed from the answers</span>
+              </p>
+
+              <div v-if="q.chart === 'donut'" style="display:flex; flex-wrap:wrap; gap:1rem 2rem; align-items:center;">
+                <p v-if="q.suppressed && q.answered > 0 && donut(q.options).length === 0" style="font-size:0.8rem; color:var(--fa-muted); max-width:14rem;">No chart: every count is under 5, so the counts are hidden.</p>
+                <svg v-else role="img" :aria-label="summary(q)" viewBox="0 0 120 120" width="140" height="140">
+                  <defs>
+                    <pattern :id="uid(q.id + '-p2')" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)"><rect width="6" height="6" fill="var(--fa-2)"/><rect width="2" height="6" fill="rgba(255,255,255,.45)"/></pattern>
+                    <pattern :id="uid(q.id + '-p3')" patternUnits="userSpaceOnUse" width="5" height="5"><rect width="5" height="5" fill="var(--fa-3)"/><circle cx="2.5" cy="2.5" r="1.2" fill="rgba(255,255,255,.55)"/></pattern>
+                    <pattern :id="uid(q.id + '-p4')" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(135)"><rect width="6" height="6" fill="var(--fa-4)"/><rect width="2" height="6" fill="rgba(0,0,0,.35)"/></pattern>
+                    <pattern :id="uid(q.id + '-p5')" patternUnits="userSpaceOnUse" width="5" height="5"><rect width="5" height="5" fill="var(--fa-5)"/><rect width="5" height="2" fill="rgba(255,255,255,.5)"/></pattern>
+                  </defs>
+                  <circle v-if="q.answered === 0 || donut(q.options).length === 0" cx="60" cy="60" r="45" fill="none" stroke="var(--fa-track)" stroke-width="22"/>
+                  <template v-for="slice in donut(q.options)">
+                    <circle v-if="slice.full" :key="slice.i" cx="60" cy="60" r="45" fill="none" stroke-width="22" :stroke="slice.i === 0 ? 'var(--fa-1)' : 'url(#' + uid(q.id + '-p' + (slice.i + 1)) + ')'"><title>{{ slice.label }}</title></circle>
+                    <path v-else :key="slice.i" :d="slice.d" :fill="slice.i === 0 ? 'var(--fa-1)' : 'url(#' + uid(q.id + '-p' + (slice.i + 1)) + ')'"><title>{{ slice.label }}: {{ withPercent(q.options[slice.i]) }}</title></path>
+                  </template>
+                </svg>
+                <ul style="list-style:none; padding:0; margin:0; font-size:0.85rem;">
+                  <li v-for="(o, i) in q.options" :key="o.label" style="margin:0.25rem 0;"><span :class="'fa-swatch fa-s' + (i + 1)" aria-hidden="true"></span>{{ o.label }}: <strong>{{ withPercent(o) }}</strong></li>
+                </ul>
+              </div>
+
+              <div v-else-if="q.chart === 'bars'" role="img" :aria-label="summary(q)">
+                <div v-for="o in q.options" :key="o.label" :title="o.label + ': ' + withPercent(o)" style="display:grid; grid-template-columns:minmax(6rem, 14rem) 1fr auto; gap:0.75rem; align-items:center; font-size:0.85rem; margin:0.3rem 0;">
+                  <span>{{ o.label }}</span>
+                  <span style="display:block; height:0.9rem;"><span v-if="o.count" class="fa-s1" :style="{ display: 'block', height: '100%', width: barWidth(o, q.options) + '%', borderRadius: '0 4px 4px 0' }"></span></span>
+                  <span style="white-space:nowrap;">{{ withPercent(o) }}</span>
+                </div>
+              </div>
+
+              <div v-else-if="q.chart === 'columns'">
+                <svg role="img" :aria-label="summary(q)" :viewBox="'0 0 ' + (q.points.length * 36 + 12) + ' 130'" :width="q.points.length * 36 + 12" height="130" style="max-width:100%; display:block;">
+                  <g v-for="c in columns(q.points)" :key="c.value">
+                    <rect :x="c.x" :y="c.y" :width="c.w" :height="c.h" rx="3" fill="var(--fa-1)"><title>{{ c.value }}: {{ count(c.count) }}</title></rect>
+                    <text :x="c.x + c.w / 2" :y="c.y - 3" text-anchor="middle" font-size="9" fill="var(--fa-ink)">{{ c.count === null ? '<5' : c.count }}</text>
+                    <text :x="c.x + c.w / 2" y="122" text-anchor="middle" font-size="9" fill="var(--fa-muted)">{{ c.value }}</text>
+                  </g>
+                </svg>
+                <p style="font-size:0.8rem; color:var(--fa-muted);"><span v-if="q.leftLabel">{{ q.points[0].value }} = {{ q.leftLabel }}</span><span v-if="q.rightLabel"> · {{ q.points[q.points.length - 1].value }} = {{ q.rightLabel }}</span><span v-if="q.mean !== null"> · mean {{ q.mean }} · median {{ q.median }}</span></p>
+              </div>
+
+              <div v-else-if="q.chart === 'stacked'">
+                <ul style="list-style:none; padding:0; margin:0 0 0.5rem; display:flex; flex-wrap:wrap; gap:0.25rem 1rem; font-size:0.8rem;">
+                  <li v-for="(c, i) in q.columns" :key="c"><span :class="'fa-swatch fa-s' + (i % 5 + 1)" aria-hidden="true"></span>{{ c }}</li>
+                </ul>
+                <div role="img" :aria-label="summary(q)">
+                  <div v-for="row in q.rows" :key="row.label" style="display:grid; grid-template-columns:minmax(6rem, 14rem) 1fr; gap:0.75rem; align-items:center; font-size:0.85rem; margin:0.3rem 0;">
+                    <span>{{ row.label }} <span style="color:var(--fa-muted);">({{ row.answered }})</span></span>
+                    <span style="display:flex; gap:2px; height:1rem;">
+                      <span v-for="(n, i) in row.counts" v-if="n" :key="i" :class="'fa-s' + (i % 5 + 1)" :title="q.columns[i] + ': ' + n" :style="{ flex: n + ' 0 0', borderRadius: '3px' }"></span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div v-else>
+                <button v-if="q.answered > 0" type="button" class="fa-link" :aria-expanded="open[q.id + '-answers'] ? 'true' : 'false'" @click="toggle(q.id + '-answers')">{{ open[q.id + '-answers'] ? 'Hide answers' : 'Show answers (' + q.answered + ')' }}</button>
+                <ul v-if="open[q.id + '-answers']" style="font-size:0.85rem; padding-left:1.1rem; margin-top:0.4rem;">
+                  <li v-for="(a, i) in q.answers" :key="i" style="margin:0.25rem 0;">{{ a.text }} <span style="color:var(--fa-muted);">({{ a.date }})</span></li>
+                </ul>
+              </div>
+
+              <template v-if="q.chart !== 'list'">
+                <button type="button" class="fa-link" :aria-expanded="open[q.id] ? 'true' : 'false'" @click="toggle(q.id)">{{ open[q.id] ? 'Hide table' : 'Show as table' }}</button>
+                <table v-if="open[q.id] && q.options" class="fa-table">
+                  <caption class="visually-hidden">{{ q.label }}</caption>
+                  <thead><tr><th scope="col">Answer</th><th scope="col">Count</th><th scope="col">Percent</th></tr></thead>
+                  <tbody><tr v-for="o in q.options" :key="o.label"><th scope="row">{{ o.label }}</th><td class="num">{{ count(o.count) }}</td><td class="num">{{ o.percent === null ? '' : o.percent + '%' }}</td></tr></tbody>
+                </table>
+                <table v-if="open[q.id] && q.points" class="fa-table">
+                  <caption class="visually-hidden">{{ q.label }}</caption>
+                  <thead><tr><th scope="col">Answer</th><th scope="col">Count</th><th scope="col">Percent</th></tr></thead>
+                  <tbody><tr v-for="p in q.points" :key="p.value"><th scope="row">{{ p.value }}</th><td class="num">{{ count(p.count) }}</td><td class="num">{{ p.percent === null ? '' : p.percent + '%' }}</td></tr></tbody>
+                </table>
+                <table v-if="open[q.id] && q.rows" class="fa-table">
+                  <caption class="visually-hidden">{{ q.label }}</caption>
+                  <thead><tr><th scope="col">Row</th><th v-for="c in q.columns" :key="c" scope="col">{{ c }}</th></tr></thead>
+                  <tbody><tr v-for="row in q.rows" :key="row.label"><th scope="row">{{ row.label }}</th><td v-for="(n, i) in row.counts" :key="i" class="num">{{ count(n) }}</td></tr></tbody>
+                </table>
+              </template>
+            </div>
+          </div>
+          <k-empty v-else-if="result && !loading" icon="chart">No responses match.</k-empty>
+        </section>
+      `
+    },
+
     formsinuse: {
       data: function () {
         return {
@@ -723,6 +1006,19 @@ panel.plugin('open-foundations/kirby-base', {
           exportAllLongUrl: ''
         }
       },
+      computed: {
+        // The Analysis tab exists only on the Forms page (form-library), not
+        // where other sites show this section on their dashboards.
+        onFormsPage: function () {
+          return /\/pages\/form-library\/?$/.test(window.location.pathname);
+        }
+      },
+      methods: {
+        // The Forms page's Analysis tab, opened on this form type.
+        analysisUrl: function (formType) {
+          return window.location.pathname + '?tab=analysis&type=' + encodeURIComponent(formType);
+        }
+      },
       created: async function() {
         try {
           const response = await this.load();
@@ -768,6 +1064,12 @@ panel.plugin('open-foundations/kirby-base', {
                       :aria-label="'Long CSV (one row per answer) for ' + row.formType"
                       style="font-size: 0.8rem; color: var(--color-blue-500, #2563eb); text-decoration: none; white-space: nowrap; margin-left: 0.75rem;"
                     >&#8595; Long CSV</a>
+                    <a
+                      v-if="onFormsPage"
+                      :href="analysisUrl(row.formType)"
+                      :aria-label="'Analyse ' + row.formType"
+                      style="font-size: 0.8rem; color: var(--color-blue-500, #2563eb); text-decoration: none; white-space: nowrap; margin-left: 0.75rem;"
+                    >Analyse</a>
                   </td>
                 </tr>
               </tbody>

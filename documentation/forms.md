@@ -484,3 +484,36 @@ from the seed and key, so converting twice gives the same ids.
 The `customFormElements` field (`sections/formFields`) still works, but panel-built forms
 and extra sections replace it. bsbi-web has moved off it; it stays for other sites.
 
+## Analysis (Forms page)
+
+The Forms page's **Analysis** tab charts one form type's responses: the number and dates
+of responses with a per-month column chart, then one block per question. Each
+Submissions row has an **Analyse** link to it. Filters: form type, one form of that type,
+and a date range. **Refresh** rebuilds the cached result (kept ten minutes).
+
+- **Columns** are the exporter's (`FormSubmissionExporter::table()`), so the analysis and
+  the CSV always agree, old answers included.
+- **Question shapes** come from the panel-built forms of that type (the `form_builders`
+  index), and from forms whose "also save as" sections save that type
+  (`PanelFormDefinition::copySectionKeys()`). A column with no shape (an old question, or
+  a hand-written form such as AGM voting) is inferred: at most 12 distinct answers, each
+  given twice on average, makes a choice question; anything else is free text.
+- **Charts** are inline SVG and HTML, with no library. The palette is the dataviz
+  reference palette, validated against the panel's light and dark surfaces:
+  - single choice with up to 5 options: a donut with a legend; slices carry patterns as
+    well as colour
+  - more options, and checkboxes: bars
+  - Likert: columns, with the mean and median
+  - rating grids: stacked bars
+  - free text and dates: the answers behind **Show answers**
+
+  Every chart has a text summary (`role="img"`), and every chart but the free-text lists
+  has a **Show as table** toggle.
+- **EDI small counts:** for the `edi` type, and for questions in sections saved as
+  `edi`, counts from 1 to 4 show as "fewer than 5" (`FormSubmissionAnalyser::SMALL_COUNT`),
+  with their percentages. The response total and "answered by" are not hidden.
+- `FormSubmissionAnalyser` is pure and tested without Kirby. `FormAnalysis` gathers the
+  responses through the `form_submissions` index (no page-tree walk) and applies the
+  filters. API: `GET /api/forms/analysis?type=&form=&from=&to=` (`refresh=1`), for the
+  roles in `forms.libraryRoles`.
+

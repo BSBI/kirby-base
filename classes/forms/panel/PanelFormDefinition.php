@@ -146,6 +146,22 @@ class PanelFormDefinition extends BaseFormDefinition
     }
 
     /**
+     * Returns the sections marked "also save as": form type => their question
+     * keys, whether or not a submission shows them.
+     *
+     * @return array<string, list<string>>
+     */
+    public function copySectionKeys(): array
+    {
+        $this->build();
+        $keys = [];
+        foreach ($this->copySections as $section) {
+            $keys[$section['type']] = array_values(array_unique(array_merge($keys[$section['type']] ?? [], $section['keys'])));
+        }
+        return $keys;
+    }
+
+    /**
      * Returns the ids of the library sections the form uses, including every
      * base section their variations extend, in first-use order.
      *
