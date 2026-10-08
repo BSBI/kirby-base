@@ -110,6 +110,19 @@ abstract class BaseFormDefinition
     }
 
     /**
+     * Returns the separate responses a submission also makes: form type =>
+     * the keys whose answers it holds. None for a hand-written form; a panel
+     * section can ask for one (PanelFormDefinition).
+     *
+     * @param array<mixed> $postData The submitted data
+     * @return array<string, list<string>>
+     */
+    public function separateCopies(array $postData): array
+    {
+        return [];
+    }
+
+    /**
      * Adds editor-defined panel sections to this form, at extraSectionsAt().
      *
      * Build the panel definition with this form's getFieldNames() as its

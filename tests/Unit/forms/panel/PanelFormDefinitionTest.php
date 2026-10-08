@@ -146,6 +146,63 @@ final class PanelFormDefinitionTest extends TestCase
         $this->assertStringContainsString('always asks', $problems[0]);
     }
 
+    public function testASectionMarkedAlsoSaveAsIsCopiedWhenShownAndAnswered(): void
+    {
+        $definition = $this->formWithEdiCopy();
+
+        $this->assertSame(
+            ['edi' => ['gender', 'age']],
+            $definition->separateCopies(['edi_optin' => 'Yes', 'gender' => 'Woman', 'age' => ''])
+        );
+    }
+
+    public function testAHiddenOrUnansweredCopySectionIsNotCopied(): void
+    {
+        $definition = $this->formWithEdiCopy();
+
+        $this->assertSame([], $definition->separateCopies(['edi_optin' => 'No', 'gender' => 'Woman']));
+        $this->assertSame([], $definition->separateCopies(['edi_optin' => 'Yes', 'gender' => '', 'age' => []]));
+    }
+
+    public function testTheCopyTypeIsStoredInLowerSnakeCase(): void
+    {
+        $form = $this->formPage([
+            $this->blockData('form-section-inline', [
+                'title'      => 'Equality',
+                'formFields' => \Kirby\Data\Json::encode([$this->blockData('form-textbox', ['label' => 'Gender', 'name' => 'gender'])]),
+                'alsoSaveAs' => 'EDI Survey',
+            ]),
+        ]);
+
+        $copies = (new PanelFormDefinition($form, 't', $this->resolver([])))->separateCopies(['gender' => 'Man']);
+
+        $this->assertSame(['edi_survey' => ['gender']], $copies);
+    }
+
+    public function testAHandWrittenFormHasNoSeparateCopies(): void
+    {
+        $this->assertSame([], $this->handWritten([FormFieldSpec::textbox('a', 'A')])->separateCopies(['a' => 'x']));
+    }
+
+    private function formWithEdiCopy(): PanelFormDefinition
+    {
+        $form = $this->formPage([
+            $this->sectionInline([
+                $this->blockData('form-radio-group', ['label' => 'Answer EDI questions?', 'name' => 'edi_optin', 'options' => "Yes\nNo"]),
+            ], title: 'Opt in'),
+            $this->blockData('form-section-inline', [
+                'title'      => 'Equality',
+                'formFields' => \Kirby\Data\Json::encode([
+                    $this->blockData('form-radio-group', ['label' => 'Gender', 'name' => 'gender', 'options' => "Woman\nMan"]),
+                    $this->blockData('form-textbox', ['label' => 'Age', 'name' => 'age']),
+                ]),
+                'showWhen'   => 'edi_optin:Yes',
+                'alsoSaveAs' => 'edi',
+            ]),
+        ]);
+        return new PanelFormDefinition($form, 'feedback', $this->resolver([]));
+    }
+
     public function testInvalidNameIsDroppedAndReported(): void
     {
         $form = $this->formPage([
