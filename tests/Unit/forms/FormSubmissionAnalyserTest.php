@@ -172,12 +172,58 @@ final class FormSubmissionAnalyserTest extends TestCase
         $enjoyed = $this->find($result, 'c:enjoyed');
 
         $this->assertTrue($gender['suppressed']);
-        $this->assertSame(['label' => 'Woman', 'count' => 6, 'percent' => 75], $gender['options'][0]);
+        // "Man" (2) is hidden; with only one count hidden, "answered by 8" minus the
+        // others would reveal it, so the next smallest ("Woman", 6) is hidden too.
+        $this->assertSame(['label' => 'Woman', 'count' => null, 'percent' => null], $gender['options'][0]);
         $this->assertSame(['label' => 'Man', 'count' => null, 'percent' => null], $gender['options'][1]);
         $this->assertSame(['label' => 'Prefer not to say', 'count' => 0, 'percent' => 0], $gender['options'][2]);
         $this->assertSame(8, $gender['answered'], 'answered is not suppressed');
         $this->assertFalse($enjoyed['suppressed']);
         $this->assertSame(1, $enjoyed['options'][2]['count']);
+    }
+
+    /**
+     * @return array<string, array{list<int>, list<int|null>}>
+     */
+    public static function suppressionCases(): array
+    {
+        return [
+            'nothing small'               => [[10, 7, 0], [10, 7, 0]],
+            'two small: no extra needed'  => [[10, 3, 2], [10, null, null]],
+            'one small: next smallest too' => [[10, 7, 3, 0], [10, null, null, 0]],
+            'one small, nothing else to hide' => [[3, 0, 0], [null, 0, 0]],
+            'all small'                   => [[1, 4, 2], [null, null, null]],
+        ];
+    }
+
+    /**
+     * @param list<int>      $counts
+     * @param list<int|null> $shown
+     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('suppressionCases')]
+    public function testOneHiddenCountIsNeverLeftToBeWorkedOutBySubtraction(array $counts, array $shown): void
+    {
+        $this->assertSame($shown, FormSubmissionAnalyser::suppress($counts));
+    }
+
+    public function testAHiddenGridRowAndLikertKeepTheSameProtection(): void
+    {
+        $analyser = new FormSubmissionAnalyser(self::SHAPES, [], true);
+        $responses = [];
+        foreach (['0', '0', '0', '0', '0', '0', '2', '2'] as $i => $skill) {
+            $responses[] = $this->response('2026-01-01 00:00:00', [
+                'skill'  => $skill,
+                'rating' => $i < 7 ? 'venue: Good' : 'venue: Poor, sadly',
+            ]);
+        }
+
+        $result = $analyser->analyse($this->table($responses));
+        $skill = $this->find($result, 'c:skill');
+
+        $this->assertSame([null, 0, null, 0, 0], array_column($skill['points'], 'count'));
+        $this->assertNull($skill['mean']);
+        $this->assertNull($skill['median']);
+        $this->assertSame([null, null], $this->find($result, 'c:rating')['rows'][0]['counts']);
     }
 
     public function testEveryQuestionIsSmallCountSuppressedForTheEdiType(): void

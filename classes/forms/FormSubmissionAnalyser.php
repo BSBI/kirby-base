@@ -17,6 +17,9 @@ namespace BSBI\WebBase\forms;
  *
  * Small counts on EDI questions are hidden: a count from 1 to SMALL_COUNT - 1
  * becomes null, with its percentage, so a small event can't single anyone out.
+ * When that hides only one count, the next smallest is hidden too, so it
+ * can't be recovered by subtraction from "answered by" (suppress()); a Likert
+ * mean and median with counts hidden are left out for the same reason.
  *
  * @phpstan-type Shape array{
  *     kind: string,
@@ -140,9 +143,10 @@ final readonly class FormSubmissionAnalyser
             }
         }
 
+        $shown = $suppressed ? self::suppress(array_values($counts)) : array_values($counts);
         $options = [];
-        foreach ($counts as $option => $count) {
-            $options[] = $this->counted((string) $option, $count, count($given), $suppressed);
+        foreach (array_keys($counts) as $i => $option) {
+            $options[] = self::counted((string) $option, $shown[$i], count($given));
         }
         $chart = !$multiple && count($options) <= self::DONUT_MAX_OPTIONS ? 'donut' : 'bars';
 
@@ -173,19 +177,20 @@ final readonly class FormSubmissionAnalyser
             ? (float) $values[$middle]
             : ($values[$middle - 1] + $values[$middle]) / 2);
 
+        $shown = $suppressed ? self::suppress(array_values($counts)) : array_values($counts);
         $points = [];
-        foreach ($counts as $value => $count) {
-            $points[] = ['value' => (int) $value] + $this->counted((string) $value, $count, $n, $suppressed);
+        foreach (array_keys($counts) as $i => $value) {
+            $point = self::counted((string) $value, $shown[$i], $n);
+            $points[] = ['value' => (int) $value, 'count' => $point['count'], 'percent' => $point['percent']];
         }
-        foreach ($points as $i => $point) {
-            unset($points[$i]['label']);
-        }
+        // A mean or median with counts hidden would help work them out.
+        $hidden = in_array(null, $shown, true);
 
         return [
             'chart'      => 'columns',
             'points'     => $points,
-            'mean'       => $n === 0 ? null : round(array_sum($values) / $n, 1),
-            'median'     => $median,
+            'mean'       => $n === 0 || $hidden ? null : round(array_sum($values) / $n, 1),
+            'median'     => $hidden ? null : $median,
             'leftLabel'  => $shape['leftLabel'] ?? '',
             'rightLabel' => $shape['rightLabel'] ?? '',
         ];
@@ -217,7 +222,7 @@ final readonly class FormSubmissionAnalyser
             $answered = array_sum($counts[$rowKey]);
             $out[] = [
                 'label'    => $rowLabel,
-                'counts'   => array_map(fn(int $c): ?int => $this->hide($c, $suppressed), array_values($counts[$rowKey])),
+                'counts'   => $suppressed ? self::suppress(array_values($counts[$rowKey])) : array_values($counts[$rowKey]),
                 'answered' => $answered,
             ];
         }
@@ -227,19 +232,39 @@ final readonly class FormSubmissionAnalyser
     /**
      * @return array{label: string, count: int|null, percent: int|null}
      */
-    private function counted(string $label, int $count, int $of, bool $suppressed): array
+    private static function counted(string $label, ?int $count, int $of): array
     {
-        $shown = $this->hide($count, $suppressed);
         return [
             'label'   => $label,
-            'count'   => $shown,
-            'percent' => $shown === null ? null : ($of === 0 ? 0 : (int) round($count * 100 / $of)),
+            'count'   => $count,
+            'percent' => $count === null ? null : ($of === 0 ? 0 : (int) round($count * 100 / $of)),
         ];
     }
 
-    private function hide(int $count, bool $suppressed): ?int
+    /**
+     * Returns the counts with small ones hidden (null): every count from 1 to
+     * SMALL_COUNT - 1, and, when that hides exactly one, the smallest other
+     * non-zero count too, so the hidden one can't be worked out by subtracting
+     * the shown counts from the total (secondary suppression).
+     *
+     * @param list<int> $counts
+     * @return list<int|null>
+     */
+    public static function suppress(array $counts): array
     {
-        return $suppressed && $count > 0 && $count < self::SMALL_COUNT ? null : $count;
+        $shown = array_map(static fn(int $c): ?int => $c > 0 && $c < self::SMALL_COUNT ? null : $c, $counts);
+        if (count(array_filter($shown, static fn(?int $c): bool => $c === null)) === 1) {
+            $partner = null;
+            foreach ($shown as $i => $c) {
+                if ($c !== null && $c > 0 && ($partner === null || $c < $shown[$partner])) {
+                    $partner = $i;
+                }
+            }
+            if ($partner !== null) {
+                $shown[$partner] = null;
+            }
+        }
+        return array_values($shown);
     }
 
     /**

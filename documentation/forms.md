@@ -511,7 +511,12 @@ and a date range. **Refresh** rebuilds the cached result (kept ten minutes).
   has a **Show as table** toggle.
 - **EDI small counts:** for the `edi` type, and for questions in sections saved as
   `edi`, counts from 1 to 4 show as "fewer than 5" (`FormSubmissionAnalyser::SMALL_COUNT`),
-  with their percentages. The response total and "answered by" are not hidden.
+  with their percentages. Where that hides just one count in a question, grid row or
+  scale, the next smallest is hidden too (`suppress()`, secondary suppression), so the
+  hidden one can't be recovered by subtracting the shown counts from "answered by". A
+  Likert mean and median are left out when counts are hidden. Comparing two overlapping
+  date ranges can still narrow a count down; that's accepted for a view limited to
+  admins and editors.
 - `FormSubmissionAnalyser` is pure and tested without Kirby. `FormAnalysis` gathers the
   responses through the `form_submissions` index (no page-tree walk) and applies the
   filters. API: `GET /api/forms/analysis?type=&form=&from=&to=` (`refresh=1`), for the

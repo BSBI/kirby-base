@@ -808,7 +808,7 @@ panel.plugin('open-foundations/kirby-base', {
             <div v-for="q in result.questions" :key="q.id" class="fa-question">
               <h3 style="font-size:0.95rem; font-weight:600;">{{ q.label }}</h3>
               <p style="font-size:0.8rem; color:var(--fa-muted); margin:0.2rem 0 0.6rem;">
-                Answered by {{ q.answered }} of {{ q.total }}<span v-if="q.multiple"> · more than one answer allowed, so percentages can add up to more than 100</span><span v-if="q.suppressed"> · counts under 5 are hidden, so no one can be singled out</span><span v-if="q.inferred"> · question type guessed from the answers</span>
+                Answered by {{ q.answered }} of {{ q.total }}<span v-if="q.multiple"> · more than one answer allowed, so percentages can add up to more than 100</span><span v-if="q.suppressed"> · counts under 5 are hidden, so no one can be singled out (where only one would be, the next smallest is hidden too, so it can't be worked out)</span><span v-if="q.inferred"> · question type guessed from the answers</span>
               </p>
 
               <div v-if="q.chart === 'donut'" style="display:flex; flex-wrap:wrap; gap:1rem 2rem; align-items:center;">
