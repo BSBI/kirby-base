@@ -24,6 +24,13 @@ tabs:
       formSubmissionsIndex:
         type: formsubmissionsindex
         headline: Submissions by form type
+  inUse:
+    label: Forms in use
+    icon: list-bullet
+    sections:
+      formsInUse:
+        type: formsinuse
+        headline: Forms in use
   library:
     label: Library
     icon: layers

@@ -610,6 +610,109 @@ panel.plugin('open-foundations/kirby-base', {
       `
     },
 
+    formsinuse: {
+      data: function () {
+        return {
+          headline: 'Forms in use',
+          rows: [],
+          builtAt: '',
+          showDrafts: false,
+          loading: true,
+          status: ''
+        }
+      },
+      computed: {
+        shown: function () {
+          return this.showDrafts ? this.rows : this.rows.filter(function (row) { return row.status !== 'draft'; });
+        },
+        draftCount: function () {
+          return this.rows.filter(function (row) { return row.status === 'draft'; }).length;
+        }
+      },
+      created: async function () {
+        try {
+          const response = await this.load();
+          this.headline = response.headline || this.headline;
+        } catch (error) {
+          console.error('Failed to load the forms in use section:', error);
+        }
+        this.fetchRows(false);
+      },
+      methods: {
+        fetchRows: async function (refresh) {
+          this.loading = true;
+          this.status = refresh ? 'Refreshing the list of forms…' : 'Loading the list of forms…';
+          try {
+            const list = await this.$api.get('forms/in-use', refresh ? { refresh: '1' } : {});
+            this.rows = list.rows || [];
+            this.builtAt = list.builtAt || '';
+            this.status = 'Showing ' + this.shown.length + ' forms.';
+          } catch (error) {
+            this.status = 'The list of forms could not be loaded.';
+            console.error('Failed to load the forms in use:', error);
+          }
+          this.loading = false;
+        }
+      },
+      watch: {
+        showDrafts: function () {
+          this.status = 'Showing ' + this.shown.length + ' forms.';
+        }
+      },
+      template: `
+        <section class="k-section k-formsinuse-section">
+          <header class="k-section-header" style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+            <h2 class="k-headline">{{ headline }}</h2>
+            <label style="display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.875rem;">
+              <input type="checkbox" v-model="showDrafts">
+              Show drafts ({{ draftCount }})
+            </label>
+            <k-button icon="refresh" variant="filled" size="sm" :disabled="loading" @click="fetchRows(true)">Refresh</k-button>
+          </header>
+
+          <div role="status" aria-live="polite" style="font-size: 0.8rem; color: var(--color-text-dimmed); margin: 0.25rem 0 0.75rem;">
+            {{ status }}<span v-if="builtAt && !loading"> List made {{ builtAt }}; it is kept for ten minutes unless refreshed.</span>
+          </div>
+
+          <div v-if="shown.length > 0" style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse;">
+              <caption style="text-align: left; font-size: 0.8rem; color: var(--color-text-dimmed); padding-bottom: 0.5rem;">
+                Every form on the site, those with the latest responses first. The content folder is the form's folder under site/content.
+              </caption>
+              <thead>
+                <tr style="border-bottom: 2px solid var(--color-border);">
+                  <th scope="col" style="text-align: left; padding: 0.5rem; font-size: 0.75rem;">Form</th>
+                  <th scope="col" style="text-align: left; padding: 0.5rem; font-size: 0.75rem;">Where</th>
+                  <th scope="col" style="text-align: left; padding: 0.5rem; font-size: 0.75rem;">Kind</th>
+                  <th scope="col" style="text-align: left; padding: 0.5rem; font-size: 0.75rem;">Form type</th>
+                  <th scope="col" style="text-align: left; padding: 0.5rem; font-size: 0.75rem;">Status</th>
+                  <th scope="col" style="text-align: right; padding: 0.5rem; font-size: 0.75rem;">Responses</th>
+                  <th scope="col" style="text-align: left; padding: 0.5rem; font-size: 0.75rem;">Last response</th>
+                  <th scope="col" style="text-align: left; padding: 0.5rem; font-size: 0.75rem;">Content folder</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="row in shown" :key="row.id" style="border-bottom: 1px solid var(--color-border);">
+                  <th scope="row" style="text-align: left; padding: 0.5rem; font-size: 0.875rem; font-weight: 500;">
+                    <a :href="row.panelUrl" style="color: var(--color-text); text-decoration: underline;">{{ row.title }}</a>
+                  </th>
+                  <td style="padding: 0.5rem; font-size: 0.8rem;">{{ row.where || '(top level)' }}</td>
+                  <td style="padding: 0.5rem; font-size: 0.8rem;">{{ row.kind }}</td>
+                  <td style="padding: 0.5rem; font-size: 0.8rem;">{{ row.formType || '—' }}</td>
+                  <td style="padding: 0.5rem; font-size: 0.8rem;">{{ row.status }}</td>
+                  <td style="text-align: right; padding: 0.5rem; font-size: 0.875rem;">{{ row.responses }}</td>
+                  <td style="padding: 0.5rem; font-size: 0.8rem;">{{ row.lastResponse || 'none' }}</td>
+                  <td style="padding: 0.5rem; font-size: 0.75rem;"><code>{{ row.folder }}</code></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <k-empty v-else-if="!loading" icon="file-text">No forms found.</k-empty>
+        </section>
+      `
+    },
+
     formsubmissionsindex: {
       data: function () {
         return {
