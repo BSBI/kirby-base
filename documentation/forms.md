@@ -373,11 +373,11 @@ last response) stay free.
   forms. Any other failure while checking is logged and the save goes ahead.
 - **Responses are read only when a key would be lost.** `KirbyResponseKeySource` reads
   the `key` of each item on the form's `form_submission` children, stopping once every
-  key it was asked about is found. Hand-written forms store items without keys and are
-  never checked.
+  key it was asked about is found. Hand-written forms store their fixed questions without
+  keys, so only their extra sections (below) are ever locked.
 - **Library sections.** A section save that loses any of the section's keys finds the
-  forms using it (directly or through a variation) from the `form_builders` index's
-  `section_ids` column (`IndexedFormsUsingSection`), and compares each form with
+  forms using it (directly or through a variation) from the `section_ids` column of the
+  `form_builders` and `form_extra_sections` indexes (`IndexedFormsUsingSection`), and compares each form with
   responses as it would be with the edited section (`SectionOverrideResolver`). After a
   section save, the forms using it are re-indexed so their `section_ids` follow a
   variation pointed at another base.
@@ -388,3 +388,43 @@ last response) stay free.
 **After deploying a release that adds `section_ids`**, rebuild the `form_builders` index
 (Indexes panel, or `/content-index-rebuild?name=form_builders`). Until then the column is
 empty, and library-section saves aren't checked (form saves are).
+
+## Extra sections on hand-written forms
+
+A hand-written definition can take editor-defined sections too, read from a blocks field
+(conventionally `extraSections`) with the same `form-section-ref` / `form-section-inline`
+fieldsets as a panel-built form. The fixed questions stay in PHP; editors add to them.
+
+- **Attaching.** Build a `PanelFormDefinition` for the page with the extras field and the
+  fixed definition's `getFieldNames()` as `reservedKeys`, then call
+  `$definition->withExtraSections($extras)` before `handleFormPage()`. `getFields()`,
+  `getFieldGroups()` and `getFieldNames()` then include the extras; `toBlueprintFields()`
+  and `getSubmissionColumns()` don't.
+- **Where they go.** At the end, unless the definition overrides `extraSectionsAt()` to
+  return how many `defineForm()` items come before them.
+- **Reserved keys.** An extra question using a reserved key is left out, and the Form
+  check says so ("is a question this form always asks"). The panel learns a page's
+  reserved keys from the `forms.reservedKeys` option: a callable given the page, returning
+  its keys (or null).
+- **Conditions** work among the extra questions only: the show-when choices come from the
+  extras' own definition.
+- **Storing.** The form's handler stores the extras: `extraSubmissionColumns()` gives them
+  as key => label and column, the same shape as a panel-built form's. Store them with
+  `FormSubmissionBuilder::items($postData, $columns)` so they carry `key` and `column`,
+  which is what the Forms-tab exports and key locking read.
+- **Config.** `forms.sectionsFields` maps each such template to its field, e.g.
+  `['form_event_feedback' => 'extraSections']`. It drives the show-when choices
+  (`FormBuilderOptions::sectionsFieldFor()`), key locking (`FormKeyLockGuard`) and the
+  `form_extra_sections` index. Builder templates always map to `formSections`.
+- **Blueprint.** Extend `sections/extraSections` (the blocks field) and add a
+  `formproblems` section with `field: extraSections`.
+- **Index.** `form_extra_sections` records the library sections each such form uses
+  (`section_ids`), so key locking finds them. It's separate from `form_builders`, which
+  also feeds "Start from an existing form", the form types and the Report-as columns.
+  After deploying the release that adds it, rebuild it from the Indexes panel.
+
+### Required questions
+
+`RequiredFields::missing($groups, $postData)` is the server-side required check for forms
+with a submission handler. It skips any section whose show-when condition the submission
+doesn't meet, because the respondent never saw that section's questions.
