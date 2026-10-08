@@ -53,7 +53,9 @@ fields:
       text: "{{ item.value }}"
     help: >
       Optional. Questions of this library section that this form doesn't ask; other
-      forms using the section still do. The list shows the questions of the library
-      sections on this form as last saved, so save first after choosing a section. A
+      forms using the section still do. The list shows the questions of every library
+      section on this form, as last saved: pick ones from this block's section (each
+      shows its section in brackets), and save first after choosing a section. A
       question this form's responses have answered can't be left out (its column would
-      be lost).
+      be lost). If the section's question is later renamed, it comes back on this form
+      and the Form check says so.

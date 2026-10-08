@@ -9,6 +9,7 @@ use BSBI\WebBase\forms\FormBuilderOptions;
 use BSBI\WebBase\forms\FormSection;
 use Kirby\Cms\Block;
 use Kirby\Cms\Page;
+use Kirby\Content\Content;
 
 /**
  * A form definition read from panel content instead of written in PHP.
@@ -43,6 +44,12 @@ class PanelFormDefinition extends BaseFormDefinition
 
     /** @var array<string, string> Library questions on the form, key => "Label (Section)", filled by build() */
     private array $leaveOutChoices = [];
+
+    /** @var array<string, true> Names chosen to leave out that their section doesn't have, filled by build() */
+    private array $staleLeaveOuts = [];
+
+    /** @var array<string, true> Questions left out on this form, filled by build() */
+    private array $leftOut = [];
 
     /** @var array<string, true> Library section ids used, filled by build() */
     private array $sectionIds = [];
@@ -292,6 +299,10 @@ class PanelFormDefinition extends BaseFormDefinition
                 $this->conditionChoices[$choice] = 'No longer on this form: ' . $choice;
             }
         }
+        // Likewise for left-out names their section no longer has.
+        foreach (array_keys($this->staleLeaveOuts) as $key) {
+            $this->leaveOutChoices[(string) $key] ??= 'No longer in its section: ' . $key;
+        }
 
         return $this->sections;
     }
@@ -437,10 +448,10 @@ class PanelFormDefinition extends BaseFormDefinition
      * @param PanelField[] $fields
      * @return PanelField[]
      */
-    private function leavingOut(array $fields, \Kirby\Content\Content $content, string $sectionName, string $sectionLabel): array
+    private function leavingOut(array $fields, Content $content, string $sectionName, string $sectionLabel): array
     {
         foreach ($fields as $field) {
-            if ($field->isSubmittable()) {
+            if ($field->isSubmittable() && PanelFieldReader::isValidKey($field->key)) {
                 $this->leaveOutChoices[$field->key] ??= $field->label . ' (' . $sectionLabel . ')';
             }
         }
@@ -457,10 +468,20 @@ class PanelFormDefinition extends BaseFormDefinition
                     $sectionName,
                     $key
                 ));
-                $this->leaveOutChoices[$key] ??= 'No longer in its section: ' . $key;
+                // Marked once every section is read (build()), so a real question
+                // of a later section keeps its own label.
+                $this->staleLeaveOuts[$key] = true;
             }
         }
-        return array_values(array_filter($fields, static fn(PanelField $field): bool => !in_array($field->key, $leaveOut, true)));
+        $kept = [];
+        foreach ($fields as $field) {
+            if (in_array($field->key, $leaveOut, true)) {
+                $this->leftOut[$field->key] = true;
+            } else {
+                $kept[] = $field;
+            }
+        }
+        return $kept;
     }
 
     /**
@@ -491,6 +512,8 @@ class PanelFormDefinition extends BaseFormDefinition
             $problem = 'its "show when" needs both a field and a value';
         } elseif ($controller === null && isset($allKeys[$fieldKey])) {
             $problem = sprintf('it can only depend on a field in an earlier section, and "%s" is not', $fieldKey);
+        } elseif ($controller === null && isset($this->leftOut[$fieldKey])) {
+            $problem = sprintf('its "show when" question "%s" is left out on this form', $fieldKey);
         } elseif ($controller === null) {
             $problem = sprintf('its "show when" field "%s" is not on this form', $fieldKey);
         } elseif (!$controller->canControlConditions()) {
