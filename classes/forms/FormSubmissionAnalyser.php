@@ -18,9 +18,8 @@ namespace BSBI\WebBase\forms;
  *
  * Small counts on EDI questions are hidden: a count from 1 to SMALL_COUNT - 1
  * becomes null, with its percentage, so a small event can't single anyone out.
- * When that hides only one count, the next smallest is hidden too, so it
- * can't be recovered by subtraction from "answered by", and when it is the
- * only answer given, every count is hidden (suppress()); a Likert
+ * Zeros are hidden alongside, and more counts until the hidden ones total at
+ * least SMALL_COUNT, so none can be recovered from "answered by" (suppress()); a Likert
  * mean and median with counts hidden are left out for the same reason.
  *
  * @phpstan-type Shape array{
@@ -274,33 +273,56 @@ final readonly class FormSubmissionAnalyser
     }
 
     /**
-     * Returns the counts with small ones hidden (null): every count from 1 to
-     * SMALL_COUNT - 1, and, when that hides exactly one, the smallest other
-     * non-zero count too, so the hidden one can't be worked out by subtracting
-     * the shown counts from the total (secondary suppression).
+     * Returns the counts with small ones hidden (null), so none can be worked
+     * out from what is shown and "answered by":
+     *  - every count from 1 to SMALL_COUNT - 1 is hidden;
+     *  - when any is, zeros are hidden too, so the hidden total could be spread
+     *    over answers that are really 0;
+     *  - and while the hidden total is under SMALL_COUNT, or only one count is
+     *    hidden, the smallest shown count is hidden as well (secondary
+     *    suppression), up to hiding them all.
      *
      * @param list<int> $counts
      * @return list<int|null>
      */
     public static function suppress(array $counts): array
     {
-        $shown = array_map(static fn(int $c): ?int => $c > 0 && $c < self::SMALL_COUNT ? null : $c, $counts);
-        if (count(array_filter($shown, static fn(?int $c): bool => $c === null)) === 1) {
-            $partner = null;
-            foreach ($shown as $i => $c) {
-                if ($c !== null && $c > 0 && ($partner === null || $c < $shown[$partner])) {
-                    $partner = $i;
-                }
-            }
-            if ($partner !== null) {
-                $shown[$partner] = null;
-            } else {
-                // It is the only answer given, so "answered by" is its count:
-                // hide the zeros too, so it can't be told which answer it was.
-                $shown = array_fill(0, count($shown), null);
+        $hidden = [];
+        foreach ($counts as $i => $count) {
+            if ($count > 0 && $count < self::SMALL_COUNT) {
+                $hidden[$i] = true;
             }
         }
-        return array_values($shown);
+        if ($hidden !== []) {
+            foreach ($counts as $i => $count) {
+                if ($count === 0) {
+                    $hidden[$i] = true;
+                }
+            }
+            while (count($hidden) < count($counts)) {
+                $hiddenCounts = array_intersect_key($counts, $hidden);
+                $nonZero = count(array_filter($hiddenCounts, static fn(int $c): bool => $c > 0));
+                if (array_sum($hiddenCounts) >= self::SMALL_COUNT && $nonZero >= 2) {
+                    break;
+                }
+                $smallest = null;
+                foreach ($counts as $i => $count) {
+                    if (!isset($hidden[$i]) && ($smallest === null || $count < $counts[$smallest])) {
+                        $smallest = $i;
+                    }
+                }
+                if ($smallest === null) {
+                    break;
+                }
+                $hidden[$smallest] = true;
+            }
+        }
+
+        $shown = [];
+        foreach ($counts as $i => $count) {
+            $shown[] = isset($hidden[$i]) ? null : $count;
+        }
+        return $shown;
     }
 
     /**

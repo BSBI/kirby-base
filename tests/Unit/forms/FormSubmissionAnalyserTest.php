@@ -187,11 +187,9 @@ final class FormSubmissionAnalyserTest extends TestCase
         $enjoyed = $this->find($result, 'c:enjoyed');
 
         $this->assertTrue($gender['suppressed']);
-        // "Man" (2) is hidden; with only one count hidden, "answered by 8" minus the
-        // others would reveal it, so the next smallest ("Woman", 6) is hidden too.
-        $this->assertSame(['label' => 'Woman', 'count' => null, 'percent' => null], $gender['options'][0]);
-        $this->assertSame(['label' => 'Man', 'count' => null, 'percent' => null], $gender['options'][1]);
-        $this->assertSame(['label' => 'Prefer not to say', 'count' => 0, 'percent' => 0], $gender['options'][2]);
+        // "Man" (2) is hidden, and the 0 with it; their total (2) is under 5, so
+        // "Woman" (6) is hidden too: nothing can be worked out from "answered by 8".
+        $this->assertSame([null, null, null], array_column($gender['options'], 'count'));
         $this->assertSame(8, $gender['answered'], 'answered is not suppressed');
         $this->assertFalse($enjoyed['suppressed']);
         $this->assertSame(1, $enjoyed['options'][2]['count']);
@@ -203,13 +201,17 @@ final class FormSubmissionAnalyserTest extends TestCase
     public static function suppressionCases(): array
     {
         return [
-            'nothing small'               => [[10, 7, 0], [10, 7, 0]],
-            'two small: no extra needed'  => [[10, 3, 2], [10, null, null]],
-            'one small: next smallest too' => [[10, 7, 3, 0], [10, null, null, 0]],
-            // "Answered by 3" would give it away, so which answer it was is hidden too.
-            'the only answer is small'    => [[3, 0, 0], [null, null, null]],
-            'only small answers, one each' => [[0, 2, 0], [null, null, null]],
-            'all small'                   => [[1, 4, 2], [null, null, null]],
+            'nothing small'                  => [[10, 7, 0], [10, 7, 0]],
+            'hidden total reaches 5'         => [[10, 3, 2], [10, null, null]],
+            // With a count hidden, zeros are hidden too: the hidden total could
+            // then be spread over answers that are really 0.
+            'zeros hidden alongside'         => [[27, 3, 4, 3, 0], [27, null, null, null, null]],
+            // Hidden total under 5: the smallest shown count joins it.
+            'one small: next smallest too'   => [[10, 7, 3, 0], [10, null, null, null]],
+            'two ones would be pinned'       => [[10, 1, 1], [null, null, null]],
+            'the only answer is small'       => [[3, 0, 0], [null, null, null]],
+            'only small answers, one each'   => [[0, 2, 0], [null, null, null]],
+            'all small, total 7'             => [[1, 4, 2], [null, null, null]],
         ];
     }
 
@@ -237,7 +239,7 @@ final class FormSubmissionAnalyserTest extends TestCase
         $result = $analyser->analyse($this->table($responses));
         $skill = $this->find($result, 'c:skill');
 
-        $this->assertSame([null, 0, null, 0, 0], array_column($skill['points'], 'count'));
+        $this->assertSame([null, null, null, null, null], array_column($skill['points'], 'count'));
         $this->assertNull($skill['mean']);
         $this->assertNull($skill['median']);
         $this->assertSame([null, null], $this->find($result, 'c:rating')['rows'][0]['counts']);

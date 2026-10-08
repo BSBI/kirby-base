@@ -679,6 +679,14 @@ panel.plugin('open-foundations/kirby-base', {
         withPercent: function (option) {
           return option.count === null ? 'fewer than 5' : option.count + ' (' + option.percent + '%)';
         },
+        // How many answers fall in hidden (small) counts: shown as one grey part
+        // of the chart, so the shown counts keep their true share. Their total
+        // is no secret (answered minus the counts shown); each count still is.
+        hiddenTotal: function (counts, answered) {
+          let shown = 0, anyHidden = false;
+          counts.forEach(function (c) { if (c === null) { anyHidden = true; } else { shown += c; } });
+          return anyHidden ? Math.max(0, answered - shown) : 0;
+        },
         biggest: function (options) {
           let best = null;
           options.forEach(function (o) { if (o.count !== null && (best === null || o.count > best.count)) best = o; });
@@ -702,7 +710,11 @@ panel.plugin('open-foundations/kirby-base', {
           options.forEach(function (o) { if (o.count !== null && o.count > max) max = o.count; });
           return option.count === null || max === 0 ? 0 : Math.max(1, Math.round(option.count * 100 / max));
         },
-        donut: function (options) {
+        donut: function (options, answered) {
+          const hidden = this.hiddenTotal(options.map(function (o) { return o.count; }), answered);
+          if (hidden > 0) {
+            options = options.concat([{ label: 'Hidden (counts under 5)', count: hidden, percent: null, hidden: true }]);
+          }
           const total = options.reduce(function (sum, o) { return sum + (o.count || 0); }, 0);
           const cx = 60, cy = 60, R = 56, r = 34, gap = options.filter(function (o) { return o.count; }).length > 1 ? 0.03 : 0;
           let angle = -Math.PI / 2;
@@ -713,11 +725,11 @@ panel.plugin('open-foundations/kirby-base', {
             const a0 = angle + gap / 2, a1 = angle + sweep - gap / 2;
             const mid = angle + sweep / 2, rm = (R + r) / 2;
             // Its percentage on the slice, where there's room (8% or more).
-            const showLabel = o.count / total >= 0.08 && o.percent !== null;
+            const showLabel = o.count / total >= 0.08 && (o.percent !== null || o.hidden);
             const lx = (cx + rm * Math.cos(mid)).toFixed(2), ly = (cy + rm * Math.sin(mid)).toFixed(2);
             angle += sweep;
             if (sweep >= Math.PI * 2 - 0.0001) {
-              slices.push({ i: i, label: o.label, full: true, showLabel: o.percent !== null, lx: cx, ly: cy - rm });
+              slices.push({ i: i, label: o.label, hidden: !!o.hidden, text: o.hidden ? 'hidden' : o.percent + '%', full: true, showLabel: true, lx: cx, ly: cy - rm });
               return;
             }
             const large = a1 - a0 > Math.PI ? 1 : 0;
@@ -725,6 +737,8 @@ panel.plugin('open-foundations/kirby-base', {
             slices.push({
               i: i,
               label: o.label,
+              hidden: !!o.hidden,
+              text: o.hidden ? 'hidden' : o.percent + '%',
               showLabel: showLabel,
               lx: lx,
               ly: ly,
@@ -749,14 +763,15 @@ panel.plugin('open-foundations/kirby-base', {
       template: `
         <section class="k-section k-formanalysis-section k-fa">
           <component is="style">
-            .k-fa { --fa-1:#2a78d6; --fa-2:#eb6834; --fa-3:#1baf7a; --fa-4:#eda100; --fa-5:#e87ba4; --fa-ink: var(--color-text); --fa-muted: var(--color-text-dimmed); --fa-track: var(--color-gray-200, #e5e5e5); --fa-gap: var(--color-background, #fff); }
-            @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .k-fa { --fa-1:#3987e5; --fa-2:#d95926; --fa-3:#199e70; --fa-4:#c98500; --fa-5:#d55181; --fa-track: var(--color-gray-800, #333); } }
-            :root[data-theme="dark"] .k-fa { --fa-1:#3987e5; --fa-2:#d95926; --fa-3:#199e70; --fa-4:#c98500; --fa-5:#d55181; --fa-track: var(--color-gray-800, #333); }
+            .k-fa { --fa-1:#2a78d6; --fa-2:#eb6834; --fa-3:#1baf7a; --fa-4:#eda100; --fa-5:#e87ba4; --fa-hidden:#85847f; --fa-ink: var(--color-text); --fa-muted: var(--color-text-dimmed); --fa-track: var(--color-gray-200, #e5e5e5); --fa-gap: var(--color-background, #fff); }
+            @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .k-fa { --fa-1:#3987e5; --fa-2:#d95926; --fa-3:#199e70; --fa-4:#c98500; --fa-5:#d55181; --fa-hidden:#85847f; --fa-track: var(--color-gray-800, #333); } }
+            :root[data-theme="dark"] .k-fa { --fa-1:#3987e5; --fa-2:#d95926; --fa-3:#199e70; --fa-4:#c98500; --fa-5:#d55181; --fa-hidden:#85847f; --fa-track: var(--color-gray-800, #333); }
             .k-fa .fa-s1 { background-color: var(--fa-1); }
             .k-fa .fa-s2 { background-color: var(--fa-2); }
             .k-fa .fa-s3 { background-color: var(--fa-3); }
             .k-fa .fa-s4 { background-color: var(--fa-4); }
             .k-fa .fa-s5 { background-color: var(--fa-5); }
+            .k-fa .fa-hidden { background-color: var(--fa-hidden); }
             .k-fa .fa-on-mark { color: #111; font-size: 0.7rem; font-weight: 600; line-height: 1rem; text-align: center; overflow: hidden; white-space: nowrap; }
             .k-fa .fa-swatch { display:inline-block; width:0.9rem; height:0.9rem; border-radius:3px; vertical-align:middle; margin-right:0.4rem; }
             .k-fa table.fa-table { border-collapse: collapse; margin-top: 0.5rem; font-size: 0.8rem; }
@@ -815,21 +830,22 @@ panel.plugin('open-foundations/kirby-base', {
             <div v-for="q in result.questions" :key="q.id" class="fa-question">
               <h3 style="font-size:0.95rem; font-weight:600;">{{ q.label }}</h3>
               <p style="font-size:0.8rem; color:var(--fa-muted); margin:0.2rem 0 0.6rem;">
-                Answered by {{ q.answered }} of {{ q.total }}<span v-if="q.multiple"> · more than one answer allowed, so percentages can add up to more than 100</span><span v-if="q.suppressed"> · counts under 5 are hidden, so no one can be singled out (where only one would be, the next smallest is hidden too, so it can't be worked out)</span><span v-if="q.inferred"> · question type guessed from the answers</span>
+                Answered by {{ q.answered }} of {{ q.total }}<span v-if="q.multiple"> · more than one answer allowed, so percentages can add up to more than 100</span><span v-if="q.suppressed"> · counts under 5 are hidden, with others where needed, so no one can be singled out; the grey part shows the hidden answers together</span><span v-if="q.inferred"> · question type guessed from the answers</span>
               </p>
 
               <div v-if="q.chart === 'donut'" style="display:flex; flex-wrap:wrap; gap:1rem 2rem; align-items:center;">
-                <p v-if="q.suppressed && q.answered > 0 && donut(q.options).length === 0" style="font-size:0.8rem; color:var(--fa-muted); max-width:14rem;">No chart: every count is under 5, so the counts are hidden.</p>
+                <p v-if="q.suppressed && q.answered > 0 && donut(q.options, q.answered).length === 0" style="font-size:0.8rem; color:var(--fa-muted); max-width:14rem;">No chart: every count is under 5, so the counts are hidden.</p>
                 <svg v-else role="img" :aria-label="summary(q)" viewBox="0 0 120 120" width="140" height="140">
-                  <circle v-if="q.answered === 0 || donut(q.options).length === 0" cx="60" cy="60" r="45" fill="none" stroke="var(--fa-track)" stroke-width="22"/>
-                  <template v-for="slice in donut(q.options)">
-                    <circle v-if="slice.full" :key="'c' + slice.i" cx="60" cy="60" r="45" fill="none" stroke-width="22" :stroke="'var(--fa-' + (slice.i + 1) + ')'"><title>{{ slice.label }}</title></circle>
-                    <path v-else :key="'p' + slice.i" :d="slice.d" :fill="'var(--fa-' + (slice.i + 1) + ')'"><title>{{ slice.label }}: {{ withPercent(q.options[slice.i]) }}</title></path>
-                    <text v-if="slice.showLabel" :key="'t' + slice.i" :x="slice.lx" :y="slice.ly" text-anchor="middle" dominant-baseline="central" font-size="9" font-weight="600" fill="#111" aria-hidden="true">{{ q.options[slice.i].percent }}%</text>
+                  <circle v-if="q.answered === 0 || donut(q.options, q.answered).length === 0" cx="60" cy="60" r="45" fill="none" stroke="var(--fa-track)" stroke-width="22"/>
+                  <template v-for="slice in donut(q.options, q.answered)">
+                    <circle v-if="slice.full" :key="'c' + slice.i" cx="60" cy="60" r="45" fill="none" stroke-width="22" :stroke="slice.hidden ? 'var(--fa-hidden)' : 'var(--fa-' + (slice.i + 1) + ')'"><title>{{ slice.label }}</title></circle>
+                    <path v-else :key="'p' + slice.i" :d="slice.d" :fill="slice.hidden ? 'var(--fa-hidden)' : 'var(--fa-' + (slice.i + 1) + ')'"><title>{{ slice.label }}</title></path>
+                    <text v-if="slice.showLabel" :key="'t' + slice.i" :x="slice.lx" :y="slice.ly" text-anchor="middle" dominant-baseline="central" font-size="9" font-weight="600" fill="#111" aria-hidden="true">{{ slice.text }}</text>
                   </template>
                 </svg>
                 <ul style="list-style:none; padding:0; margin:0; font-size:0.85rem;">
                   <li v-for="(o, i) in q.options" :key="o.label" style="margin:0.25rem 0;"><span :class="'fa-swatch fa-s' + (i + 1)" aria-hidden="true"></span>{{ o.label }}: <strong>{{ withPercent(o) }}</strong></li>
+                  <li v-if="hiddenTotal(q.options.map(function (o) { return o.count; }), q.answered) > 0" style="margin:0.25rem 0;"><span class="fa-swatch fa-hidden" aria-hidden="true"></span>Hidden (the counts under 5, together): <strong>{{ hiddenTotal(q.options.map(function (o) { return o.count; }), q.answered) }}</strong></li>
                 </ul>
               </div>
 
@@ -855,6 +871,7 @@ panel.plugin('open-foundations/kirby-base', {
               <div v-else-if="q.chart === 'stacked'">
                 <ul style="list-style:none; padding:0; margin:0 0 0.5rem; display:flex; flex-wrap:wrap; gap:0.25rem 1rem; font-size:0.8rem;">
                   <li v-for="(c, i) in q.columns" :key="c"><span :class="'fa-swatch fa-s' + (i % 5 + 1)" aria-hidden="true"></span>{{ c }}</li>
+                  <li v-if="q.suppressed"><span class="fa-swatch fa-hidden" aria-hidden="true"></span>Hidden (counts under 5)</li>
                 </ul>
                 <div role="img" :aria-label="summary(q)">
                   <div v-for="row in q.rows" :key="row.label" style="display:grid; grid-template-columns:minmax(6rem, 14rem) 1fr; gap:0.75rem; align-items:center; font-size:0.85rem; margin:0.3rem 0;">
@@ -863,6 +880,7 @@ panel.plugin('open-foundations/kirby-base', {
                       <template v-for="(n, i) in row.counts">
                         <span v-if="n" :key="i" :class="'fa-s' + (i % 5 + 1) + ' fa-on-mark'" :title="q.columns[i] + ': ' + n" :style="{ flex: n + ' 0 0', borderRadius: '3px' }"><span v-if="n / row.answered >= 0.1" aria-hidden="true">{{ n }}</span></span>
                       </template>
+                      <span v-if="hiddenTotal(row.counts, row.answered) > 0" class="fa-hidden fa-on-mark" :title="'Hidden (counts under 5): ' + hiddenTotal(row.counts, row.answered)" :style="{ flex: hiddenTotal(row.counts, row.answered) + ' 0 0', borderRadius: '3px' }"></span>
                     </span>
                   </div>
                 </div>
