@@ -60,18 +60,28 @@ final readonly class FormSubmissionExporter
     }
 
     /**
-     * Returns the header row and one row per submission.
+     * Returns the columns and each submission's answers by column: the shape
+     * both wide() and the panel analysis (FormSubmissionAnalyser) read.
+     *
+     * Columns are in first-seen order. Old keyless items join their key's
+     * column where matchOldItems() can place them. A column's header is its
+     * Report-as name, or else the most recent label it was asked with.
      *
      * @param list<Submission> $submissions In display order
-     * @param bool             $withFormType Prefix each row with the form type
-     * @return list<list<string>>
+     * @return array{
+     *     headers: array<string, string>,
+     *     keys: array<string, string>,
+     *     rows: list<array{submission: Submission, answers: array<string, string>}>
+     * } headers and keys by column id (keys: the item key, '' for an old unmatched item)
      */
-    public function wide(array $submissions, bool $withFormType): array
+    public function table(array $submissions): array
     {
         /** @var array<string, string> $headers Column id => header, in first-seen order */
         $headers = [];
         /** @var array<string, string> $headerDates Column id => date of the label in $headers */
         $headerDates = [];
+        /** @var array<string, string> $keys Column id => item key */
+        $keys = [];
         $rows = [];
 
         foreach ($this->matchOldItems($submissions) as $submission) {
@@ -85,6 +95,7 @@ final readonly class FormSubmissionExporter
                     // An old item's question is only its key title-cased, so any
                     // real label replaces it, whatever the dates.
                     $headerDates[$id] = $isOld ? '' : $submission['date'];
+                    $keys[$id] = $this->string($item['key'] ?? '');
                 } elseif (!$fixed && !$isOld && $submission['date'] >= $headerDates[$id]) {
                     $headers[$id] = $header;
                     $headerDates[$id] = $submission['date'];
@@ -94,6 +105,20 @@ final readonly class FormSubmissionExporter
             }
             $rows[] = ['submission' => $submission, 'answers' => $answers];
         }
+
+        return ['headers' => $headers, 'keys' => $keys, 'rows' => $rows];
+    }
+
+    /**
+     * Returns the header row and one row per submission.
+     *
+     * @param list<Submission> $submissions In display order
+     * @param bool             $withFormType Prefix each row with the form type
+     * @return list<list<string>>
+     */
+    public function wide(array $submissions, bool $withFormType): array
+    {
+        ['headers' => $headers, 'rows' => $rows] = $this->table($submissions);
 
         $prefix = $withFormType ? ['Form Type', 'Submission'] : ['Submission'];
         $csvRows = [array_merge($prefix, array_values($headers))];

@@ -24,6 +24,13 @@ tabs:
       formSubmissionsIndex:
         type: formsubmissionsindex
         headline: Submissions by form type
+  analysis:
+    label: Analysis
+    icon: chart
+    sections:
+      formAnalysis:
+        type: formanalysis
+        headline: Analysis
   inUse:
     label: Forms in use
     icon: list-bullet

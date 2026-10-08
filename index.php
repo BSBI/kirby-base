@@ -19,6 +19,7 @@ use BSBI\WebBase\helpers\SearchService;
 use BSBI\WebBase\helpers\StyleGuideService;
 use BSBI\WebBase\helpers\UnhandledException;
 use BSBI\WebBase\forms\FormBuilderOptions;
+use BSBI\WebBase\forms\FormAnalysis;
 use BSBI\WebBase\forms\FormLibraryPanel;
 use BSBI\WebBase\forms\FormsInUse;
 use BSBI\WebBase\helpers\FormBuilderIndexDefinition;
@@ -173,6 +174,7 @@ $pluginConfig = [
         'formsubmissionexport' => require __DIR__ . '/sections/formsubmissionexport.php',
         'formsubmissionsindex' => require __DIR__ . '/sections/formsubmissionsindex.php',
         'formsinuse' => require __DIR__ . '/sections/formsinuse.php',
+        'formanalysis' => require __DIR__ . '/sections/formanalysis.php',
         'quicklinks' => require __DIR__ . '/sections/quicklinks.php',
         'searchanalytics' => require __DIR__ . '/sections/searchanalytics.php',
         'searchindexstats' => require __DIR__ . '/sections/searchindexstats.php',
@@ -188,6 +190,28 @@ $pluginConfig = [
     ],
     'api' => [
         'routes' => [
+            [
+                // One form type's responses analysed, for the Forms page
+                // (FormAnalysis); ?form= and ?from= / ?to= (Y-m-d) filter,
+                // ?refresh=1 rebuilds the cached result.
+                'pattern' => 'forms/analysis',
+                'method'  => 'GET',
+                'action'  => function (): array {
+                    $kirby = kirby();
+                    if (!FormLibraryPanel::isAllowed($kirby->user()?->role()->id(), FormLibraryPanel::roles($kirby))) {
+                        throw new \Kirby\Exception\PermissionException('You are not allowed to analyse the forms.');
+                    }
+                    $param = static fn(string $name): string => is_string(get($name)) ? trim((string) get($name)) : '';
+                    $date = static fn(string $value): string => preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) === 1 ? $value : '';
+                    return (new FormAnalysis($kirby))->cached(
+                        $param('type'),
+                        $param('form'),
+                        $date($param('from')),
+                        $date($param('to')),
+                        get('refresh') === '1'
+                    );
+                },
+            ],
             [
                 // Every form on the site, for the Forms page (FormsInUse);
                 // ?refresh=1 rebuilds the cached list.

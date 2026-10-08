@@ -484,3 +484,45 @@ from the seed and key, so converting twice gives the same ids.
 The `customFormElements` field (`sections/formFields`) still works, but panel-built forms
 and extra sections replace it. bsbi-web has moved off it; it stays for other sites.
 
+## Analysis (Forms page)
+
+The Forms page's **Analysis** tab charts one form type's responses: the number and dates
+of responses with a per-month column chart, then one block per question. Each
+Submissions row has an **Analyse** link to it. Filters: form type, one form of that type,
+and a date range. **Refresh** rebuilds the cached result (kept ten minutes).
+
+- **Columns** are the exporter's (`FormSubmissionExporter::table()`), so the analysis and
+  the CSV always agree, old answers included.
+- **Question shapes** come from the panel-built forms of that type (the `form_builders`
+  index), and from forms whose "also save as" sections save that type
+  (`PanelFormDefinition::copySectionKeys()`). A column with no shape (an old question, or
+  a hand-written form such as AGM voting) is inferred. Whole numbers from 0 to 10 make a
+  scale. At most 12 distinct answers, each given twice on average, make a choice
+  question. Anything else is free text.
+- **Charts** are inline SVG and HTML, with no library. The palette is the dataviz
+  reference palette, validated against the panel's light and dark surfaces. Colour is
+  never the only cue: numbers are printed on the marks, in dark text that reaches 4.5:1
+  on every colour in both modes. (Patterns were tried first and dropped as noise.)
+  - single choice with up to 5 options: a donut, slices clockwise in legend order, each
+    slice of 8% or more labelled with its percentage, and a legend with every value
+  - more options, and checkboxes: bars
+  - Likert: columns, with the mean and median
+  - rating grids: stacked bars, each segment of 10% or more labelled with its count
+  - free text and dates: the answers behind **Show answers**
+
+  Every chart has a text summary (`role="img"`), and every chart but the free-text lists
+  has a **Show as table** toggle.
+- **EDI small counts:** for the `edi` type, and for questions in sections saved as
+  `edi`, counts from 1 to 4 show as "fewer than 5" (`FormSubmissionAnalyser::SMALL_COUNT`),
+  with their percentages. Where that hides just one count in a question, grid row or
+  scale, the next smallest is hidden too (`suppress()`, secondary suppression), so the
+  hidden one can't be recovered by subtracting the shown counts from "answered by". If
+  it is the only answer given, every count is hidden, so it can't be told which it was. A
+  Likert mean and median are left out when counts are hidden. Comparing two overlapping
+  date ranges can still narrow a count down; that's accepted for a view limited to
+  admins and editors.
+- `FormSubmissionAnalyser` is pure and tested without Kirby. `FormAnalysis` gathers the
+  responses through the `form_submissions` index (no page-tree walk) and applies the
+  filters. API: `GET /api/forms/analysis?type=&form=&from=&to=` (`refresh=1`), for the
+  roles in `forms.libraryRoles`.
+
