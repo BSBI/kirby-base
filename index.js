@@ -669,8 +669,10 @@ panel.plugin('open-foundations/kirby-base', {
         toggle: function (key) {
           this.$set ? this.$set(this.open, key, !this.open[key]) : (this.open = Object.assign({}, this.open, { [key]: !this.open[key] }));
         },
+        // An id safe to reference as url(#id) in every browser: Safari rejects
+        // a fragment with ":" (column ids are "c:key"), drawing the fill black.
         uid: function (name) {
-          return 'fa-' + this._uid + '-' + name;
+          return 'fa-' + this._uid + '-' + String(name).replace(/[^A-Za-z0-9_-]/g, '-');
         },
         count: function (value) {
           return value === null ? 'fewer than 5' : String(value);
@@ -754,7 +756,8 @@ panel.plugin('open-foundations/kirby-base', {
             .k-fa table.fa-table th, .k-fa table.fa-table td { border-bottom: 1px solid var(--color-border); padding: 0.3rem 0.6rem; text-align: left; }
             .k-fa table.fa-table td.num { text-align: right; }
             .k-fa .fa-question { border-top: 1px solid var(--color-border); padding: 1rem 0; }
-            .k-fa .fa-link { background: none; border: none; padding: 0; color: var(--color-text); text-decoration: underline; cursor: pointer; font-size: 0.8rem; }
+            .k-fa .fa-link { background: none; border: none; padding: 0.3rem 0; min-height: 24px; color: var(--color-text); text-decoration: underline; cursor: pointer; font-size: 0.8rem; }
+            .k-fa .fa-link:focus-visible { outline: 2px solid var(--color-focus, #2563eb); outline-offset: 2px; border-radius: 2px; }
           </component>
 
           <header class="k-section-header" style="display:flex; flex-wrap:wrap; gap:0.75rem 1rem; align-items:flex-end;">
@@ -1068,7 +1071,7 @@ panel.plugin('open-foundations/kirby-base', {
                       v-if="onFormsPage"
                       :href="analysisUrl(row.formType)"
                       :aria-label="'Analyse ' + row.formType"
-                      style="font-size: 0.8rem; color: var(--color-blue-500, #2563eb); text-decoration: none; white-space: nowrap; margin-left: 0.75rem;"
+                      style="display: inline-block; padding: 0.3rem 0; font-size: 0.8rem; color: var(--color-blue-500, #2563eb); text-decoration: none; white-space: nowrap; margin-left: 0.75rem;"
                     >Analyse</a>
                   </td>
                 </tr>
