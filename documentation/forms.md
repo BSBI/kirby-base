@@ -306,11 +306,15 @@ Questions sharing a Report-as name, on any form of the same type, share one CSV 
 `FormSubmissionExporter` builds the rows for both export routes:
 
 - `form-export/<page id>` (a form page's Responses section) and `form-export-all`
-  (`?form_type=` to filter; the site Forms tab): **wide**, one row per submission. Legacy
-  items are columned by question text, exactly as before. Items with a column are columned
-  by it, headed by the Report-as name if set, otherwise by the most recent label the
-  question was asked with — so relabelling a question keeps its column. A legacy question
-  and a keyed field never share a column, even with the same header.
+  (`?form_type=` to filter; the Forms page): **wide**, one row per submission. Items with
+  a column are columned by it, headed by the Report-as name if set, otherwise by the most
+  recent label the question was asked with — so relabelling a question keeps its column.
+- **Old items** (stored before keys, `{question, answer}` with the key title-cased as the
+  question) join the column of the key they were stored for, when keyed items of the same
+  form type show that key and its column: "Event Name" joins `event_name`, ignoring case
+  and treating `_` and `-` as spaces. An old item matching no key, or more than one key or
+  column, keeps a column of its own text, as do old per-row rating-matrix items ("Event
+  Rating: Venue"). Stored data is never changed; this is done on each export.
 - `form-export-all?format=long`: **long**, one row per answer (Form Type, Submission, Date,
   Column, Question, Answer), for pivoting. Linked from the Forms tab per type and for all.
 
@@ -344,11 +348,14 @@ title)" (`FormBuilderOptions::formBuilderChoices()`, from the index), for a sele
 a "Start from an existing form" field in the page-create dialog. Copying is the site's job
 (bsbi-web: `FormBuilderStarter` in a `page.create:after` hook).
 
-### Library menu entry and form check
+### The Forms page (side menu) and form check
 
-- `forms.libraryPanel: true` adds a **Form library** side-menu entry, shown to the roles in
-  `forms.libraryRoles` (default `['admin', 'editor']`). Opening it creates the unlisted
-  `form-library` page (template `form_library`) if missing. The library and its
+- `forms.libraryPanel: true` adds a **Forms** side-menu entry (once "Form library"), shown
+  to the roles in `forms.libraryRoles` (default `['admin', 'editor']`). Opening it creates
+  the unlisted `form-library` page (template `form_library`) if missing, and renames one
+  still titled "Form library". The page has two tabs: **Submissions** (the
+  `formsubmissionsindex` section: count, CSV and Long CSV per form type) and **Library**
+  (form types and sections). The site blueprint's `tabs/forms` remains for other sites. The library and its
   `form_section` pages render the 404 page on the site, and their blueprints allow only
   admin and editor to change them.
 - The `formproblems` section (`type: formproblems`, optional `field`, default
@@ -428,3 +435,37 @@ fieldsets as a panel-built form. The fixed questions stay in PHP; editors add to
 `RequiredFields::missing($groups, $postData)` is the server-side required check for forms
 with a submission handler. It skips any section whose show-when condition the submission
 doesn't meet, because the respondent never saw that section's questions.
+
+## Separate copies and updating within a session
+
+- **"Also save as"** (`alsoSaveAs` on a `form-section-ref` or `form-section-inline` block,
+  a form type picked from `site.formTypes`): when that section was shown (its show-when
+  condition met) and has at least one answer, its answers are also saved on their own as
+  a response of that type. They stay on the main response too. Sections with the same
+  type share one copy. `PanelFormDefinition::separateCopies($postData)` gives type => keys;
+  `createFormSubmission()` saves them. Hand-written definitions return none.
+- **Update within session** (`updateWithinSession`, a toggle on the form page): a resubmit
+  from the same browser session updates the responses saved earlier (main and copies)
+  instead of adding new ones. `FormSubmissionWriter` remembers each response it saves per
+  form page and form type in `SessionSlots` (`KirbySessionSlots` in the Kirby session); a
+  remembered response that has since been deleted is replaced by a new one.
+
+## Likert scales
+
+A `form-likert` block has **Scale starts at / ends at**: whole numbers from 0 to 10, the
+start below the end. Anything else gives 1 to 5 (`PanelFieldReader::scale()`).
+
+## Moving a hand-written form into the panel
+
+`SpecBlocks::block(ResolvedFormField, $seed)` turns a hand-written field, resolved against
+its page (so panel overrides are carried), into panel field-block data whose field name is
+the PHP key. It is the inverse of `PanelFieldReader` (the tests check the round trip for
+every type). Markup in labels, help and options is dropped, because panel text is plain;
+a site-blocks field becomes display-only text holding its text as markdown. Block ids come
+from the seed and key, so converting twice gives the same ids.
+
+## Custom form elements: deprecated
+
+The `customFormElements` field (`sections/formFields`) still works, but panel-built forms
+and extra sections replace it. bsbi-web has moved off it; it stays for other sites.
+
