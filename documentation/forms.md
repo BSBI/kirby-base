@@ -217,7 +217,11 @@ export) is the same as for a hand-written definition.
   (`PanelSectionReader::readWithOrigins()`), and the section's own problems.
 - **Form page**: a `formSections` blocks field holding, in order:
   - `form-section-ref`: a library section (`section` pages field), with an optional
-    `title` overriding its legend
+    `title` overriding its legend, and an optional `leaveOut` (multiselect of field names,
+    choices from `page.formLeaveOutChoices`). Those questions are left out on this form
+    only, and other forms using the section still ask them. A chosen name the section no
+    longer has is reported by the Form check. Leaving out a question that the form's
+    responses use is refused by key locking, as removing it would be.
   - `form-section-inline`: a section written for this form only (`title`, `formFields`)
 
   Either can set `showWhen` to show the section only when a radio or dropdown question

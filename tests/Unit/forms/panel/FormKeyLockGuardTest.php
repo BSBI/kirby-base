@@ -159,6 +159,19 @@ final class FormKeyLockGuardTest extends TestCase
             ->check($section, ['formFields' => Json::encode([$this->textbox('Dietary needs', 'diet_needs')])]);
     }
 
+    public function testLeavingOutAQuestionResponsesUseIsRefused(): void
+    {
+        $section = $this->section('contact', [$this->textbox('Email', 'email'), $this->textbox('Phone', 'phone')]);
+        $form = $this->builtForm([$this->sectionRef('page://contact')]);
+        $leaving = $this->sectionRef('page://contact');
+        $leaving['content']['leaveOut'] = 'email';
+
+        $this->expectException(FormKeyLockedException::class);
+        $this->expectExceptionMessage('"Email" (field name "email") is used by responses to "Spring survey"');
+
+        $this->guard(['survey' => ['email']], ['page://contact' => $section])->check($form, $this->saving([$leaving]));
+    }
+
     public function testRenamingAKeyInALibrarySectionAFormsResponsesUseIsRefused(): void
     {
         $section = $this->section('contact', [$this->textbox('Email', 'email')]);

@@ -70,6 +70,8 @@ final class FormBuilderOptions
 
     /** @var array<string, array<string, string>> Condition choices built this request, by page id */
     private static array $conditionChoices = [];
+    /** @var array<string, array<string, string>> Leave-out choices per page id, for one request */
+    private static array $leaveOutChoices = [];
 
     /**
      * Returns a form page's show-when choices (PanelFormDefinition::
@@ -90,6 +92,26 @@ final class FormBuilderOptions
                 self::sectionsFieldFor($page),
                 self::reservedKeysFor($page)
             ))->conditionChoices();
+    }
+
+    /**
+     * Returns a form page's "Leave out these questions" choices
+     * (PanelFormDefinition::leaveOutChoices()), built once per page per
+     * request, as the show-when choices are.
+     *
+     * @param Page $page A panel-built form page, or one with extra sections
+     * @return array<string, string>
+     */
+    public static function leaveOutChoicesFor(Page $page): array
+    {
+        return self::$leaveOutChoices[$page->id()]
+            ??= (new PanelFormDefinition(
+                $page,
+                '',
+                new KirbySectionPageResolver($page->kirby()),
+                self::sectionsFieldFor($page),
+                self::reservedKeysFor($page)
+            ))->leaveOutChoices();
     }
 
     /**

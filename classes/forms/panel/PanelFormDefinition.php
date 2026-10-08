@@ -41,6 +41,9 @@ class PanelFormDefinition extends BaseFormDefinition
     /** @var list<array{type: string, keys: list<string>, condition: array{0: string, 1: string}|null}> Filled by build() */
     private array $copySections = [];
 
+    /** @var array<string, string> Library questions on the form, key => "Label (Section)", filled by build() */
+    private array $leaveOutChoices = [];
+
     /** @var array<string, true> Library section ids used, filled by build() */
     private array $sectionIds = [];
 
@@ -159,6 +162,20 @@ class PanelFormDefinition extends BaseFormDefinition
             $keys[$section['type']] = array_values(array_unique(array_merge($keys[$section['type']] ?? [], $section['keys'])));
         }
         return $keys;
+    }
+
+    /**
+     * Returns the choices for a library section's "Leave out these questions":
+     * every question of the library sections on the form, key => "Label
+     * (Section)", plus any chosen key its section no longer has (marked), so
+     * the multiselect's values are always among its options.
+     *
+     * @return array<string, string>
+     */
+    public function leaveOutChoices(): array
+    {
+        $this->build();
+        return $this->leaveOutChoices;
     }
 
     /**
@@ -329,13 +346,14 @@ class PanelFormDefinition extends BaseFormDefinition
             $legend = $title !== '' ? $title : PanelContent::text($page->content(), 'legend');
             $pageTitle = PanelContent::text($page->content(), 'title');
             $name = sprintf('Section "%s"', $pageTitle !== '' ? $pageTitle : $page->slug());
+            $sectionLabel = $legend !== '' ? $legend : ($pageTitle !== '' ? $pageTitle : $page->slug());
             return [
                 'id'     => $block->id(),
                 'legend'   => $legend,
                 'name'     => $name,
                 'position' => $position,
                 'block'    => $block,
-                'fields' => $sectionReader->read($page, $this->problems),
+                'fields' => $this->leavingOut($sectionReader->read($page, $this->problems), $content, $name, $sectionLabel),
             ];
         }
 
@@ -408,6 +426,41 @@ class PanelFormDefinition extends BaseFormDefinition
         }
 
         return true;
+    }
+
+    /**
+     * Returns a library section's fields without the ones its block leaves out
+     * on this form ("Leave out these questions", `leaveOut`: field names), and
+     * records every question it has as a leave-out choice. A name that isn't
+     * one of the section's questions is reported and otherwise ignored.
+     *
+     * @param PanelField[] $fields
+     * @return PanelField[]
+     */
+    private function leavingOut(array $fields, \Kirby\Content\Content $content, string $sectionName, string $sectionLabel): array
+    {
+        foreach ($fields as $field) {
+            if ($field->isSubmittable()) {
+                $this->leaveOutChoices[$field->key] ??= $field->label . ' (' . $sectionLabel . ')';
+            }
+        }
+
+        $leaveOut = array_values(array_filter(array_map('trim', explode(',', PanelContent::text($content, 'leaveOut')))));
+        if ($leaveOut === []) {
+            return $fields;
+        }
+        $keys = array_map(static fn(PanelField $field): string => $field->key, $fields);
+        foreach ($leaveOut as $key) {
+            if (!in_array($key, $keys, true)) {
+                $this->problems->add(sprintf(
+                    '%s: "%s" is set to be left out, but isn\'t one of its questions; there was nothing to leave out.',
+                    $sectionName,
+                    $key
+                ));
+                $this->leaveOutChoices[$key] ??= 'No longer in its section: ' . $key;
+            }
+        }
+        return array_values(array_filter($fields, static fn(PanelField $field): bool => !in_array($field->key, $leaveOut, true)));
     }
 
     /**

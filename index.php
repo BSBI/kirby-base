@@ -167,6 +167,15 @@ $pluginConfig = [
         'formConditionChoices' => function (): array {
             return FormBuilderOptions::conditionChoicesFor($this);
         },
+        /**
+         * Choices for a library section's "Leave out these questions": every
+         * question of the library sections on this form, as last saved.
+         *
+         * @return array<string, string>
+         */
+        'formLeaveOutChoices' => function (): array {
+            return FormBuilderOptions::leaveOutChoicesFor($this);
+        },
     ],
     'sections' => [
         'formproblems' => require __DIR__ . '/sections/formproblems.php',
