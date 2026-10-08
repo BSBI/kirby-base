@@ -146,6 +146,36 @@ final class PanelFieldReaderTest extends TestCase
         $this->assertEquals(FormFieldSpec::likert('rate', 'Rate it')->resolve([]), $field->spec->resolve([]));
     }
 
+    public function testLikertScaleComesFromTheBlock(): void
+    {
+        $field = $this->read('form-likert', ['label' => 'Rate it', 'name' => 'rate', 'scaleMin' => '0', 'scaleMax' => '7']);
+        $this->assertEquals(
+            FormFieldSpec::likert('rate', 'Rate it', scaleMin: 0, scaleMax: 7)->resolve([]),
+            $field->spec->resolve([])
+        );
+    }
+
+    /**
+     * @return array<string, array{string, string}>
+     */
+    public static function unusableScales(): array
+    {
+        return [
+            'blank'          => ['', ''],
+            'min not below max' => ['5', '5'],
+            'not numbers'    => ['one', 'five'],
+            'too wide'       => ['0', '50'],
+            'negative'       => ['-3', '3'],
+        ];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('unusableScales')]
+    public function testAnUnusableLikertScaleFallsBackToOneToFive(string $min, string $max): void
+    {
+        $field = $this->read('form-likert', ['label' => 'Rate it', 'name' => 'rate', 'scaleMin' => $min, 'scaleMax' => $max]);
+        $this->assertEquals(FormFieldSpec::likert('rate', 'Rate it')->resolve([]), $field->spec->resolve([]));
+    }
+
     public function testLikertEndLabels(): void
     {
         $field = $this->read('form-likert', [

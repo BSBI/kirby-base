@@ -39,6 +39,9 @@ final class PanelFieldReader
     /** HTML input types an editor may pick for a text input. */
     public const INPUT_TYPES = ['text', 'email', 'tel', 'number', 'date', 'url'];
 
+    /** The highest Likert scale point an editor may set. */
+    public const MAX_SCALE = 10;
+
     /** POST keys the form machinery uses itself. */
     private const RESERVED_KEYS = ['csrf', 'submit'];
 
@@ -104,6 +107,7 @@ final class PanelFieldReader
                 $this->escape($this->text($block, 'leftLabel', 'Strongly disagree')),
                 $this->escape($this->text($block, 'middleLabel')),
                 $this->escape($this->text($block, 'rightLabel', 'Strongly agree')),
+                ...self::scale($block),
             ),
             FormFieldSpec::TYPE_RATING_MATRIX  => FormFieldSpec::ratingMatrix(
                 $key,
@@ -146,6 +150,25 @@ final class PanelFieldReader
      *
      * @param Block $block
      */
+    /**
+     * Returns a Likert block's scale as named arguments: its own when usable
+     * (whole numbers, 0 to 10, the first below the second), else 1 to 5.
+     *
+     * @param Block $block
+     * @return array{scaleMin: int, scaleMax: int}
+     */
+    public static function scale(Block $block): array
+    {
+        $min = PanelContent::text($block->content(), 'scaleMin');
+        $max = PanelContent::text($block->content(), 'scaleMax');
+        $isWhole = static fn(string $value): bool => preg_match('/^\d{1,2}$/', $value) === 1;
+
+        if ($isWhole($min) && $isWhole($max) && (int) $min < (int) $max && (int) $max <= self::MAX_SCALE) {
+            return ['scaleMin' => (int) $min, 'scaleMax' => (int) $max];
+        }
+        return ['scaleMin' => 1, 'scaleMax' => 5];
+    }
+
     private function reportAs(Block $block): string
     {
         $first = explode(',', PanelContent::text($block->content(), 'reportAs'))[0];
