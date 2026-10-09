@@ -320,6 +320,84 @@ final class PanelFormDefinitionTest extends TestCase
         $this->assertSame(['b', 'a'], $definition->getFieldNames());
     }
 
+    public function testAQuestionCanBeAdjustedOnThisFormKeepingItsPlaceAndKey(): void
+    {
+        $section = $this->sectionPage([
+            $this->blockData('form-textbox', ['label' => 'Event name', 'name' => 'event_name']),
+            $this->blockData('form-radio-group', ['label' => 'Member?', 'name' => 'member', 'options' => "Yes\nNo", 'required' => 'true', 'help' => 'Library help', 'reportAs' => 'Membership']),
+            $this->blockData('form-textarea', ['label' => 'Comments', 'name' => 'comments']),
+        ], legend: 'Start', slug: 'start');
+        $resolver = $this->resolver(['page://start' => $section]);
+        $form = $this->formPage([$this->sectionRefAdjusting('page://start', [
+            ['question' => 'member', 'label' => 'Are you a BSBI member?', 'options' => "Yes\nNo\nLapsed", 'help' => ''],
+        ])]);
+
+        $definition = new PanelFormDefinition($form, 't', $resolver);
+        $fields = $definition->getFields($form);
+
+        $this->assertSame(['event_name', 'member', 'comments'], $definition->getFieldNames(), 'same place, same key');
+        $this->assertSame('Are you a BSBI member?', $fields[1]->label);
+        $this->assertSame(['Yes', 'No', 'Lapsed'], $fields[1]->options);
+        $this->assertSame('Library help', $fields[1]->help, 'blank help keeps the library\'s');
+        $this->assertTrue($fields[1]->required, 'everything else stays with the library');
+        $this->assertSame(['label' => 'Are you a BSBI member?', 'column' => 'Membership'], $definition->getSubmissionColumns()['member']);
+        $this->assertSame([], $definition->validate());
+
+        // Other forms using the section keep the library's wording.
+        $plain = new PanelFormDefinition($this->formPage([$this->sectionRef('page://start')]), 't', $resolver);
+        $this->assertSame('Member?', $plain->getFields($form)[1]->label);
+    }
+
+    public function testAdjustedHelpReplacesTheLibrarysAndTextIsEscaped(): void
+    {
+        $section = $this->sectionPage([$this->blockData('form-textbox', ['label' => 'Name', 'name' => 'name'])], slug: 's');
+        $form = $this->formPage([$this->sectionRefAdjusting('page://s', [
+            ['question' => 'name', 'label' => 'Your <b>name</b>', 'options' => '', 'help' => 'As on your card'],
+        ])]);
+
+        $field = (new PanelFormDefinition($form, 't', $this->resolver(['page://s' => $section])))->getFields($form)[0];
+
+        $this->assertSame('Your &lt;b&gt;name&lt;/b&gt;', $field->label);
+        $this->assertSame('As on your card', $field->help);
+    }
+
+    public function testAnAdjustmentForAQuestionTheSectionNoLongerHasIsReported(): void
+    {
+        $section = $this->sectionPage([$this->blockData('form-textbox', ['label' => 'Name', 'name' => 'name'])], slug: 's');
+        $form = $this->formPage([$this->sectionRefAdjusting('page://s', [
+            ['question' => 'gone', 'label' => 'X', 'options' => '', 'help' => ''],
+        ])]);
+
+        $problems = (new PanelFormDefinition($form, 't', $this->resolver(['page://s' => $section])))->validate();
+
+        $this->assertStringContainsString('"gone"', $problems[0]);
+        $this->assertStringContainsString('adjusted', $problems[0]);
+    }
+
+    public function testOptionsOnAQuestionWithoutOptionsAreReportedAndIgnored(): void
+    {
+        $section = $this->sectionPage([$this->blockData('form-textarea', ['label' => 'Comments', 'name' => 'comments'])], slug: 's');
+        $form = $this->formPage([$this->sectionRefAdjusting('page://s', [
+            ['question' => 'comments', 'label' => '', 'options' => "A\nB", 'help' => ''],
+        ])]);
+
+        $definition = new PanelFormDefinition($form, 't', $this->resolver(['page://s' => $section]));
+
+        $this->assertSame('Comments', $definition->getFields($form)[0]->label);
+        $this->assertStringContainsString('only choice questions have options', $definition->validate()[0]);
+    }
+
+    /**
+     * @param list<array<string, string>> $rows
+     * @return array<string, mixed>
+     */
+    private function sectionRefAdjusting(string $reference, array $rows): array
+    {
+        $block = $this->sectionRef($reference);
+        $block['content']['adjust'] = \Kirby\Data\Yaml::encode($rows);
+        return $block;
+    }
+
     /**
      * @return array<string, mixed>
      */

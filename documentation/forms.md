@@ -226,7 +226,14 @@ export) is the same as for a hand-written definition.
     shown only for an answer to a left-out question is always shown, and the Form check
     says the question is left out. Leaving out a question that the form's responses use
     is refused by key locking, as removing it would be. "What forms get" on a section
-    describes the section; a form may leave some of it out.
+    describes the section; a form may leave some of it out or reword it.
+    It also has an optional `adjust` (structure: `question` key, `label`, `options`,
+    `help`). On this form only, those replace the question's label, options (choice
+    questions only) or help text, and a blank keeps the library's. The question keeps
+    its place, key, export column and everything else. `PanelFieldReader` applies them
+    when reading, so escaping is unchanged. Key locking allows it, because no key is
+    lost. The Form check reports an adjustment for a question the section doesn't have,
+    and options given for a question without any.
   - `form-section-inline`: a section written for this form only (`title`, `formFields`)
 
   Either can set `showWhen` to show the section only when a radio or dropdown question

@@ -6,6 +6,7 @@ namespace BSBI\WebBase\forms\panel;
 
 use BSBI\WebBase\forms\BaseFormDefinition;
 use BSBI\WebBase\forms\FormBuilderOptions;
+use BSBI\WebBase\forms\FormFieldSpec;
 use BSBI\WebBase\forms\FormSection;
 use Kirby\Cms\Block;
 use Kirby\Cms\Page;
@@ -364,7 +365,7 @@ class PanelFormDefinition extends BaseFormDefinition
                 'name'     => $name,
                 'position' => $position,
                 'block'    => $block,
-                'fields' => $this->leavingOut($sectionReader->read($page, $this->problems), $content, $name, $sectionLabel),
+                'fields' => $this->leavingOut($this->adjusted($page, $content, $name, $sectionReader), $content, $name, $sectionLabel),
             ];
         }
 
@@ -437,6 +438,56 @@ class PanelFormDefinition extends BaseFormDefinition
         }
 
         return true;
+    }
+
+    /**
+     * Returns a library section's fields, read with this form's adjustments to
+     * them ("Adjust questions on this form", `adjust`: rows of question key,
+     * label, options, help; a blank keeps the library's). A question keeps its
+     * place, key and everything else. An adjustment for a question the section
+     * doesn't have, or options for one without options, is reported.
+     *
+     * @return PanelField[]
+     */
+    private function adjusted(Page $page, Content $content, string $sectionName, PanelSectionReader $sectionReader): array
+    {
+        $adjustments = [];
+        foreach (PanelContent::field($content, 'adjust')->yaml() as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $text = static fn(string $name): string => is_scalar($row[$name] ?? null) ? trim((string) $row[$name]) : '';
+            $key = $text('question');
+            if ($key !== '') {
+                $adjustments[$key] = ['label' => $text('label'), 'options' => $text('options'), 'help' => $text('help')];
+            }
+        }
+        if ($adjustments === []) {
+            return $sectionReader->read($page, $this->problems);
+        }
+
+        $fields = (new PanelSectionReader($this->resolver, new PanelFieldReader($adjustments)))->read($page, $this->problems);
+        $byKey = [];
+        foreach ($fields as $field) {
+            $byKey[$field->key] = $field;
+        }
+        foreach ($adjustments as $key => $adjustment) {
+            $field = $byKey[$key] ?? null;
+            if ($field === null) {
+                $this->problems->add(sprintf(
+                    '%s: "%s" is set to be adjusted on this form, but isn\'t one of its questions; the adjustment is ignored.',
+                    $sectionName,
+                    $key
+                ));
+            } elseif ($adjustment['options'] !== '' && !$field->canControlConditions() && $field->type !== FormFieldSpec::TYPE_CHECKBOX_GROUP) {
+                $this->problems->add(sprintf(
+                    '%s: "%s" has adjusted options, but only choice questions have options; they are ignored.',
+                    $sectionName,
+                    $key
+                ));
+            }
+        }
+        return $fields;
     }
 
     /**

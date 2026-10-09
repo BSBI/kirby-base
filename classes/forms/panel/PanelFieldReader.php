@@ -21,9 +21,21 @@ use Kirby\Cms\Block;
  * mode instead (escaping first would break links containing "&" and quotes, and
  * would not stop javascript: links). Rating-matrix rows and columns are left raw
  * because that snippet escapes them.
+ *
+ * Adjustments (a form's "Adjust questions on this form" on a library section)
+ * replace a question's label, options or help text, by key, before reading;
+ * a blank adjustment keeps the block's own. Options only apply to choice
+ * questions.
  */
 final class PanelFieldReader
 {
+    /**
+     * @param array<string, array{label: string, options: string, help: string}> $adjustments By question key
+     */
+    public function __construct(private array $adjustments = [])
+    {
+    }
+
     /** @var array<string, string> Block type => FormFieldSpec type */
     public const BLOCK_TYPES = [
         'form-textbox'        => FormFieldSpec::TYPE_TEXTBOX,
@@ -88,10 +100,14 @@ final class PanelFieldReader
         }
 
         $key      = self::keyFor($block);
+        $adjusted = $type === FormFieldSpec::TYPE_INFO ? [] : ($this->adjustments[$key] ?? []);
         // Display-only text has no label: carry its text, for panel summaries.
         $rawLabel = $type === FormFieldSpec::TYPE_INFO ? $this->text($block, 'text') : $this->text($block, 'label');
+        if (($adjusted['label'] ?? '') !== '') {
+            $rawLabel = $adjusted['label'];
+        }
         $label    = $this->escape($rawLabel);
-        $options  = $this->lines($block, 'options');
+        $options  = ($adjusted['options'] ?? '') !== '' ? self::linesOf($adjusted['options']) : $this->lines($block, 'options');
 
         $escapedOptions = $this->escapeAll($options);
 
@@ -119,7 +135,7 @@ final class PanelFieldReader
         };
 
         if ($type !== FormFieldSpec::TYPE_INFO) {
-            $help = $this->text($block, 'help');
+            $help = ($adjusted['help'] ?? '') !== '' ? $adjusted['help'] : $this->text($block, 'help');
             if ($help !== '') {
                 $spec->help($this->escape($help));
             }
@@ -197,7 +213,17 @@ final class PanelFieldReader
      */
     private function lines(Block $block, string $field): array
     {
-        $lines = array_map('trim', explode("\n", PanelContent::text($block->content(), $field)));
+        return self::linesOf(PanelContent::text($block->content(), $field));
+    }
+
+    /**
+     * Returns the non-blank, trimmed lines of a text.
+     *
+     * @return list<string>
+     */
+    private static function linesOf(string $text): array
+    {
+        $lines = array_map('trim', explode("\n", $text));
         return array_values(array_filter($lines, static fn(string $line): bool => $line !== ''));
     }
 

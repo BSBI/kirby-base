@@ -59,3 +59,42 @@ fields:
       question this form's responses have answered can't be left out (its column would
       be lost). If the section's question is later renamed, it comes back on this form
       and the Form check says so.
+  adjust:
+    type: structure
+    label: Adjust questions on this form
+    help: >
+      Optional. Reword one of this library section's questions on this form only: its
+      label, its options (one per line, choice questions only) or its help text. Leave
+      a box blank to keep the library's. The question keeps its place and field name,
+      so its answers stay in the same CSV column and analysis; other forms using the
+      section keep the library's wording. Save first after choosing a section, so its
+      questions are listed. If you reword an option that a "show when" uses, re-pick
+      that condition.
+    columns:
+      question:
+        width: 1/3
+      label:
+        width: 2/3
+    fields:
+      question:
+        type: select
+        label: Question
+        required: true
+        options:
+          type: query
+          query: page.formLeaveOutChoices
+          value: "{{ item.key }}"
+          text: "{{ item.value }}"
+      label:
+        type: text
+        label: Label on this form
+        help: Blank keeps the library's.
+      options:
+        type: textarea
+        label: Options on this form
+        buttons: false
+        help: One per line. Blank keeps the library's. Choice questions only.
+      help:
+        type: text
+        label: Help text on this form
+        help: Blank keeps the library's.
