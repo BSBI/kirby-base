@@ -12,6 +12,13 @@ use BSBI\WebBase\forms\FormFieldSpec;
  */
 final readonly class PanelField
 {
+    /** Field types that have options (choice questions). */
+    public const CHOICE_TYPES = [
+        FormFieldSpec::TYPE_CHECKBOX_GROUP,
+        FormFieldSpec::TYPE_RADIO_GROUP,
+        FormFieldSpec::TYPE_SELECT,
+    ];
+
     /**
      * @param FormFieldSpec $spec    The spec, with editor text already escaped
      * @param string        $key     POST key (the spec's name)
@@ -41,6 +48,17 @@ final readonly class PanelField
 
     /**
      * Returns true if a section can be shown or hidden by this field's value.
+     */
+    /**
+     * Returns true if this is a choice question with options (radio, dropdown, checkboxes).
+     */
+    public function hasOptions(): bool
+    {
+        return in_array($this->type, self::CHOICE_TYPES, true);
+    }
+
+    /**
+     * Returns true if this field can control a section's show-when condition.
      */
     public function canControlConditions(): bool
     {

@@ -458,9 +458,17 @@ class PanelFormDefinition extends BaseFormDefinition
             }
             $text = static fn(string $name): string => is_scalar($row[$name] ?? null) ? trim((string) $row[$name]) : '';
             $key = $text('question');
-            if ($key !== '') {
-                $adjustments[$key] = ['label' => $text('label'), 'options' => $text('options'), 'help' => $text('help')];
+            if ($key === '') {
+                continue;
             }
+            if (!PanelFieldReader::isValidKey($key)) {
+                $this->problems->add(sprintf('%s: "%s" is not a usable field name; the adjustment is ignored.', $sectionName, $key));
+                continue;
+            }
+            if (isset($adjustments[$key])) {
+                $this->problems->add(sprintf('%s: "%s" is adjusted more than once; the last is used.', $sectionName, $key));
+            }
+            $adjustments[$key] = ['label' => $text('label'), 'options' => $text('options'), 'help' => $text('help')];
         }
         if ($adjustments === []) {
             return $sectionReader->read($page, $this->problems);
@@ -471,7 +479,9 @@ class PanelFormDefinition extends BaseFormDefinition
         foreach ($fields as $field) {
             $byKey[$field->key] = $field;
         }
+        $leaveOut = array_map('trim', explode(',', PanelContent::text($content, 'leaveOut')));
         foreach ($adjustments as $key => $adjustment) {
+            $key = (string) $key;
             $field = $byKey[$key] ?? null;
             if ($field === null) {
                 $this->problems->add(sprintf(
@@ -479,7 +489,21 @@ class PanelFormDefinition extends BaseFormDefinition
                     $sectionName,
                     $key
                 ));
-            } elseif ($adjustment['options'] !== '' && !$field->canControlConditions() && $field->type !== FormFieldSpec::TYPE_CHECKBOX_GROUP) {
+                // Kept choosable (marked) so the row's question isn't blanked on the next save.
+                $this->staleLeaveOuts[$key] = true;
+            } elseif (!$field->isSubmittable()) {
+                $this->problems->add(sprintf(
+                    '%s: "%s" is display-only text, which can\'t be adjusted; the adjustment is ignored.',
+                    $sectionName,
+                    $key
+                ));
+            } elseif (in_array($key, $leaveOut, true)) {
+                $this->problems->add(sprintf(
+                    '%s: "%s" is adjusted but also left out on this form, so the adjustment has no effect.',
+                    $sectionName,
+                    $key
+                ));
+            } elseif ($adjustment['options'] !== '' && !$field->hasOptions()) {
                 $this->problems->add(sprintf(
                     '%s: "%s" has adjusted options, but only choice questions have options; they are ignored.',
                     $sectionName,

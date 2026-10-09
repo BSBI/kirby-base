@@ -144,11 +144,7 @@ final class PanelFieldReader
             }
         }
 
-        $isChoice = in_array($type, [
-            FormFieldSpec::TYPE_CHECKBOX_GROUP,
-            FormFieldSpec::TYPE_RADIO_GROUP,
-            FormFieldSpec::TYPE_SELECT,
-        ], true);
+        $isChoice = in_array($type, PanelField::CHOICE_TYPES, true);
 
         return new PanelField(
             $spec,

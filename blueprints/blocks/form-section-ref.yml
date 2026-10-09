@@ -65,11 +65,13 @@ fields:
     help: >
       Optional. Reword one of this library section's questions on this form only: its
       label, its options (one per line, choice questions only) or its help text. Leave
-      a box blank to keep the library's. The question keeps its place and field name,
-      so its answers stay in the same CSV column and analysis; other forms using the
-      section keep the library's wording. Save first after choosing a section, so its
-      questions are listed. If you reword an option that a "show when" uses, re-pick
-      that condition.
+      a box blank to keep the library's (a library help text can't be removed here). The
+      question keeps its place and field name, so its answers stay in the same CSV
+      column; other forms using the section keep the library's wording. Answers are
+      stored as the option's words, so after rewording an option, answers given under
+      its old wording, on this form or another, count separately in the analysis. Save
+      first after choosing a section, so its questions are listed. If you reword an
+      option that a "show when" uses, re-pick that condition.
     columns:
       question:
         width: 1/3
