@@ -509,8 +509,9 @@ and extra sections replace it. bsbi-web has moved off it; it stays for other sit
 ## Analysis (Forms page)
 
 A form's own page can show the same analysis for that form only: add a `formanalysis`
-section with `forThisPage: true`. It offers only the types of that form's own responses
-(e.g. `event_feedback` and its `edi` copies) and has no form picker.
+section with `forThisPage: true`. It has no form picker. Its type picker appears only
+when the form has more than one kind of response (e.g. `event_feedback` and its `edi`
+copies), labelled "Responses".
 
 The Forms page's **Analysis** tab charts one form type's responses: the number and dates
 of responses with a per-month column chart, then one block per question. Each

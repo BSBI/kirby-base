@@ -787,8 +787,9 @@ panel.plugin('open-foundations/kirby-base', {
           </component>
 
           <header class="k-section-header" style="display:flex; flex-wrap:wrap; gap:0.75rem 1rem; align-items:flex-end;">
-            <div style="display:flex; flex-direction:column; font-size:0.8rem;">
-              <label :for="uid('type')">Form type</label>
+            <div v-if="!pageId || types.length > 1" style="display:flex; flex-direction:column; font-size:0.8rem;">
+              <!-- On a form's own page, only when it has more than one kind of response (e.g. its EDI copies). -->
+              <label :for="uid('type')">{{ pageId ? 'Responses' : 'Form type' }}</label>
               <select :id="uid('type')" v-model="type" @change="changeType" style="font-size:0.875rem; padding:0.3rem;">
                 <option v-for="t in types" :key="t.type" :value="t.type">{{ t.type }} ({{ t.count }})</option>
               </select>
