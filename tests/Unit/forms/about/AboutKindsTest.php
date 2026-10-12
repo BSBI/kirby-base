@@ -88,6 +88,24 @@ final class AboutKindsTest extends TestCase
         $this->assertCount(1, $kinds->choices(['event'], '', 1));
     }
 
+    public function testChoicesComeAPageAtATimeForThePanelPicker(): void
+    {
+        $kinds = new AboutKinds(self::$kirby);
+
+        $first = $kinds->picker(['event', 'project'], '', 1, 3);
+        $this->assertSame(['page' => 1, 'limit' => 3, 'total' => 4], $first['pagination']);
+        $this->assertSame(['Winter talk', 'Kenfig walk', 'Kenfig walk'], array_column($first['data'], 'text'));
+        $this->assertSame('2026-12-01 · Events · Event', $first['data'][0]['info']);
+        $this->assertStringStartsWith('page://', $first['data'][0]['id']);
+
+        $second = $kinds->picker(['event', 'project'], '', 2, 3);
+        $this->assertSame(['Survey'], array_column($second['data'], 'text'));
+        $this->assertSame('Projects · Project', $second['data'][0]['info']);
+        $winter = $kinds->picker(['event'], 'winter', 0, 20);
+        $this->assertSame(1, $winter['pagination']['total']);
+        $this->assertSame('2026-12-01 · Events', $winter['data'][0]['info'], 'one kind: no kind label');
+    }
+
     private function page(string $id): Page
     {
         $page = self::$kirby->site()->findPageOrDraft($id) ?? self::$kirby->site()->draft($id);

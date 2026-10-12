@@ -944,49 +944,101 @@ panel.plugin('open-foundations/kirby-base', {
     formaboutlinks: {
       data: function () {
         return {
-          headline: 'Link about an event or page',
+          headline: 'Create link',
           formId: '',
-          kinds: [],
-          search: '',
-          choices: [],
+          allKinds: {},
+          savedKinds: [],
           subject: '',
+          subjectText: '',
           link: '',
+          linkSaved: true,
           loading: false,
           status: ''
         }
       },
+      computed: {
+        // The form's "Feedback is about" ticks as they are now, saved or not
+        // (the panel keeps unsaved changes in the view's "changes" version).
+        kinds: function () {
+          const changes = this.$panel.view.props && this.$panel.view.props.versions
+            ? this.$panel.view.props.versions.changes : null;
+          let ticked = changes ? (changes.aboutkinds !== undefined ? changes.aboutkinds : changes.aboutKinds) : undefined;
+          if (ticked === undefined || ticked === null) {
+            ticked = this.savedKinds;
+          } else if (typeof ticked === 'string') {
+            ticked = ticked.split(',');
+          }
+          const known = this.allKinds;
+          return ticked.map(function (k) { return String(k).trim(); })
+            .filter(function (k) { return Object.prototype.hasOwnProperty.call(known, k); });
+        },
+        kindLabels: function () {
+          const known = this.allKinds;
+          return this.kinds.map(function (k) { return known[k]; });
+        },
+        kindsKey: function () {
+          return this.kinds.join(',');
+        }
+      },
+      watch: {
+        kindsKey: function () {
+          this.subject = '';
+          this.subjectText = '';
+          this.link = '';
+        }
+      },
       created: async function () {
-        try {
-          const response = await this.load();
-          this.headline = response.headline || this.headline;
-          this.formId = response.formId || '';
-          this.kinds = response.kinds || [];
-        } catch (error) {
-          console.error('Failed to load the about links section:', error);
-        }
-        if (this.kinds.length > 0) {
-          this.find();
-        }
+        await this.reload();
+        this.$panel.events.on('model.update', this.reload);
+        this.$panel.events.on('content.publish', this.reload);
+      },
+      destroyed: function () {
+        this.$panel.events.off('model.update', this.reload);
+        this.$panel.events.off('content.publish', this.reload);
       },
       methods: {
         uid: function (name) {
           return 'fal-' + this._uid + '-' + name;
         },
-        find: async function () {
-          this.loading = true;
-          this.status = 'Searching…';
+        // Re-reads the saved ticks, e.g. after a save, so a link's warning goes.
+        reload: async function () {
           try {
-            const result = await this.$api.get('forms/about/choices', { form: this.formId, q: this.search });
-            this.choices = result.choices || [];
-            this.status = this.choices.length === 0 ? 'Nothing found.' : this.choices.length + ' found.';
+            const response = await this.load();
+            this.headline = response.headline || this.headline;
+            this.formId = response.formId || '';
+            this.allKinds = response.allKinds || {};
+            this.savedKinds = response.savedKinds || [];
           } catch (error) {
-            this.status = 'The list could not be loaded.';
-            console.error('Failed to load the about choices:', error);
+            console.error('Failed to load the about links section:', error);
           }
-          this.loading = false;
+          if (this.subject) {
+            this.makeLink();
+          }
         },
-        choiceText: function (c) {
-          return c.title + (c.date ? ' (' + c.date + ')' : '') + (c.where ? ' · ' + c.where : '') + (this.kinds.length > 1 ? ' · ' + c.kind : '');
+        // Kirby's page picker dialog, fed by the choices route: search as you
+        // type, a page at a time, newest first.
+        choose: function () {
+          const section = this;
+          this.$panel.dialog.open({
+            component: 'k-models-dialog',
+            props: {
+              endpoint: 'forms/about/choices',
+              fetchParams: { form: this.formId, kinds: this.kinds.join(',') },
+              multiple: false,
+              max: 1,
+              value: this.subject ? [this.subject] : [],
+              empty: { icon: 'search', text: 'No ' + this.kindLabels.join(' or ').toLowerCase() + ' found.' }
+            },
+            on: {
+              submit: function (items) {
+                section.$panel.dialog.close();
+                const item = items && items[0] && items[0].text ? items[0] : null;
+                section.subject = item ? item.id : '';
+                section.subjectText = item ? item.text + (item.info ? ' (' + item.info + ')' : '') : '';
+                section.makeLink();
+              }
+            }
+          });
         },
         makeLink: async function () {
           this.link = '';
@@ -994,7 +1046,9 @@ panel.plugin('open-foundations/kirby-base', {
           try {
             const result = await this.$api.get('forms/about/link', { form: this.formId, subject: this.subject });
             this.link = result.link || '';
-            this.status = this.link ? 'Link ready.' : 'No link could be made for that page.';
+            this.linkSaved = result.saved !== false;
+            this.status = !this.link ? 'No link could be made for that page.'
+              : (this.linkSaved ? 'Link ready.' : 'Link ready, but save the form first: until then it opens the form without naming the page.');
           } catch (error) {
             this.status = 'The link could not be made.';
             console.error('Failed to make the about link:', error);
@@ -1003,7 +1057,7 @@ panel.plugin('open-foundations/kirby-base', {
         copy: async function () {
           try {
             await navigator.clipboard.writeText(this.link);
-            this.status = 'Link copied.';
+            this.status = 'Link copied.' + (this.linkSaved ? '' : ' Save the form before sending it.');
           } catch (error) {
             this.$refs.link.select();
             this.status = 'Copying isn\'t available here: the link is selected, so copy it with your keyboard.';
@@ -1015,26 +1069,17 @@ panel.plugin('open-foundations/kirby-base', {
           <header class="k-section-header"><h2 class="k-headline">{{ headline }}</h2></header>
           <p v-if="kinds.length === 0" style="font-size:0.8rem; color:var(--color-text-dimmed);">
             To make a link that says which event (or other page) the feedback is about, tick it under
-            "Feedback is about" in this form's settings and save.
+            "Feedback is about" in this form's settings.
           </p>
           <div v-else style="display:flex; flex-direction:column; gap:0.6rem; font-size:0.8rem;">
-            <div style="display:flex; flex-direction:column; gap:0.25rem;">
-              <label :for="uid('search')">Search {{ kinds.join(', ').toLowerCase() }}</label>
-              <span style="display:flex; gap:0.4rem;">
-                <input :id="uid('search')" type="search" v-model="search" @keydown.enter.prevent="find" style="flex:1; font-size:0.875rem; padding:0.3rem;">
-                <k-button icon="search" variant="filled" size="sm" :disabled="loading" @click="find">Search</k-button>
-              </span>
-            </div>
-            <div style="display:flex; flex-direction:column; gap:0.25rem;">
-              <label :for="uid('subject')">About</label>
-              <select :id="uid('subject')" v-model="subject" @change="makeLink" style="font-size:0.875rem; padding:0.3rem; max-width:100%;">
-                <option value="">Choose…</option>
-                <option v-for="c in choices" :key="c.value" :value="c.value">{{ choiceText(c) }}</option>
-              </select>
+            <div style="display:flex; flex-direction:column; gap:0.35rem;">
+              <p v-if="subjectText" style="margin:0; font-size:0.875rem;"><strong>About:</strong> {{ subjectText }}</p>
+              <span><k-button icon="search" variant="filled" size="sm" @click="choose">{{ subject ? 'Change' : 'Choose ' + kindLabels.join(' or ').toLowerCase() + '…' }}</k-button></span>
             </div>
             <div v-if="link" style="display:flex; flex-direction:column; gap:0.25rem;">
               <label :for="uid('link')">Link to send</label>
-              <input :id="uid('link')" ref="link" type="text" readonly :value="link" @focus="$event.target.select()" style="font-size:0.8rem; padding:0.3rem;">
+              <input :id="uid('link')" ref="link" type="text" readonly :value="link" @focus="$event.target.select()" :aria-describedby="linkSaved ? null : uid('unsaved')" style="font-size:0.8rem; padding:0.3rem;">
+              <p v-if="!linkSaved" :id="uid('unsaved')" style="margin:0; font-weight:600;">Save the form first: until then this link opens the form without naming the page.</p>
               <span><k-button icon="copy" variant="filled" size="sm" @click="copy">Copy link</k-button></span>
             </div>
           </div>
