@@ -223,6 +223,35 @@ final class FormSubmissionExporterTest extends TestCase
         ], $rows);
     }
 
+    public function testRecordReadsWhatAResponseIsAbout(): void
+    {
+        $record = FormSubmissionExporter::record((new KirbyContentBuilder())->page([
+            'title' => 'S', 'about' => 'page://walk', 'about_title' => 'Kenfig walk', 'about_date' => '2026-09-14',
+        ]));
+
+        $this->assertSame('page://walk', $record['about']);
+        $this->assertSame('Kenfig walk (2026-09-14)', $record['aboutText']);
+    }
+
+    public function testResponsesAboutSomethingAddAnAboutColumnInBothFormats(): void
+    {
+        $exporter = new FormSubmissionExporter();
+        $about = $this->submission('S1', [['question' => 'Q', 'answer' => 'A']], 'feedback', '2026-01-01')
+            + ['about' => 'page://walk', 'aboutText' => 'Kenfig walk (2026-09-14)'];
+        $plain = $this->submission('S2', [['question' => 'Q', 'answer' => 'B']], 'feedback', '2026-01-02');
+
+        $wide = $exporter->wide([$about, $plain], true);
+        $this->assertSame(['Form Type', 'Submission', 'About', 'Q'], $wide[0]);
+        $this->assertSame(['feedback', 'S1', 'Kenfig walk (2026-09-14)', 'A'], $wide[1]);
+        $this->assertSame(['feedback', 'S2', '', 'B'], $wide[2]);
+
+        $long = $exporter->long([$about]);
+        $this->assertSame(['Form Type', 'Submission', 'About', 'Date', 'Column', 'Question', 'Answer'], $long[0]);
+        $this->assertSame(['feedback', 'S1', 'Kenfig walk (2026-09-14)', '2026-01-01', 'Q', 'Q', 'A'], $long[1]);
+
+        $this->assertSame(['Submission', 'Q'], $exporter->wide([$plain], false)[0], 'no About column when nothing is about anything');
+    }
+
     public function testNonStringValuesBecomeStrings(): void
     {
         $rows = (new FormSubmissionExporter())->wide([

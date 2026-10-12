@@ -11,7 +11,8 @@ use Kirby\Cms\Page;
  *
  * Indexes all form_submission pages site-wide so the panel Forms tab
  * can display counts and export links without loading all Kirby pages
- * into memory via site()->index().
+ * into memory via site()->index(). `about` is the page:// UUID of what a
+ * response is about (from an about link), blank for none.
  *
  * @package BSBI\WebBase\helpers
  */
@@ -49,6 +50,7 @@ class FormSubmissionIndexDefinition extends ContentIndexDefinition
         return [
             'form_type'    => 'TEXT NOT NULL DEFAULT ""',
             'submitted_at' => 'TEXT NOT NULL DEFAULT ""',
+            'about'        => 'TEXT NOT NULL DEFAULT ""',
         ];
     }
 
@@ -62,6 +64,8 @@ class FormSubmissionIndexDefinition extends ContentIndexDefinition
                 . ' ON content_form_submissions (form_type)',
             'CREATE INDEX IF NOT EXISTS idx_form_submissions_submitted_at'
                 . ' ON content_form_submissions (submitted_at)',
+            'CREATE INDEX IF NOT EXISTS idx_form_submissions_about'
+                . ' ON content_form_submissions (about)',
         ];
     }
 
@@ -77,6 +81,7 @@ class FormSubmissionIndexDefinition extends ContentIndexDefinition
             'page_id'      => $page->id(),
             'form_type'    => $formType,
             'submitted_at' => $submittedAt,
+            'about'        => $helper->getPageFieldAsString($page, 'about'),
         ];
     }
 }

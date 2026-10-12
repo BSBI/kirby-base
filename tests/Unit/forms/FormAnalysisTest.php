@@ -46,21 +46,22 @@ final class FormAnalysisTest extends TestCase
             'talk/form_builder.txt'  => "Title: Talk feedback\n\n----\n\nForm_type: event_feedback\n\n----\n\nFormsections: " . $sections,
         ];
         $responses = [
-            'walk/r1' => ['2026-07-01', ['enjoyed' => 'Yes', 'comments' => 'Lovely', 'gender' => 'Woman']],
-            'walk/r2' => ['2026-08-01', ['enjoyed' => 'Yes', 'comments' => '', 'gender' => 'Man']],
-            'talk/r3' => ['2026-08-15', ['enjoyed' => 'No', 'comments' => 'Too long', 'gender' => 'Woman']],
+            'walk/r1' => ['2026-07-01', ['enjoyed' => 'Yes', 'comments' => 'Lovely', 'gender' => 'Woman'], ['page://kenfig', 'Kenfig walk', '2026-06-30']],
+            'walk/r2' => ['2026-08-01', ['enjoyed' => 'Yes', 'comments' => '', 'gender' => 'Man'], null],
+            'talk/r3' => ['2026-08-15', ['enjoyed' => 'No', 'comments' => 'Too long', 'gender' => 'Woman'], ['page://winter', 'Winter talk', '']],
         ];
         foreach ($files as $path => $text) {
             mkdir(dirname($fixture . '/' . $path), 0777, true);
             file_put_contents($fixture . '/' . $path, $text);
         }
-        foreach ($responses as $id => [, $answers]) {
+        foreach ($responses as $id => [, $answers, $about]) {
             $items = [];
             foreach ($answers as $key => $answer) {
                 $items[] = ['question' => ucfirst($key), 'answer' => $answer, 'key' => $key, 'column' => $key];
             }
             mkdir($fixture . '/' . $id, 0777, true);
-            file_put_contents($fixture . '/' . $id . '/form_submission.txt', "Title: " . $id . "\n\n----\n\nForm_type: event_feedback\n\n----\n\nSubmission: \n\n" . Yaml::encode($items));
+            $aboutText = $about === null ? '' : "\n\n----\n\nAbout: {$about[0]}\n\n----\n\nAbout_title: {$about[1]}\n\n----\n\nAbout_date: {$about[2]}";
+            file_put_contents($fixture . '/' . $id . '/form_submission.txt', "Title: " . $id . "\n\n----\n\nForm_type: event_feedback" . $aboutText . "\n\n----\n\nSubmission: \n\n" . Yaml::encode($items));
         }
         file_put_contents($fixture . '/site.txt', 'Title: Test');
         self::$kirby = KirbyTestEnvironment::bootWithContent($fixture, 'kirby-base-form-analysis');
@@ -103,6 +104,19 @@ final class FormAnalysisTest extends TestCase
         $this->assertSame(2, $this->analysis()->forType('event_feedback', 'walk')['total']);
         $this->assertSame(2, $this->analysis()->forType('event_feedback', '', '2026-08-01', '2026-08-31')['total']);
         $this->assertSame(1, $this->analysis()->forType('event_feedback', 'walk', '2026-08-01')['total']);
+    }
+
+    public function testFiltersByWhatTheResponsesAreAboutAndListsThose(): void
+    {
+        $result = $this->analysis()->forType('event_feedback', '', '', '', 'page://kenfig');
+
+        $this->assertSame(1, $result['total']);
+        $this->assertSame('page://kenfig', $result['about']);
+        $this->assertSame([
+            ['id' => 'page://kenfig', 'title' => 'Kenfig walk (2026-06-30)'],
+            ['id' => 'page://winter', 'title' => 'Winter talk'],
+        ], $result['subjects']);
+        $this->assertSame(3, $this->analysis()->forType('event_feedback')['total']);
     }
 
     private function analysis(): FormAnalysis

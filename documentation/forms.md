@@ -556,3 +556,131 @@ and a date range. **Refresh** rebuilds the cached result (kept ten minutes).
   filters. API: `GET /api/forms/analysis?type=&form=&from=&to=` (`refresh=1`), for the
   roles in `forms.libraryRoles`.
 
+## About links
+
+An about link opens a form naming the page the feedback is about, such as an event, an
+activity or a project. The page (the **subject**) is identified by its Kirby UUID, which
+survives renames and moves. Its title and date are shown on the form, "fill from the link"
+questions are answered from it and hidden, and the response is filed under it, so the
+subject's own page can show the feedback about it. A form with no kinds ticked behaves as
+before.
+
+> [!NOTE]
+> The link is re-checked on every request, and the posted `about` value is never trusted
+> on its own. A bad, edited, stale or wrong-form link opens the form as if there were no
+> link: no banner, and every question asked.
+
+**Kinds: the `forms.aboutKinds` option.** Kind => settings, read by `forms/about/AboutKinds`:
+
+```php
+'forms' => [
+    'aboutKinds' => [
+        'event' => [
+            'label'      => 'Event',
+            'templates'  => ['event', 'vice_county_event'],
+            'index'      => 'events',        // a content index ...
+            'titleColumn'=> 'title',         // optional, default 'title'
+            'dateColumn' => 'start_date',    // optional, orders choices newest first
+            'dateField'  => 'startDate',     // the page's date field, if it has one
+        ],
+        'project' => ['label' => 'Project', 'templates' => ['project'], 'parent' => 'take-part/projects'],
+    ],
+],
+```
+
+- `templates` (required; a kind without any is ignored) are the page templates of the kind.
+  `label` defaults to the capitalised kind.
+- Pages are found either from a content `index` (with `titleColumn` and `dateColumn`) or
+  from the children of a `parent` page, so choosing never walks the whole site.
+- `dateField` names the page's date field. Without it the subject has no date.
+- A form accepts the kinds ticked in its **Feedback is about** setting (`aboutKinds` in the
+  `form_builder` settings, offered from the `site.formAboutKinds` query).
+
+**Signing: `forms.aboutSecret`.** The HMAC key for `forms/about/AboutLink`. Without it (or
+if it is not a non-empty string) a key is derived from the site's index root, which works
+but changes if the site moves. Changing the key makes every link already sent open the
+form without a subject; the form still works.
+
+**Link format.** `<form URL>?about=<subject UUID id>.<signature>`. The signature is the
+first 16 hex characters of HMAC-SHA256 over `form UUID id|subject UUID id`, so a link
+works only for its own form. `AboutLink::read()` gives the subject only when the signature
+matches, the page still exists, and its kind is one the form accepts. `subject()` returns
+an `AboutSubject` (UUID, title and date snapshot, and the signed value to post back).
+
+**Fill from the link (`fillFrom`).** A question-block setting on `form-textbox` and
+`form-textarea`: *Its title* or *Its date*, or blank to ask the question. `PanelFieldReader`
+keeps **title** only on text and long-answer questions, and **date** only on text and date
+questions; anything else is blank. `PanelFormDefinition::fillFromKeys()` returns key =>
+`title` or `date` (`BaseFormDefinition` returns none). With a subject, those questions are
+left out of the rendered form (`ResolvedForm`, dropping a section left empty) and are not
+required. On submit, `AboutSubject::fillAnswers()` replaces whatever was posted for them
+with the subject's title, or its date as `Y-m-d`.
+
+**Stored fields.** The main response gains `about` (the `page://` UUID), `about_title` and
+`about_date`, written by `FormSubmissionWriter` from the `AboutSubject`. Separate copies
+(such as EDI) do not record the subject.
+
+**Session slots.** With updating within a session on, the slot is
+`form_submission_<form id>_<type>_<subject UUID>`, so feedback on two events in one
+browser session gives two responses.
+
+**Index.** `form_submissions` gains an `about` column and index (`idx_form_submissions_about`).
+`ContentIndexManager` adds the column to an existing table and creates its indexes.
+
+> [!IMPORTANT]
+> Rebuild the `form_submissions` index after deploying, so responses already saved are
+> read for the new column (and any new ones are filed under their subject).
+
+**CSV.** `FormSubmissionExporter` adds an **About** column (title, then the date in
+brackets), after Submission, to the wide and long exports. It appears only when at least
+one exported response has a subject, so other exports are unchanged.
+
+**Analysis.** `FormAnalysis::forType()` and `cached()` take an `about` filter (a `page://`
+UUID, also in the cache key), and the result lists `subjects` (`id`, `title`) that have
+responses of that type, for the **About** select. `typesAbout($about)` returns the form
+types with responses about a subject.
+
+**Panel.**
+
+- Section `formaboutlinks` (`sections/formaboutlinks.php`, on the form page's Form tab
+  sidebar): a searchable picker over the form's kinds and the signed link with a **Copy**
+  button. It says so when the form has no kinds ticked. The kinds are as last saved.
+- API routes, both limited to the roles in `forms.libraryRoles`:
+  - `GET forms/about/choices?form=<page id>&q=<search>`: the choices for the form's kinds
+  - `GET forms/about/link?form=<page id>&subject=<page:// UUID>`: the signed link
+- `GET forms/analysis` also takes `about=<page:// UUID>`. Outside the Forms roles it
+  answers only for one page (`about`, no `form`) that `AboutAccess` allows, and leaves out
+  the `forms` and `subjects` lists. `AboutAccess` lets the Forms roles see every page's
+  feedback, and anyone else only where the site's `forms.aboutViewer` option
+  (`fn(User $user, Page $subject): bool`) returns true, e.g. a local editor for their own
+  events. The check is made per request, so it holds where a role is kept to its own
+  pages by its panel view rather than its permissions.
+- Section `formanalysis` takes `forSubject: true`: on a subject's page it shows every type
+  of response about that page, from any form, with no form or About picker.
+- Blueprint `tabs/formfeedback` is a **Feedback** tab holding that section. Add
+  `feedback: tabs/formfeedback` to the blueprint of each page type that is a kind.
+
+**Rendering.** `form/definition-form` shows "Feedback on: <title>, <date>" (through
+`t('Feedback on: {subject}')`, in a `data-form-about` paragraph) and a hidden `about`
+input with the signed value.
+
+**The consuming site's job.**
+
+1. Define `forms.aboutKinds` (and set `forms.aboutSecret`), and add the Feedback tab to
+   the kinds' blueprints.
+2. In the form-page setter, read the `about` request parameter (`?about=` on a GET, the
+   hidden input on a POST) and call
+   `$formPage->setAboutSubject((new AboutLink($kirby, new AboutKinds($kirby)))->subject($page, $value), $definition->fillFromKeys())`.
+3. Pass the subject and the fill-from keys to `createFormSubmission`:
+
+```php
+$this->createFormSubmission(
+    $page,
+    $definition->getFormType(),
+    $definition->getSubmissionColumns(),
+    $copies,
+    $updateWithinSession,
+    $formPage->getAboutSubject(),
+    $definition->fillFromKeys()
+);
+```

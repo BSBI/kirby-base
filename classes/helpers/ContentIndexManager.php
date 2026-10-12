@@ -318,6 +318,10 @@ class ContentIndexManager
             $type = $definedColumns[$columnName] ?? 'TEXT NOT NULL DEFAULT ""';
             $this->database->exec("ALTER TABLE {$this->tableName} ADD COLUMN {$columnName} {$type}");
         }
+        // An added column may come with an index; the statements are IF NOT EXISTS
+        foreach ($this->definition->getIndexes() as $indexSql) {
+            $this->database->exec($indexSql);
+        }
     }
 
     /**

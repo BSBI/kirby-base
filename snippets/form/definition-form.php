@@ -37,6 +37,18 @@ endif;
 <div class="container bg-light py-4 mb-2">
     <form method="post" novalidate>
         <input type="hidden" name="csrf" value="<?= htmlspecialchars($form->csrfToken, ENT_QUOTES, 'UTF-8') ?>">
+        <?php if ($form->about !== null) :
+            // Opened from an about link: name the subject, and post the signed
+            // value back (the server re-checks it). {subject} is its title,
+            // with its date when it has one.
+            $aboutDate = $form->about->date !== '' ? strtotime($form->about->date) : false;
+            $aboutText = $form->about->title . ($aboutDate !== false ? ', ' . date('j F Y', $aboutDate) : '');
+            $aboutLabel = t('Feedback on: {subject}', 'Feedback on: {subject}');
+            $aboutLabel = is_string($aboutLabel) ? $aboutLabel : 'Feedback on: {subject}';
+            ?>
+        <input type="hidden" name="about" value="<?= htmlspecialchars($form->about->signedValue, ENT_QUOTES, 'UTF-8') ?>">
+        <p class="lead mb-3" data-form-about><?= htmlspecialchars(str_replace('{subject}', $aboutText, $aboutLabel), ENT_QUOTES, 'UTF-8') ?></p>
+        <?php endif; ?>
 
         <?php
         $hasRequiredFields = false;

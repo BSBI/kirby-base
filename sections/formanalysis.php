@@ -15,6 +15,10 @@ use BSBI\WebBase\helpers\ContentIndexRegistry;
  * On a form's own page (`forThisPage: true`) the analysis is fixed to that
  * form: only the types of its own responses are offered, and there's no form
  * picker.
+ *
+ * On a page feedback can be about, such as an event (`forSubject: true`), the
+ * analysis is fixed to the responses about that page, from any form: only
+ * their types are offered, with no form or About picker.
  */
 return [
     'props' => [
@@ -24,8 +28,15 @@ return [
         'forThisPage' => function (bool $forThisPage = false) {
             return $forThisPage;
         },
+        'forSubject' => function (bool $forSubject = false) {
+            return $forSubject;
+        },
     ],
     'computed' => [
+        'about' => function (): string {
+            $model = $this->model();
+            return $this->forSubject && $model instanceof \Kirby\Cms\Page ? $model->uuid()->toString() : '';
+        },
         'pageId' => function (): string {
             $model = $this->model();
             return $this->forThisPage && $model instanceof \Kirby\Cms\Page ? $model->id() : '';
@@ -37,7 +48,10 @@ return [
             }
             $query = $manager->query();
             $pageId = $this->pageId;
-            if ($pageId !== '') {
+            if ($this->forSubject) {
+                // Responses about this page, from any form.
+                $query = $query->where('about', $this->about);
+            } elseif ($pageId !== '') {
                 // This form's own responses: its direct children.
                 $query = $query->whereAnyStartsWith(['page_id'], $pageId . '/');
             }

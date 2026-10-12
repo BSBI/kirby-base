@@ -6,6 +6,7 @@ use BSBI\WebBase\forms\BaseFormDefinition;
 use BSBI\WebBase\forms\FormPageInterface;
 use BSBI\WebBase\forms\FormSubmissionBuilder;
 use BSBI\WebBase\forms\FormSubmissionWriter;
+use BSBI\WebBase\forms\about\AboutSubject;
 use BSBI\WebBase\forms\KirbySessionSlots;
 use BSBI\WebBase\models\ActionStatus;
 use BSBI\WebBase\models\BaseFilter;
@@ -5381,6 +5382,12 @@ abstract class KirbyBaseHelper
      * @param bool   $updateWithinSession
      *                           Update the responses saved earlier in this session (main
      *                           and copies) instead of adding new ones
+     * @param AboutSubject|null $about
+     *                           What the response is about (a verified about link): the
+     *                           main response records it, copies don't
+     * @param array<string, string> $fillFrom
+     *                           The definition's fillFromKeys(): with a subject, these
+     *                           questions are answered from it
      * @return ActionStatus
      * @throws KirbyRetrievalException
      */
@@ -5389,18 +5396,21 @@ abstract class KirbyBaseHelper
         string $formType = '',
         array $columns = [],
         array $copies = [],
-        bool $updateWithinSession = false
+        bool $updateWithinSession = false,
+        ?AboutSubject $about = null,
+        array $fillFrom = []
     ): ActionStatus {
         if ($this->kirby->request()->is('POST')) {
             if (csrf(get('csrf')) === true) {
+                $postData = (array) $this->kirby->request()->data();
                 $formSubmission = (new FormSubmissionBuilder())->items(
-                    (array) $this->kirby->request()->data(),
+                    $about !== null ? $about->fillAnswers($postData, $fillFrom) : $postData,
                     $columns
                 );
 
                 $writer = new FormSubmissionWriter($updateWithinSession ? new KirbySessionSlots($this->kirby) : null);
                 try {
-                    $writer->write($parentPage, $formType, $formSubmission);
+                    $writer->write($parentPage, $formType, $formSubmission, $about);
                     foreach ($columns === [] ? [] : $copies as $copyType => $keys) {
                         $copyItems = array_values(array_filter(
                             $formSubmission,

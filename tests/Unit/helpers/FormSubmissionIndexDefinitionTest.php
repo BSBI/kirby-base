@@ -46,6 +46,15 @@ final class FormSubmissionIndexDefinitionTest extends TestCase
         $this->assertArrayHasKey('submitted_at', $columns);
     }
 
+    public function testGetColumnsContainsAboutWithAnIndex(): void
+    {
+        $this->assertArrayHasKey('about', $this->definition->getColumns());
+        $this->assertNotEmpty(array_filter(
+            $this->definition->getIndexes(),
+            static fn(string $sql): bool => str_contains($sql, '(about)')
+        ));
+    }
+
     public function testGetColumnsDoesNotContainPageId(): void
     {
         // page_id is added automatically by ContentIndexManager as the primary key

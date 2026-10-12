@@ -152,7 +152,8 @@ final class PanelFieldReader
             $type,
             $isChoice ? $options : [],
             $rawLabel,
-            $type !== FormFieldSpec::TYPE_INFO ? $this->reportAs($block) : ''
+            $type !== FormFieldSpec::TYPE_INFO ? $this->reportAs($block) : '',
+            $this->fillFrom($block, $type)
         );
     }
 
@@ -185,6 +186,21 @@ final class PanelFieldReader
     {
         $first = explode(',', PanelContent::text($block->content(), 'reportAs'))[0];
         return trim($first);
+    }
+
+    /**
+     * Returns what an "about" link fills the answer with: 'title' on a text
+     * question or long answer, 'date' on a text or date question, else blank.
+     */
+    private function fillFrom(Block $block, string $type): string
+    {
+        $fillFrom = $this->text($block, 'fillFrom');
+        $inputType = $type === FormFieldSpec::TYPE_TEXTBOX ? $this->inputType($block) : '';
+        return match (true) {
+            $fillFrom === 'title' && ($type === FormFieldSpec::TYPE_TEXTAREA || $inputType === 'text') => 'title',
+            $fillFrom === 'date' && in_array($inputType, ['text', 'date'], true)                       => 'date',
+            default                                                                                     => '',
+        };
     }
 
     /**
