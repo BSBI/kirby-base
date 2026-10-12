@@ -17,7 +17,7 @@ use BSBI\WebBase\forms\about\AboutKinds;
  */
 return [
     'props' => [
-        'headline' => function (string $headline = 'Link about an event or page') {
+        'headline' => function (string $headline = 'Create link') {
             return $headline;
         },
     ],

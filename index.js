@@ -944,7 +944,7 @@ panel.plugin('open-foundations/kirby-base', {
     formaboutlinks: {
       data: function () {
         return {
-          headline: 'Link about an event or page',
+          headline: 'Create link',
           formId: '',
           allKinds: {},
           savedKinds: [],
