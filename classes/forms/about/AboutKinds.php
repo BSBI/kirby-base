@@ -25,6 +25,12 @@ use Throwable;
  */
 final readonly class AboutKinds
 {
+    /** The most choices the picker pages through (newest first); a search finds older ones. */
+    private const PICKER_MAX = 500;
+
+    /** The most rows read from an index per kind. */
+    private const INDEX_MAX = 500;
+
     public function __construct(private App $kirby)
     {
     }
@@ -130,6 +136,36 @@ final readonly class AboutKinds
     }
 
     /**
+     * Returns one page of choices in the shape the panel's picker dialog
+     * (k-models-dialog) reads: items with id (the page:// UUID), text and
+     * info (date, where, and the kind when there's more than one), and the
+     * pagination. Page 0 is read as 1.
+     *
+     * @param list<string> $kinds
+     * @return array{data: list<array{id: string, text: string, info: string, image: array{icon: string}}>,
+     *     pagination: array{page: int, limit: int, total: int}}
+     */
+    public function picker(array $kinds, string $search, int $page, int $limit): array
+    {
+        $page = max(1, $page);
+        $limit = max(1, min(100, $limit));
+        $all = $this->choices($kinds, $search, self::PICKER_MAX);
+        $data = [];
+        foreach (array_slice($all, ($page - 1) * $limit, $limit) as $choice) {
+            $data[] = [
+                'id'    => $choice['value'],
+                'text'  => $choice['title'],
+                'info'  => implode(' · ', array_filter(
+                    [$choice['date'], $choice['where'], count($kinds) > 1 ? $choice['kind'] : ''],
+                    static fn(string $part): bool => $part !== ''
+                )),
+                'image' => ['icon' => $choice['date'] !== '' ? 'calendar' : 'page'],
+            ];
+        }
+        return ['data' => $data, 'pagination' => ['page' => $page, 'limit' => $limit, 'total' => count($all)]];
+    }
+
+    /**
      * @param Kind $settings
      * @return list<Page>
      */
@@ -153,7 +189,7 @@ final readonly class AboutKinds
                     $query = $query->orderBy($settings['dateColumn'], 'desc');
                 }
                 $pages = [];
-                foreach ($query->limit(200)->getPageIds() as $id) {
+                foreach ($query->limit(self::INDEX_MAX)->getPageIds() as $id) {
                     $page = $this->kirby->site()->findPageOrDraft((string) $id) ?? $this->kirby->site()->draft((string) $id);
                     if ($page instanceof Page && in_array($page->intendedTemplate()->name(), $settings['templates'], true) && $matches($page)) {
                         $pages[] = $page;

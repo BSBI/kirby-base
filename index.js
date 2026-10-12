@@ -948,9 +948,8 @@ panel.plugin('open-foundations/kirby-base', {
           formId: '',
           allKinds: {},
           savedKinds: [],
-          search: '',
-          choices: [],
           subject: '',
+          subjectText: '',
           link: '',
           linkSaved: true,
           loading: false,
@@ -984,18 +983,12 @@ panel.plugin('open-foundations/kirby-base', {
       watch: {
         kindsKey: function () {
           this.subject = '';
+          this.subjectText = '';
           this.link = '';
-          this.choices = [];
-          if (this.kinds.length > 0) {
-            this.find();
-          }
         }
       },
       created: async function () {
         await this.reload();
-        if (this.kinds.length > 0) {
-          this.find();
-        }
         this.$panel.events.on('model.update', this.reload);
         this.$panel.events.on('content.publish', this.reload);
       },
@@ -1022,21 +1015,30 @@ panel.plugin('open-foundations/kirby-base', {
             this.makeLink();
           }
         },
-        find: async function () {
-          this.loading = true;
-          this.status = 'Searching…';
-          try {
-            const result = await this.$api.get('forms/about/choices', { form: this.formId, q: this.search, kinds: this.kinds.join(',') });
-            this.choices = result.choices || [];
-            this.status = this.choices.length === 0 ? 'Nothing found.' : this.choices.length + ' found.';
-          } catch (error) {
-            this.status = 'The list could not be loaded.';
-            console.error('Failed to load the about choices:', error);
-          }
-          this.loading = false;
-        },
-        choiceText: function (c) {
-          return c.title + (c.date ? ' (' + c.date + ')' : '') + (c.where ? ' · ' + c.where : '') + (this.kinds.length > 1 ? ' · ' + c.kind : '');
+        // Kirby's page picker dialog, fed by the choices route: search as you
+        // type, a page at a time, newest first.
+        choose: function () {
+          const section = this;
+          this.$panel.dialog.open({
+            component: 'k-models-dialog',
+            props: {
+              endpoint: 'forms/about/choices',
+              fetchParams: { form: this.formId, kinds: this.kinds.join(',') },
+              multiple: false,
+              max: 1,
+              value: this.subject ? [this.subject] : [],
+              empty: { icon: 'search', text: 'No ' + this.kindLabels.join(' or ').toLowerCase() + ' found.' }
+            },
+            on: {
+              submit: function (items) {
+                section.$panel.dialog.close();
+                const item = items && items[0] && items[0].text ? items[0] : null;
+                section.subject = item ? item.id : '';
+                section.subjectText = item ? item.text + (item.info ? ' (' + item.info + ')' : '') : '';
+                section.makeLink();
+              }
+            }
+          });
         },
         makeLink: async function () {
           this.link = '';
@@ -1070,19 +1072,9 @@ panel.plugin('open-foundations/kirby-base', {
             "Feedback is about" in this form's settings.
           </p>
           <div v-else style="display:flex; flex-direction:column; gap:0.6rem; font-size:0.8rem;">
-            <div style="display:flex; flex-direction:column; gap:0.25rem;">
-              <label :for="uid('search')">Search {{ kindLabels.join(', ').toLowerCase() }}</label>
-              <span style="display:flex; gap:0.4rem;">
-                <input :id="uid('search')" type="search" v-model="search" @keydown.enter.prevent="find" style="flex:1; font-size:0.875rem; padding:0.3rem;">
-                <k-button icon="search" variant="filled" size="sm" :disabled="loading" @click="find">Search</k-button>
-              </span>
-            </div>
-            <div style="display:flex; flex-direction:column; gap:0.25rem;">
-              <label :for="uid('subject')">About</label>
-              <select :id="uid('subject')" v-model="subject" @change="makeLink" style="font-size:0.875rem; padding:0.3rem; max-width:100%;">
-                <option value="">Choose…</option>
-                <option v-for="c in choices" :key="c.value" :value="c.value">{{ choiceText(c) }}</option>
-              </select>
+            <div style="display:flex; flex-direction:column; gap:0.35rem;">
+              <p v-if="subjectText" style="margin:0; font-size:0.875rem;"><strong>About:</strong> {{ subjectText }}</p>
+              <span><k-button icon="search" variant="filled" size="sm" @click="choose">{{ subject ? 'Change' : 'Choose ' + kindLabels.join(' or ').toLowerCase() + '…' }}</k-button></span>
             </div>
             <div v-if="link" style="display:flex; flex-direction:column; gap:0.25rem;">
               <label :for="uid('link')">Link to send</label>

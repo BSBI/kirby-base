@@ -247,7 +247,8 @@ $pluginConfig = [
             ],
             [
                 // Pages a form's feedback can be about, for its "Link about…"
-                // section (AboutKinds); ?form= the form's page id, ?q= a search.
+                // section's picker dialog (AboutKinds::picker()); ?form= the
+                // form's page id, ?kinds=, ?search=, ?page=, ?limit=.
                 'pattern' => 'forms/about/choices',
                 'method'  => 'GET',
                 'action'  => function (): array {
@@ -258,14 +259,15 @@ $pluginConfig = [
                     $formId = is_string(get('form')) ? trim((string) get('form')) : '';
                     $form = $formId === '' ? null : ($kirby->site()->findPageOrDraft($formId) ?? $kirby->site()->draft($formId));
                     if (!$form instanceof \Kirby\Cms\Page) {
-                        return ['choices' => []];
+                        return ['data' => [], 'pagination' => ['page' => 1, 'limit' => 20, 'total' => 0]];
                     }
                     $kinds = new AboutKinds($kirby);
-                    $search = is_string(get('q')) ? mb_substr(trim((string) get('q')), 0, 100) : '';
+                    $search = is_string(get('search')) ? mb_substr(trim((string) get('search')), 0, 100) : '';
                     // ?kinds= the ticks on the form, saved or not (known kinds only).
                     $asked = is_string(get('kinds')) ? array_map('trim', explode(',', (string) get('kinds'))) : null;
                     $chosen = $asked === null ? $kinds->forForm($form) : array_values(array_intersect($asked, array_keys($kinds->all())));
-                    return ['choices' => $kinds->choices($chosen, $search)];
+                    $number = static fn(string $name, int $default): int => is_numeric(get($name)) ? (int) get($name) : $default;
+                    return $kinds->picker($chosen, $search, $number('page', 1), $number('limit', 20));
                 },
             ],
             [
