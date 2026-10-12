@@ -648,7 +648,13 @@ types with responses about a subject.
 - API routes, both limited to the roles in `forms.libraryRoles`:
   - `GET forms/about/choices?form=<page id>&q=<search>`: the choices for the form's kinds
   - `GET forms/about/link?form=<page id>&subject=<page:// UUID>`: the signed link
-- `GET forms/analysis` also takes `about=<page:// UUID>`.
+- `GET forms/analysis` also takes `about=<page:// UUID>`. Outside the Forms roles it
+  answers only for one page (`about`, no `form`) that `AboutAccess` allows, and leaves out
+  the `forms` and `subjects` lists. `AboutAccess` lets the Forms roles see every page's
+  feedback, and anyone else only where the site's `forms.aboutViewer` option
+  (`fn(User $user, Page $subject): bool`) returns true, e.g. a local editor for their own
+  events. The check is made per request, so it holds where a role is kept to its own
+  pages by its panel view rather than its permissions.
 - Section `formanalysis` takes `forSubject: true`: on a subject's page it shows every type
   of response about that page, from any form, with no form or About picker.
 - Blueprint `tabs/formfeedback` is a **Feedback** tab holding that section. Add

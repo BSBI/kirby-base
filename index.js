@@ -669,7 +669,9 @@ panel.plugin('open-foundations/kirby-base', {
               + (this.aboutFixed ? ' about this page' : (this.pageId ? ' on this form' : (this.form ? ', one form' : '')))
               + (this.about && !this.aboutFixed ? ', about one page' : '') + '.';
           } catch (error) {
-            this.status = 'The analysis could not be loaded.';
+            this.status = this.aboutFixed
+              ? 'The feedback about this page isn\'t available to you, or could not be loaded.'
+              : 'The analysis could not be loaded.';
             console.error('Failed to load the analysis:', error);
           }
           this.loading = false;

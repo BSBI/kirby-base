@@ -22,6 +22,7 @@ use BSBI\WebBase\forms\FormBuilderOptions;
 use BSBI\WebBase\forms\FormAnalysis;
 use BSBI\WebBase\forms\FormLibraryPanel;
 use BSBI\WebBase\forms\FormsInUse;
+use BSBI\WebBase\forms\about\AboutAccess;
 use BSBI\WebBase\forms\about\AboutKinds;
 use BSBI\WebBase\forms\about\AboutLink;
 use BSBI\WebBase\helpers\FormBuilderIndexDefinition;
@@ -215,23 +216,33 @@ $pluginConfig = [
                 // One form type's responses analysed, for the Forms page
                 // (FormAnalysis); ?form=, ?from= / ?to= (Y-m-d) and ?about=
                 // (a page:// UUID) filter, ?refresh=1 rebuilds the cached result.
+                // Outside the Forms roles, only the feedback about one page the
+                // user may see (AboutAccess), without the lists of other forms
+                // and pages.
                 'pattern' => 'forms/analysis',
                 'method'  => 'GET',
                 'action'  => function (): array {
                     $kirby = kirby();
-                    if (!FormLibraryPanel::isAllowed($kirby->user()?->role()->id(), FormLibraryPanel::roles($kirby))) {
-                        throw new \Kirby\Exception\PermissionException('You are not allowed to analyse the forms.');
-                    }
                     $param = static fn(string $name): string => is_string(get($name)) ? trim((string) get($name)) : '';
                     $date = static fn(string $value): string => preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) === 1 ? $value : '';
-                    return (new FormAnalysis($kirby))->cached(
+                    $about = preg_match('#^page://[A-Za-z0-9_-]+$#', $param('about')) === 1 ? $param('about') : '';
+                    $access = new AboutAccess($kirby);
+                    $formsRole = $access->isFormsRole($kirby->user());
+                    if (!$formsRole) {
+                        $subject = $about !== '' ? \Kirby\Uuid\Uuid::for($about)?->model() : null;
+                        if ($param('form') !== '' || !$subject instanceof \Kirby\Cms\Page || !$access->canSee($kirby->user(), $subject)) {
+                            throw new \Kirby\Exception\PermissionException('You are not allowed to see this feedback.');
+                        }
+                    }
+                    $result = (new FormAnalysis($kirby))->cached(
                         $param('type'),
                         $param('form'),
                         $date($param('from')),
                         $date($param('to')),
                         get('refresh') === '1',
-                        preg_match('#^page://[A-Za-z0-9_-]+$#', $param('about')) === 1 ? $param('about') : ''
+                        $about
                     );
+                    return $formsRole ? $result : array_merge($result, ['forms' => [], 'subjects' => []]);
                 },
             ],
             [
