@@ -47,9 +47,7 @@ endif;
             $aboutLabel = is_string($aboutLabel) ? $aboutLabel : 'Feedback on: {subject}';
             ?>
         <input type="hidden" name="about" value="<?= htmlspecialchars($form->about->signedValue, ENT_QUOTES, 'UTF-8') ?>">
-        <p class="lead mb-3" data-form-about>
-            <?= htmlspecialchars(str_replace('{subject}', $aboutText, $aboutLabel), ENT_QUOTES, 'UTF-8') ?>
-        </p>
+        <p class="lead mb-3" data-form-about><?= htmlspecialchars(str_replace('{subject}', $aboutText, $aboutLabel), ENT_QUOTES, 'UTF-8') ?></p>
         <?php endif; ?>
 
         <?php

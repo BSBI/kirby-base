@@ -146,7 +146,8 @@ final readonly class AboutKinds
                     return [];
                 }
                 if ($search !== '') {
-                    $query = $query->whereContains($settings['titleColumn'], $search);
+                    // The index narrows to titles with a word starting with the search.
+                    $query = $query->whereAnyWordStartsWith([$settings['titleColumn']], $search);
                 }
                 if ($settings['dateColumn'] !== '') {
                     $query = $query->orderBy($settings['dateColumn'], 'desc');

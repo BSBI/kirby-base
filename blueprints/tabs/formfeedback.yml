@@ -1,0 +1,9 @@
+# Feedback about this page (an event, project, …), from forms opened with an
+# about link: the analysis of every type of response about it.
+label: Feedback
+icon: chart
+sections:
+  formFeedback:
+    type: formanalysis
+    headline: Feedback about this page
+    forSubject: true
