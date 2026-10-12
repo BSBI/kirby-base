@@ -568,7 +568,7 @@ before.
 > [!NOTE]
 > The link is re-checked on every request, and the posted `about` value is never trusted
 > on its own. A bad, edited, stale or wrong-form link opens the form as if there were no
-> link: no banner, and every question asked.
+> link: no box naming it, and every question asked.
 
 **Kinds: the `forms.aboutKinds` option.** Kind => settings, read by `forms/about/AboutKinds`:
 
