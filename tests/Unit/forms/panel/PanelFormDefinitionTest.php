@@ -146,6 +146,18 @@ final class PanelFormDefinitionTest extends TestCase
         $this->assertStringContainsString('always asks', $problems[0]);
     }
 
+    public function testFillFromKeysAreTheQuestionsAnAboutLinkAnswers(): void
+    {
+        $page = $this->formPage([$this->sectionInline([
+            $this->blockData('form-textbox', ['label' => 'Event name', 'name' => 'event_name', 'fillFrom' => 'title']),
+            $this->blockData('form-textbox', ['label' => 'Event date', 'name' => 'event_date', 'fillFrom' => 'date', 'inputType' => 'date']),
+            $this->blockData('form-textbox', ['label' => 'Your name', 'name' => 'name']),
+        ])]);
+        $definition = new PanelFormDefinition($page, 'feedback', $this->resolver([]));
+
+        $this->assertSame(['event_name' => 'title', 'event_date' => 'date'], $definition->fillFromKeys());
+    }
+
     public function testASectionMarkedAlsoSaveAsIsCopiedWhenShownAndAnswered(): void
     {
         $definition = $this->formWithEdiCopy();

@@ -38,3 +38,11 @@ fields:
       type: query
       query: site.formReportColumns
     help: Optional. Answers from every form that uses the same name go in one column of the form-type CSV, under that name. Leave blank to use the field name.
+  fillFrom:
+    type: select
+    label: Fill from the link
+    empty: Ask the question
+    options:
+      title: Its title
+      date: Its date
+    help: When someone opens the form from a link about an event (or other page), this question is hidden and answered with that page's title or date. Without such a link it's asked as usual. Its title works on text answers; its date on text and date answers.

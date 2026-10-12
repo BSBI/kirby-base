@@ -79,6 +79,20 @@ final readonly class AboutLink
         return $kind !== null && in_array($kind, $this->kinds->forForm($form), true) ? $subject : null;
     }
 
+    /**
+     * Returns read()'s subject with its title and date snapshot, or null.
+     */
+    public function subject(Page $form, string $value): ?AboutSubject
+    {
+        $page = $this->read($form, $value);
+        return $page === null ? null : new AboutSubject(
+            $page->uuid()->toString(),
+            $page->title()->toString(),
+            $this->kinds->dateOf($page),
+            trim($value)
+        );
+    }
+
     private function signature(Page $form, string $subjectId): string
     {
         return substr(hash_hmac('sha256', $form->uuid()->id() . '|' . $subjectId, $this->secret), 0, self::SIGNATURE_LENGTH);

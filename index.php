@@ -22,6 +22,8 @@ use BSBI\WebBase\forms\FormBuilderOptions;
 use BSBI\WebBase\forms\FormAnalysis;
 use BSBI\WebBase\forms\FormLibraryPanel;
 use BSBI\WebBase\forms\FormsInUse;
+use BSBI\WebBase\forms\about\AboutKinds;
+use BSBI\WebBase\forms\about\AboutLink;
 use BSBI\WebBase\helpers\FormBuilderIndexDefinition;
 use BSBI\WebBase\helpers\FormExtraSectionsIndexDefinition;
 use BSBI\WebBase\helpers\maintenance\CacheClearTask;
@@ -155,6 +157,15 @@ $pluginConfig = [
         'formBuilderChoices' => function (): array {
             return FormBuilderOptions::formBuilderChoices(kirby());
         },
+        /**
+         * The kinds of page feedback can be about (option `forms.aboutKinds`),
+         * kind => label, for a form's "Feedback is about".
+         *
+         * @return array<string, string>
+         */
+        'formAboutKinds' => function (): array {
+            return array_map(static fn(array $kind): string => $kind['label'], (new AboutKinds(kirby()))->all());
+        },
     ],
     'pageMethods' => [
         /**
@@ -201,8 +212,8 @@ $pluginConfig = [
         'routes' => [
             [
                 // One form type's responses analysed, for the Forms page
-                // (FormAnalysis); ?form= and ?from= / ?to= (Y-m-d) filter,
-                // ?refresh=1 rebuilds the cached result.
+                // (FormAnalysis); ?form=, ?from= / ?to= (Y-m-d) and ?about=
+                // (a page:// UUID) filter, ?refresh=1 rebuilds the cached result.
                 'pattern' => 'forms/analysis',
                 'method'  => 'GET',
                 'action'  => function (): array {
@@ -217,8 +228,53 @@ $pluginConfig = [
                         $param('form'),
                         $date($param('from')),
                         $date($param('to')),
-                        get('refresh') === '1'
+                        get('refresh') === '1',
+                        preg_match('#^page://[A-Za-z0-9_-]+$#', $param('about')) === 1 ? $param('about') : ''
                     );
+                },
+            ],
+            [
+                // Pages a form's feedback can be about, for its "Link about…"
+                // section (AboutKinds); ?form= the form's page id, ?q= a search.
+                'pattern' => 'forms/about/choices',
+                'method'  => 'GET',
+                'action'  => function (): array {
+                    $kirby = kirby();
+                    if (!FormLibraryPanel::isAllowed($kirby->user()?->role()->id(), FormLibraryPanel::roles($kirby))) {
+                        throw new \Kirby\Exception\PermissionException('You are not allowed to make links to the forms.');
+                    }
+                    $formId = is_string(get('form')) ? trim((string) get('form')) : '';
+                    $form = $formId === '' ? null : ($kirby->site()->findPageOrDraft($formId) ?? $kirby->site()->draft($formId));
+                    if (!$form instanceof \Kirby\Cms\Page) {
+                        return ['choices' => []];
+                    }
+                    $kinds = new AboutKinds($kirby);
+                    $search = is_string(get('q')) ? mb_substr(trim((string) get('q')), 0, 100) : '';
+                    return ['choices' => $kinds->choices($kinds->forForm($form), $search)];
+                },
+            ],
+            [
+                // The signed link to a form about one page (AboutLink);
+                // ?form= the form's page id, ?subject= the page's page:// UUID.
+                'pattern' => 'forms/about/link',
+                'method'  => 'GET',
+                'action'  => function (): array {
+                    $kirby = kirby();
+                    if (!FormLibraryPanel::isAllowed($kirby->user()?->role()->id(), FormLibraryPanel::roles($kirby))) {
+                        throw new \Kirby\Exception\PermissionException('You are not allowed to make links to the forms.');
+                    }
+                    $formId = is_string(get('form')) ? trim((string) get('form')) : '';
+                    $form = $formId === '' ? null : ($kirby->site()->findPageOrDraft($formId) ?? $kirby->site()->draft($formId));
+                    $subjectId = is_string(get('subject')) ? trim((string) get('subject')) : '';
+                    if (!$form instanceof \Kirby\Cms\Page || preg_match('#^page://([A-Za-z0-9_-]+)$#', $subjectId, $match) !== 1) {
+                        return ['link' => ''];
+                    }
+                    $kinds = new AboutKinds($kirby);
+                    $subject = \Kirby\Uuid\Uuid::for($subjectId)?->model();
+                    if (!$subject instanceof \Kirby\Cms\Page || !in_array($kinds->kindOf($subject), $kinds->forForm($form), true)) {
+                        return ['link' => ''];
+                    }
+                    return ['link' => (new AboutLink($kirby, $kinds))->link($form, $subject)];
                 },
             ],
             [

@@ -2,6 +2,7 @@
 
 namespace BSBI\WebBase\traits;
 
+use BSBI\WebBase\forms\about\AboutSubject;
 use BSBI\WebBase\forms\ResolvedForm;
 use BSBI\WebBase\forms\ResolvedFormField;
 use BSBI\WebBase\forms\ResolvedFormSection;
@@ -28,6 +29,11 @@ trait FormProperties {
 
     /** @var Blocks|null Custom form element blocks added by panel editors */
     private ?Blocks $customFormBlocks = null;
+
+    private ?AboutSubject $aboutSubject = null;
+
+    /** @var array<string, string> */
+    private array $fillFromKeys = [];
 
     /**
      * @return string
@@ -168,6 +174,27 @@ trait FormProperties {
     }
 
     /**
+     * Returns what the feedback is about (a verified about link), or null.
+     */
+    public function getAboutSubject(): ?AboutSubject
+    {
+        return $this->aboutSubject;
+    }
+
+    /**
+     * Sets what the feedback is about, and the questions that answers
+     * (key => 'title' or 'date'), which the form then leaves out.
+     *
+     * @param array<string, string> $fillFromKeys
+     */
+    public function setAboutSubject(?AboutSubject $aboutSubject, array $fillFromKeys = []): static
+    {
+        $this->aboutSubject = $aboutSubject;
+        $this->fillFromKeys = $fillFromKeys;
+        return $this;
+    }
+
+    /**
      * Returns an immutable ResolvedForm value object containing all data
      * needed to render the form snippet, decoupled from the page model.
      *
@@ -181,6 +208,8 @@ trait FormProperties {
             submissionSuccessful: $this->submissionSuccessful,
             csrfToken:            $this->csrfToken,
             introHtml:            $this->introHtml,
+            about:                $this->aboutSubject,
+            fillFrom:             $this->fillFromKeys,
         );
     }
 }

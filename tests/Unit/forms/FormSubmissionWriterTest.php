@@ -6,6 +6,7 @@ namespace BSBI\WebBase\Tests\Unit\forms;
 
 use BSBI\WebBase\forms\FormSubmissionWriter;
 use BSBI\WebBase\forms\SessionSlots;
+use BSBI\WebBase\forms\about\AboutSubject;
 use BSBI\WebBase\Testing\KirbyTestEnvironment;
 use Kirby\Cms\App;
 use Kirby\Cms\Page;
@@ -87,6 +88,37 @@ final class FormSubmissionWriterTest extends TestCase
         $this->assertNotSame($first->id(), '');
         $this->assertCount(1, $this->reload($form)->children());
         $this->assertSame('two', $second->content()->get('submission')->yaml()[0]['answer']);
+    }
+
+    public function testAResponseAboutASubjectRecordsItAndAResponseWithoutDoesNot(): void
+    {
+        $form = $this->form();
+        $writer = new FormSubmissionWriter();
+        $walk = new AboutSubject('page://walk', 'Kenfig walk', '2026-09-14', 'walk.sig');
+
+        $about = $writer->write($form, 'feedback', [['question' => 'Q', 'answer' => 'a']], $walk);
+        $plain = $writer->write($form, 'edi', [['question' => 'Q', 'answer' => 'b']]);
+
+        $this->assertSame('page://walk', $about->content()->get('about')->value());
+        $this->assertSame('Kenfig walk', $about->content()->get('about_title')->value());
+        $this->assertSame('2026-09-14', $about->content()->get('about_date')->value());
+        $this->assertNull($plain->content()->get('about')->value());
+    }
+
+    public function testEachSubjectHasItsOwnSlot(): void
+    {
+        $form = $this->form();
+        $writer = new FormSubmissionWriter($this->slots());
+        $walk = new AboutSubject('page://walk', 'Kenfig walk', '', 'walk.sig');
+        $talk = new AboutSubject('page://talk', 'Winter talk', '', 'talk.sig');
+
+        $first = $writer->write($form, 'feedback', [['question' => 'Q', 'answer' => 'a']], $walk);
+        $again = $writer->write($form, 'feedback', [['question' => 'Q', 'answer' => 'b']], $walk);
+        $other = $writer->write($form, 'feedback', [['question' => 'Q', 'answer' => 'c']], $talk);
+
+        $this->assertSame($first->id(), $again->id());
+        $this->assertNotSame($first->id(), $other->id());
+        $this->assertCount(2, $this->reload($form)->children());
     }
 
     private function form(): Page

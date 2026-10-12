@@ -267,6 +267,31 @@ final class PanelFieldReaderTest extends TestCase
         $this->assertSame('&lt;b&gt;no&lt;/b&gt;', $field->spec->resolve([])->leftLabel);
     }
 
+    // ── Fill from the link ──────────────────────────────────────────────────
+
+    #[DataProvider('fillFromCases')]
+    public function testFillFromIsReadOnlyWhereItFits(string $type, array $content, string $expected): void
+    {
+        $this->assertSame($expected, $this->read($type, ['label' => 'Q', 'name' => 'q'] + $content)->fillFrom);
+    }
+
+    /** @return array<string, array{string, array<string, string>, string}> */
+    public static function fillFromCases(): array
+    {
+        return [
+            'title on text'      => ['form-textbox', ['fillFrom' => 'title'], 'title'],
+            'date on text'       => ['form-textbox', ['fillFrom' => 'date'], 'date'],
+            'date on a date'     => ['form-textbox', ['fillFrom' => 'date', 'inputType' => 'date'], 'date'],
+            'title on a date'    => ['form-textbox', ['fillFrom' => 'title', 'inputType' => 'date'], ''],
+            'date on an email'   => ['form-textbox', ['fillFrom' => 'date', 'inputType' => 'email'], ''],
+            'title on textarea'  => ['form-textarea', ['fillFrom' => 'title'], 'title'],
+            'date on textarea'   => ['form-textarea', ['fillFrom' => 'date'], ''],
+            'unknown value'      => ['form-textbox', ['fillFrom' => 'author'], ''],
+            'blank'              => ['form-textbox', [], ''],
+            'not on a choice'    => ['form-radio-group', ['fillFrom' => 'title', 'options' => "A\nB"], ''],
+        ];
+    }
+
     // ── Helpers ─────────────────────────────────────────────────────────────
 
     /**

@@ -52,6 +52,9 @@ class PanelFormDefinition extends BaseFormDefinition
     /** @var array<string, true> Questions left out on this form, filled by build() */
     private array $leftOut = [];
 
+    /** @var array<string, string> Questions an about link answers, key => 'title' or 'date', filled by build() */
+    private array $fillFrom = [];
+
     /** @var array<string, true> Library section ids used, filled by build() */
     private array $sectionIds = [];
 
@@ -106,6 +109,18 @@ class PanelFormDefinition extends BaseFormDefinition
     {
         $this->build();
         return $this->columns;
+    }
+
+    /**
+     * Returns the questions kept on the form that an about link answers:
+     * key => 'title' or 'date'.
+     *
+     * @return array<string, string>
+     */
+    public function fillFromKeys(): array
+    {
+        $this->build();
+        return $this->fillFrom;
     }
 
     /**
@@ -271,6 +286,9 @@ class PanelFormDefinition extends BaseFormDefinition
                         'label'  => $field->label,
                         'column' => $field->reportAs !== '' ? $field->reportAs : $field->key,
                     ];
+                }
+                if ($field->fillFrom !== '') {
+                    $this->fillFrom[$field->key] = $field->fillFrom;
                 }
             }
 

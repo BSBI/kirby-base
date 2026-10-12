@@ -27,6 +27,8 @@ final readonly class PanelField
      * @param string        $label    Raw label (display-only text: its text), for problem
      *                                messages, panel summaries and stored submissions
      * @param string        $reportAs Export column chosen by the editor; blank means the key
+     * @param string        $fillFrom What an "about" link fills this answer with: 'title',
+     *                                'date', or blank for an ordinary question
      */
     public function __construct(
         public FormFieldSpec $spec,
@@ -35,6 +37,7 @@ final readonly class PanelField
         public array $options = [],
         public string $label = '',
         public string $reportAs = '',
+        public string $fillFrom = '',
     ) {
     }
 

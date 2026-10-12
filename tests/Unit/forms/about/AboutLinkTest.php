@@ -81,6 +81,21 @@ final class AboutLinkTest extends TestCase
         $this->assertNull($this->links()->read($form, $value));
     }
 
+    public function testASubjectCarriesItsUuidTitleDateAndTheSignedValue(): void
+    {
+        $form = $this->page('feedback');
+        $value = $this->links()->value($form, $this->page('events/walk'));
+
+        $subject = $this->links()->subject($form, $value);
+
+        $this->assertNotNull($subject);
+        $this->assertSame('page://kenfigwalk', $subject->uuid);
+        $this->assertSame('Kenfig walk', $subject->title);
+        $this->assertSame('2026-09-14', $subject->date);
+        $this->assertSame($value, $subject->signedValue);
+        $this->assertNull($this->links()->subject($form, 'kenfigwalk.0000000000000000'));
+    }
+
     private function links(): AboutLink
     {
         return new AboutLink(self::$kirby, new AboutKinds(self::$kirby));

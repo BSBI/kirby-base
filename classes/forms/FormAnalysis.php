@@ -14,7 +14,8 @@ use Kirby\Cms\Page;
 /**
  * The panel's analysis of one form type: its responses (from the
  * `form_submissions` index, so no page-tree walk), filtered to one form and
- * a date range if asked, summarised by FormSubmissionAnalyser.
+ * a date range if asked, or to what they are about (an about link's subject),
+ * summarised by FormSubmissionAnalyser.
  *
  * Each question's shape comes from the panel-built forms of that type, and
  * from any form whose "also save as" sections save responses of that type.
@@ -36,15 +37,35 @@ final readonly class FormAnalysis
     /** @var Closure(): array<string, string> */
     private Closure $builtForms;
 
+    /** @var Closure(string): list<string> */
+    private Closure $typesAbout;
+
     /**
      * @param App                                $kirby
      * @param (Closure(string): list<string>)|null $responseIds Form type => its responses' page ids; default from the index
      * @param (Closure(): array<string, string>)|null $builtForms Panel-built form page id => its form type; default from the index
+     * @param (Closure(string): list<string>)|null $typesAbout A subject's page:// UUID => the form types of responses about it; default from the index
      */
-    public function __construct(private App $kirby, ?Closure $responseIds = null, ?Closure $builtForms = null)
-    {
+    public function __construct(
+        private App $kirby,
+        ?Closure $responseIds = null,
+        ?Closure $builtForms = null,
+        ?Closure $typesAbout = null
+    ) {
         $this->responseIds = $responseIds ?? static fn(string $type): array => self::idsFromIndex('form_submissions', $type);
         $this->builtForms = $builtForms ?? static fn(): array => self::builtFormsFromIndex();
+        $this->typesAbout = $typesAbout ?? static fn(string $about): array => self::typesAboutFromIndex($about);
+    }
+
+    /**
+     * Returns the form types with responses about the subject (its page://
+     * UUID), in order; "(untyped)" for responses without a type.
+     *
+     * @return list<string>
+     */
+    public function typesAbout(string $about): array
+    {
+        return ($this->typesAbout)($about);
     }
 
     /**
@@ -52,31 +73,39 @@ final readonly class FormAnalysis
      *
      * @return array<string, mixed>
      */
-    public function cached(string $type, string $formId = '', string $from = '', string $to = '', bool $refresh = false): array
-    {
+    public function cached(
+        string $type,
+        string $formId = '',
+        string $from = '',
+        string $to = '',
+        bool $refresh = false,
+        string $about = ''
+    ): array {
         $cache = $this->kirby->cache('bsbi');
-        $key = 'form-analysis-' . md5(implode('|', [$type, $formId, $from, $to]));
+        $key = 'form-analysis-' . md5(implode('|', [$type, $formId, $from, $to, $about]));
         $stored = $refresh ? null : $cache->get($key);
         if (is_array($stored)) {
             /** @var array<string, mixed> $stored */
             return $stored;
         }
-        $result = $this->forType($type, $formId, $from, $to) + ['builtAt' => date('Y-m-d H:i')];
+        $result = $this->forType($type, $formId, $from, $to, $about) + ['builtAt' => date('Y-m-d H:i')];
         $cache->set($key, $result, self::CACHE_MINUTES);
         return $result;
     }
 
     /**
      * Returns the analysis of a form type's responses, optionally only those
-     * of one form (its page id) and between two dates (Y-m-d, inclusive),
-     * plus the forms with responses of that type, to filter by.
+     * of one form (its page id), between two dates (Y-m-d, inclusive) and
+     * about one subject (its page:// UUID), plus the forms and the subjects
+     * with responses of that type, to filter by.
      *
      * @return array<string, mixed>
      */
-    public function forType(string $type, string $formId = '', string $from = '', string $to = ''): array
+    public function forType(string $type, string $formId = '', string $from = '', string $to = '', string $about = ''): array
     {
         $records = [];
         $forms = [];
+        $subjects = [];
         foreach (($this->responseIds)($type) as $id) {
             $response = $this->find($id);
             if (!$response instanceof Page) {
@@ -87,9 +116,13 @@ final readonly class FormAnalysis
                 $forms[$parent->id()] = $parent->title()->toString();
             }
             $record = FormSubmissionExporter::record($response);
+            if (($record['about'] ?? '') !== '') {
+                $subjects[$record['about']] = $record['aboutText'] ?? '';
+            }
             $day = substr($record['date'], 0, 10);
             if (
                 ($formId !== '' && $parent?->id() !== $formId)
+                || ($about !== '' && ($record['about'] ?? '') !== $about)
                 || ($from !== '' && $day < $from)
                 || ($to !== '' && $day > $to)
             ) {
@@ -99,16 +132,22 @@ final readonly class FormAnalysis
         }
         usort($records, static fn(array $a, array $b): int => strcmp($a['date'], $b['date']));
         ksort($forms);
+        asort($subjects);
 
         [$shapes, $ediColumns] = $this->shapes($type);
         $analyser = new FormSubmissionAnalyser($shapes, $ediColumns, $type === self::EDI_TYPE);
 
-        return ['type' => $type, 'formId' => $formId, 'from' => $from, 'to' => $to]
+        return ['type' => $type, 'formId' => $formId, 'from' => $from, 'to' => $to, 'about' => $about]
             + $analyser->analyse((new FormSubmissionExporter())->table($records))
             + ['forms' => array_map(
                 static fn(string $id, string $title): array => ['id' => $id, 'title' => $title],
                 array_keys($forms),
                 $forms
+            )]
+            + ['subjects' => array_map(
+                static fn(string $id, string $title): array => ['id' => $id, 'title' => $title],
+                array_keys($subjects),
+                array_values($subjects)
             )];
     }
 
@@ -211,6 +250,25 @@ final readonly class FormAnalysis
             $manager->query()->where('form_type', $formType)->getPageIds(),
             'is_string'
         ));
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function typesAboutFromIndex(string $about): array
+    {
+        $manager = ContentIndexRegistry::get('form_submissions');
+        if ($manager === null || $about === '') {
+            return [];
+        }
+        $types = [];
+        foreach ($manager->query()->where('about', $about)->get() as $row) {
+            $type = is_string($row['form_type'] ?? null) ? $row['form_type'] : '';
+            $types[$type !== '' ? $type : FormSubmissionExporter::UNTYPED] = true;
+        }
+        $types = array_keys($types);
+        sort($types);
+        return $types;
     }
 
     /**

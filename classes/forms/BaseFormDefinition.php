@@ -123,6 +123,17 @@ abstract class BaseFormDefinition
     }
 
     /**
+     * Returns the questions an about link answers: key => 'title' or 'date'.
+     * None for a hand-written form; a panel question can ask for it.
+     *
+     * @return array<string, string>
+     */
+    public function fillFromKeys(): array
+    {
+        return [];
+    }
+
+    /**
      * Adds editor-defined panel sections to this form, at extraSectionsAt().
      *
      * Build the panel definition with this form's getFieldNames() as its

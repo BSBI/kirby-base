@@ -23,7 +23,10 @@ use Kirby\Cms\Page;
  *
  * Long format: one row per answer, for pivoting in a spreadsheet.
  *
- * @phpstan-type Submission array{formType: string, title: string, date: string, items: list<array<string, mixed>>}
+ * A response from an about link records what it is about; the exports then
+ * get an About column (its title and date), after Submission.
+ *
+ * @phpstan-type Submission array{formType: string, title: string, date: string, items: list<array<string, mixed>>, about?: string, aboutText?: string}
  */
 final readonly class FormSubmissionExporter
 {
@@ -50,12 +53,16 @@ final readonly class FormSubmissionExporter
         }
 
         $date = $page->modified('Y-m-d H:i:s');
+        $aboutTitle = PanelContent::text($page->content(), 'about_title');
+        $aboutDate = PanelContent::text($page->content(), 'about_date');
 
         return [
-            'formType' => PanelContent::text($page->content(), 'form_type'),
-            'title'    => $page->title()->toString(),
-            'date'     => is_string($date) ? $date : '',
-            'items'    => $items,
+            'formType'  => PanelContent::text($page->content(), 'form_type'),
+            'title'     => $page->title()->toString(),
+            'date'      => is_string($date) ? $date : '',
+            'items'     => $items,
+            'about'     => PanelContent::text($page->content(), 'about'),
+            'aboutText' => $aboutTitle . ($aboutDate !== '' ? ' (' . $aboutDate . ')' : ''),
         ];
     }
 
@@ -120,13 +127,20 @@ final readonly class FormSubmissionExporter
     {
         ['headers' => $headers, 'rows' => $rows] = $this->table($submissions);
 
+        $withAbout = self::anyAbout($submissions);
         $prefix = $withFormType ? ['Form Type', 'Submission'] : ['Submission'];
+        if ($withAbout) {
+            $prefix[] = 'About';
+        }
         $csvRows = [array_merge($prefix, array_values($headers))];
 
         foreach ($rows as $row) {
             $csvRow = $withFormType
                 ? [$this->formType($row['submission']), $row['submission']['title']]
                 : [$row['submission']['title']];
+            if ($withAbout) {
+                $csvRow[] = $row['submission']['aboutText'] ?? '';
+            }
             foreach (array_keys($headers) as $id) {
                 $csvRow[] = $row['answers'][$id] ?? '';
             }
@@ -144,7 +158,10 @@ final readonly class FormSubmissionExporter
      */
     public function long(array $submissions): array
     {
-        $csvRows = [['Form Type', 'Submission', 'Date', 'Column', 'Question', 'Answer']];
+        $withAbout = self::anyAbout($submissions);
+        $csvRows = [$withAbout
+            ? ['Form Type', 'Submission', 'About', 'Date', 'Column', 'Question', 'Answer']
+            : ['Form Type', 'Submission', 'Date', 'Column', 'Question', 'Answer']];
 
         foreach ($this->matchOldItems($submissions) as $submission) {
             foreach ($submission['items'] as $item) {
@@ -153,6 +170,7 @@ final readonly class FormSubmissionExporter
                 $csvRows[] = [
                     $this->formType($submission),
                     $submission['title'],
+                    ...($withAbout ? [$submission['aboutText'] ?? ''] : []),
                     $submission['date'],
                     $column !== '' ? $column : $question,
                     $question,
@@ -162,6 +180,21 @@ final readonly class FormSubmissionExporter
         }
 
         return $csvRows;
+    }
+
+    /**
+     * Returns true if any submission is about something (from an about link).
+     *
+     * @param list<Submission> $submissions
+     */
+    private static function anyAbout(array $submissions): bool
+    {
+        foreach ($submissions as $submission) {
+            if (($submission['about'] ?? '') !== '') {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
