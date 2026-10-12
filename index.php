@@ -167,6 +167,15 @@ $pluginConfig = [
         'formAboutKinds' => function (): array {
             return array_map(static fn(array $kind): string => $kind['label'], (new AboutKinds(kirby()))->all());
         },
+        /**
+         * Choices for a question's "Fill from the link": its title, its date,
+         * and the details the kinds list (e.g. Led by), value => label.
+         *
+         * @return array<string, string>
+         */
+        'formAboutFillOptions' => function (): array {
+            return (new AboutKinds(kirby()))->fillOptions();
+        },
     ],
     'pageMethods' => [
         /**

@@ -89,7 +89,10 @@ final readonly class AboutLink
             $page->uuid()->toString(),
             $page->title()->toString(),
             $this->kinds->dateOf($page),
-            trim($value)
+            trim($value),
+            $this->kinds->labelOf($page),
+            $this->kinds->endDateOf($page),
+            $this->kinds->detailsOf($page)
         );
     }
 

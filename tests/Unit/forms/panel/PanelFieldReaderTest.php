@@ -286,7 +286,10 @@ final class PanelFieldReaderTest extends TestCase
             'date on an email'   => ['form-textbox', ['fillFrom' => 'date', 'inputType' => 'email'], ''],
             'title on textarea'  => ['form-textarea', ['fillFrom' => 'title'], 'title'],
             'date on textarea'   => ['form-textarea', ['fillFrom' => 'date'], ''],
-            'unknown value'      => ['form-textbox', ['fillFrom' => 'author'], ''],
+            'a detail on text'   => ['form-textbox', ['fillFrom' => 'ledBy'], 'ledBy'],
+            'a detail on long'   => ['form-textarea', ['fillFrom' => 'ledBy'], 'ledBy'],
+            'a detail on a date' => ['form-textbox', ['fillFrom' => 'ledBy', 'inputType' => 'date'], ''],
+            'not a field name'   => ['form-textbox', ['fillFrom' => 'led by!'], ''],
             'blank'              => ['form-textbox', [], ''],
             'not on a choice'    => ['form-radio-group', ['fillFrom' => 'title', 'options' => "A\nB"], ''],
         ];

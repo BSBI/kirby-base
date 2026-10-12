@@ -15,8 +15,9 @@ use Kirby\Cms\Blocks;
  * directly to the snippet, decoupling snippet rendering from the page model.
  *
  * Opened from an about link, the questions the link answers are left out (a
- * section left with no questions goes too); the snippet names the subject
- * and posts its signed value back.
+ * section left with no questions goes too; a question the subject has no
+ * value for is still asked); the snippet names the subject and posts its
+ * signed value back.
  */
 readonly class ResolvedForm
 {
@@ -30,7 +31,7 @@ readonly class ResolvedForm
      * @param string                                       $csrfToken            CSRF token to render as a hidden input
      * @param string                                       $introHtml            Rendered HTML to display before the form; hidden after submission
      * @param AboutSubject|null                            $about                What the feedback is about, from a verified about link
-     * @param array<string, string>                        $fillFrom             Questions the about link answers (key => 'title' or 'date')
+     * @param array<string, string>                        $fillFrom             Questions an about link can answer (key => 'title', 'date' or a detail)
      */
     public function __construct(
         array $fieldGroups,
@@ -41,7 +42,8 @@ readonly class ResolvedForm
         public readonly ?AboutSubject $about = null,
         array $fillFrom = [],
     ) {
-        $this->fieldGroups = $about === null || $fillFrom === [] ? $fieldGroups : self::leaveOut($fieldGroups, $fillFrom);
+        $answered = $about === null ? [] : $about->answered($fillFrom);
+        $this->fieldGroups = $answered === [] ? $fieldGroups : self::leaveOut($fieldGroups, $answered);
     }
 
     /**

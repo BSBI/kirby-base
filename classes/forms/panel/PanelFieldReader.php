@@ -189,17 +189,19 @@ final class PanelFieldReader
     }
 
     /**
-     * Returns what an "about" link fills the answer with: 'title' on a text
-     * question or long answer, 'date' on a text or date question, else blank.
+     * Returns what an "about" link fills the answer with: 'date' on a text or
+     * date question; 'title' or a detail (a field name, e.g. 'ledBy') on a
+     * text question or long answer; else blank.
      */
     private function fillFrom(Block $block, string $type): string
     {
         $fillFrom = $this->text($block, 'fillFrom');
         $inputType = $type === FormFieldSpec::TYPE_TEXTBOX ? $this->inputType($block) : '';
+        $isText = $type === FormFieldSpec::TYPE_TEXTAREA || $inputType === 'text';
         return match (true) {
-            $fillFrom === 'title' && ($type === FormFieldSpec::TYPE_TEXTAREA || $inputType === 'text') => 'title',
-            $fillFrom === 'date' && in_array($inputType, ['text', 'date'], true)                       => 'date',
-            default                                                                                     => '',
+            $fillFrom === 'date' => in_array($inputType, ['text', 'date'], true) ? 'date' : '',
+            $isText && preg_match('/^[A-Za-z][A-Za-z0-9_]{0,63}$/', $fillFrom) === 1 => $fillFrom,
+            default => '',
         };
     }
 

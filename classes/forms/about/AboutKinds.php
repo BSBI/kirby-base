@@ -15,12 +15,15 @@ use Throwable;
  * the `forms.aboutKinds` option: kind => label, templates, and where to find
  * them, either a content index (`index`, with `titleColumn`/`dateColumn`) or a
  * parent page (`parent`), so choosing never walks the whole site. `dateField`
- * names the page's date field, if it has one.
+ * names the page's date field, if it has one, and `endDateField` its end
+ * date; `details` lists other fields to show and fill from, field => label
+ * (e.g. `['ledBy' => 'Led by']`).
  *
  * A form accepts the kinds ticked in its `aboutKinds` field ("Feedback is about").
  *
  * @phpstan-type Kind array{label: string, templates: list<string>, parent: string, index: string,
- *     titleColumn: string, dateColumn: string, dateField: string}
+ *     titleColumn: string, dateColumn: string, dateField: string, endDateField: string,
+ *     details: array<string, string>}
  * @phpstan-type Choice array{value: string, title: string, date: string, where: string, kind: string}
  */
 final readonly class AboutKinds
@@ -61,6 +64,8 @@ final readonly class AboutKinds
                 'titleColumn' => $text('titleColumn') !== '' ? $text('titleColumn') : 'title',
                 'dateColumn'  => $text('dateColumn'),
                 'dateField'   => $text('dateField'),
+                'endDateField' => $text('endDateField'),
+                'details'     => self::details($settings['details'] ?? []),
             ];
         }
         return $kinds;
@@ -92,18 +97,94 @@ final readonly class AboutKinds
     }
 
     /**
+     * Returns a page's kind label (e.g. "Event"), or ''.
+     */
+    public function labelOf(Page $page): string
+    {
+        $kind = $this->kindOf($page);
+        return $kind === null ? '' : $this->all()[$kind]['label'];
+    }
+
+    /**
      * Returns a page's date as Y-m-d, from its kind's date field, or ''.
      */
     public function dateOf(Page $page): string
     {
+        return $this->dateIn($page, 'dateField');
+    }
+
+    /**
+     * Returns a page's end date as Y-m-d, from its kind's end date field, or ''.
+     */
+    public function endDateOf(Page $page): string
+    {
+        return $this->dateIn($page, 'endDateField');
+    }
+
+    /**
+     * Returns the page's details that have a value: field => label and value.
+     *
+     * @return array<string, array{label: string, value: string}>
+     */
+    public function detailsOf(Page $page): array
+    {
         $kind = $this->kindOf($page);
-        $field = $kind === null ? '' : $this->all()[$kind]['dateField'];
+        $details = [];
+        foreach ($kind === null ? [] : $this->all()[$kind]['details'] as $field => $label) {
+            $value = PanelContent::text($page->content(), $field);
+            if ($value !== '') {
+                $details[$field] = ['label' => $label, 'value' => $value];
+            }
+        }
+        return $details;
+    }
+
+    /**
+     * Returns the choices for a question's "Fill from the link": its title,
+     * its date, and every kind's details, value => label.
+     *
+     * @return array<string, string>
+     */
+    public function fillOptions(): array
+    {
+        $options = ['title' => 'Its title', 'date' => 'Its date'];
+        foreach ($this->all() as $settings) {
+            $options += $settings['details'];
+        }
+        return $options;
+    }
+
+    /**
+     * @param 'dateField'|'endDateField' $setting
+     */
+    private function dateIn(Page $page, string $setting): string
+    {
+        $kind = $this->kindOf($page);
+        $field = $kind === null ? '' : $this->all()[$kind][$setting];
         if ($field === '') {
             return '';
         }
         $value = PanelContent::text($page->content(), $field);
         $time = $value === '' ? false : strtotime($value);
         return $time === false ? '' : date('Y-m-d', $time);
+    }
+
+    /**
+     * Returns a kind's details setting as field => label, field names only
+     * (they're also "Fill from the link" values).
+     *
+     * @return array<string, string>
+     */
+    private static function details(mixed $setting): array
+    {
+        $details = [];
+        foreach (is_array($setting) ? $setting : [] as $field => $label) {
+            if (is_string($field) && is_string($label) && preg_match('/^[A-Za-z][A-Za-z0-9_]{0,63}$/', $field) === 1
+                && !in_array($field, ['title', 'date'], true)) {
+                $details[$field] = $label;
+            }
+        }
+        return $details;
     }
 
     /**
