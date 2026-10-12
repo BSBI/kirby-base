@@ -262,12 +262,17 @@ $pluginConfig = [
                     }
                     $kinds = new AboutKinds($kirby);
                     $search = is_string(get('q')) ? mb_substr(trim((string) get('q')), 0, 100) : '';
-                    return ['choices' => $kinds->choices($kinds->forForm($form), $search)];
+                    // ?kinds= the ticks on the form, saved or not (known kinds only).
+                    $asked = is_string(get('kinds')) ? array_map('trim', explode(',', (string) get('kinds'))) : null;
+                    $chosen = $asked === null ? $kinds->forForm($form) : array_values(array_intersect($asked, array_keys($kinds->all())));
+                    return ['choices' => $kinds->choices($chosen, $search)];
                 },
             ],
             [
-                // The signed link to a form about one page (AboutLink);
-                // ?form= the form's page id, ?subject= the page's page:// UUID.
+                // The signed link to a form about one page (AboutLink), and
+                // whether the form is saved accepting its kind (until then the
+                // link opens the form without naming it); ?form= the form's
+                // page id, ?subject= the page's page:// UUID.
                 'pattern' => 'forms/about/link',
                 'method'  => 'GET',
                 'action'  => function (): array {
@@ -283,10 +288,15 @@ $pluginConfig = [
                     }
                     $kinds = new AboutKinds($kirby);
                     $subject = \Kirby\Uuid\Uuid::for($subjectId)?->model();
-                    if (!$subject instanceof \Kirby\Cms\Page || !in_array($kinds->kindOf($subject), $kinds->forForm($form), true)) {
-                        return ['link' => ''];
+                    $kind = $subject instanceof \Kirby\Cms\Page ? $kinds->kindOf($subject) : null;
+                    if (!$subject instanceof \Kirby\Cms\Page || $kind === null) {
+                        return ['link' => '', 'saved' => false];
                     }
-                    return ['link' => (new AboutLink($kirby, $kinds))->link($form, $subject)];
+                    // The link works once the form is saved with this kind ticked.
+                    return [
+                        'link'  => (new AboutLink($kirby, $kinds))->link($form, $subject),
+                        'saved' => in_array($kind, $kinds->forForm($form), true),
+                    ];
                 },
             ],
             [

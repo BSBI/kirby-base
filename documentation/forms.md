@@ -644,7 +644,11 @@ types with responses about a subject.
 
 - Section `formaboutlinks` (`sections/formaboutlinks.php`, on the form page's Form tab
   sidebar): a searchable picker over the form's kinds and the signed link with a **Copy**
-  button. It says so when the form has no kinds ticked. The kinds are as last saved.
+  button. It says so when the form has no kinds ticked. It follows the ticks before they
+  are saved (the panel's unsaved `changes` version, and `?kinds=` on the choices route),
+  and re-reads the saved ones after a save; `forms/about/link` returns `saved: false`
+  while the subject's kind isn't saved on the form, and the section then says to save
+  first, since until then the link opens the form without naming the page.
 - API routes, both limited to the roles in `forms.libraryRoles`:
   - `GET forms/about/choices?form=<page id>&q=<search>`: the choices for the form's kinds
   - `GET forms/about/link?form=<page id>&subject=<page:// UUID>`: the signed link
