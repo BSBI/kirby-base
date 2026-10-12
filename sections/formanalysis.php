@@ -11,21 +11,42 @@ use BSBI\WebBase\helpers\ContentIndexRegistry;
  * filters for one form and a date range. The Vue section loads the analysis
  * from the `forms/analysis` API route, which checks the role; this section
  * only supplies the form types to choose from.
+ *
+ * On a form's own page (`forThisPage: true`) the analysis is fixed to that
+ * form: only the types of its own responses are offered, and there's no form
+ * picker.
  */
 return [
     'props' => [
         'headline' => function (string $headline = 'Analysis') {
             return $headline;
         },
+        'forThisPage' => function (bool $forThisPage = false) {
+            return $forThisPage;
+        },
     ],
     'computed' => [
+        'pageId' => function (): string {
+            $model = $this->model();
+            return $this->forThisPage && $model instanceof \Kirby\Cms\Page ? $model->id() : '';
+        },
         'formTypes' => function (): array {
             $manager = ContentIndexRegistry::get('form_submissions');
             if ($manager === null) {
                 return [];
             }
+            $query = $manager->query();
+            $pageId = $this->pageId;
+            if ($pageId !== '') {
+                // This form's own responses: its direct children.
+                $query = $query->whereAnyStartsWith(['page_id'], $pageId . '/');
+            }
             $counts = [];
-            foreach ($manager->query()->get() as $row) {
+            foreach ($query->get() as $row) {
+                $rowPage = is_string($row['page_id'] ?? null) ? $row['page_id'] : '';
+                if ($pageId !== '' && dirname($rowPage) !== $pageId) {
+                    continue;
+                }
                 $type = is_string($row['form_type'] ?? null) && $row['form_type'] !== '' ? $row['form_type'] : '(untyped)';
                 $counts[$type] = ($counts[$type] ?? 0) + 1;
             }

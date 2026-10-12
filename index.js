@@ -617,6 +617,7 @@ panel.plugin('open-foundations/kirby-base', {
           types: [],
           type: '',
           form: '',
+          pageId: '',
           from: '',
           to: '',
           result: null,
@@ -630,6 +631,9 @@ panel.plugin('open-foundations/kirby-base', {
           const response = await this.load();
           this.headline = response.headline || this.headline;
           this.types = response.formTypes || [];
+          // On a form's own page, the analysis is fixed to that form.
+          this.pageId = response.pageId || '';
+          this.form = this.pageId;
         } catch (error) {
           console.error('Failed to load the analysis section:', error);
         }
@@ -639,7 +643,7 @@ panel.plugin('open-foundations/kirby-base', {
         if (this.type) {
           this.fetch(false);
         } else {
-          this.status = 'No responses to analyse yet.';
+          this.status = this.pageId ? 'This form has no responses to analyse yet.' : 'No responses to analyse yet.';
         }
       },
       methods: {
@@ -655,7 +659,7 @@ panel.plugin('open-foundations/kirby-base', {
           try {
             this.result = await this.$api.get('forms/analysis', query);
             this.open = {};
-            this.status = 'Showing ' + this.result.total + ' responses of ' + this.type + (this.form ? ', one form' : '') + '.';
+            this.status = 'Showing ' + this.result.total + ' responses of ' + this.type + (this.pageId ? ' on this form' : (this.form ? ', one form' : '')) + '.';
           } catch (error) {
             this.status = 'The analysis could not be loaded.';
             console.error('Failed to load the analysis:', error);
@@ -663,7 +667,7 @@ panel.plugin('open-foundations/kirby-base', {
           this.loading = false;
         },
         changeType: function () {
-          this.form = '';
+          this.form = this.pageId;
           this.fetch(false);
         },
         toggle: function (key) {
@@ -783,13 +787,14 @@ panel.plugin('open-foundations/kirby-base', {
           </component>
 
           <header class="k-section-header" style="display:flex; flex-wrap:wrap; gap:0.75rem 1rem; align-items:flex-end;">
-            <div style="display:flex; flex-direction:column; font-size:0.8rem;">
-              <label :for="uid('type')">Form type</label>
+            <div v-if="!pageId || types.length > 1" style="display:flex; flex-direction:column; font-size:0.8rem;">
+              <!-- On a form's own page, only when it has more than one kind of response (e.g. its EDI copies). -->
+              <label :for="uid('type')">{{ pageId ? 'Responses' : 'Form type' }}</label>
               <select :id="uid('type')" v-model="type" @change="changeType" style="font-size:0.875rem; padding:0.3rem;">
                 <option v-for="t in types" :key="t.type" :value="t.type">{{ t.type }} ({{ t.count }})</option>
               </select>
             </div>
-            <div style="display:flex; flex-direction:column; font-size:0.8rem;">
+            <div v-if="!pageId" style="display:flex; flex-direction:column; font-size:0.8rem;">
               <label :for="uid('form')">Form</label>
               <select :id="uid('form')" v-model="form" @change="fetch(false)" style="font-size:0.875rem; padding:0.3rem; max-width:22rem;">
                 <option value="">All forms of this type</option>

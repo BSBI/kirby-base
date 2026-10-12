@@ -2475,6 +2475,12 @@ parameters:
 		-
 			message: '#^Undefined variable\: \$this$#'
 			identifier: variable.undefined
+			count: 3
+			path: sections/formanalysis.php
+
+		-
+			message: '#^Undefined variable\: \$this$#'
+			identifier: variable.undefined
 			count: 1
 			path: sections/filearchivelinks.php
 
