@@ -320,6 +320,140 @@ final class PanelFormDefinitionTest extends TestCase
         $this->assertSame(['b', 'a'], $definition->getFieldNames());
     }
 
+    public function testAQuestionCanBeAdjustedOnThisFormKeepingItsPlaceAndKey(): void
+    {
+        $section = $this->sectionPage([
+            $this->blockData('form-textbox', ['label' => 'Event name', 'name' => 'event_name']),
+            $this->blockData('form-radio-group', ['label' => 'Member?', 'name' => 'member', 'options' => "Yes\nNo", 'required' => 'true', 'help' => 'Library help', 'reportAs' => 'Membership']),
+            $this->blockData('form-textarea', ['label' => 'Comments', 'name' => 'comments']),
+        ], legend: 'Start', slug: 'start');
+        $resolver = $this->resolver(['page://start' => $section]);
+        $form = $this->formPage([$this->sectionRefAdjusting('page://start', [
+            ['question' => 'member', 'label' => 'Are you a BSBI member?', 'options' => "Yes\nNo\nLapsed", 'help' => ''],
+        ])]);
+
+        $definition = new PanelFormDefinition($form, 't', $resolver);
+        $fields = $definition->getFields($form);
+
+        $this->assertSame(['event_name', 'member', 'comments'], $definition->getFieldNames(), 'same place, same key');
+        $this->assertSame('Are you a BSBI member?', $fields[1]->label);
+        $this->assertSame(['Yes', 'No', 'Lapsed'], $fields[1]->options);
+        $this->assertSame('Library help', $fields[1]->help, 'blank help keeps the library\'s');
+        $this->assertTrue($fields[1]->required, 'everything else stays with the library');
+        $this->assertSame(['label' => 'Are you a BSBI member?', 'column' => 'Membership'], $definition->getSubmissionColumns()['member']);
+        $this->assertSame([], $definition->validate());
+
+        // Other forms using the section keep the library's wording.
+        $plain = new PanelFormDefinition($this->formPage([$this->sectionRef('page://start')]), 't', $resolver);
+        $this->assertSame('Member?', $plain->getFields($form)[1]->label);
+    }
+
+    public function testAdjustedHelpReplacesTheLibrarysAndTextIsEscaped(): void
+    {
+        $section = $this->sectionPage([$this->blockData('form-textbox', ['label' => 'Name', 'name' => 'name'])], slug: 's');
+        $form = $this->formPage([$this->sectionRefAdjusting('page://s', [
+            ['question' => 'name', 'label' => 'Your <b>name</b>', 'options' => '', 'help' => 'As on your card'],
+        ])]);
+
+        $field = (new PanelFormDefinition($form, 't', $this->resolver(['page://s' => $section])))->getFields($form)[0];
+
+        $this->assertSame('Your &lt;b&gt;name&lt;/b&gt;', $field->label);
+        $this->assertSame('As on your card', $field->help);
+    }
+
+    public function testAnAdjustmentForAQuestionTheSectionNoLongerHasIsReported(): void
+    {
+        $section = $this->sectionPage([$this->blockData('form-textbox', ['label' => 'Name', 'name' => 'name'])], slug: 's');
+        $form = $this->formPage([$this->sectionRefAdjusting('page://s', [
+            ['question' => 'gone', 'label' => 'X', 'options' => '', 'help' => ''],
+        ])]);
+
+        $problems = (new PanelFormDefinition($form, 't', $this->resolver(['page://s' => $section])))->validate();
+
+        $this->assertStringContainsString('"gone"', $problems[0]);
+        $this->assertStringContainsString('adjusted', $problems[0]);
+    }
+
+    public function testOptionsOnAQuestionWithoutOptionsAreReportedAndIgnored(): void
+    {
+        $section = $this->sectionPage([$this->blockData('form-textarea', ['label' => 'Comments', 'name' => 'comments'])], slug: 's');
+        $form = $this->formPage([$this->sectionRefAdjusting('page://s', [
+            ['question' => 'comments', 'label' => '', 'options' => "A\nB", 'help' => ''],
+        ])]);
+
+        $definition = new PanelFormDefinition($form, 't', $this->resolver(['page://s' => $section]));
+
+        $this->assertSame('Comments', $definition->getFields($form)[0]->label);
+        $this->assertStringContainsString('only choice questions have options', $definition->validate()[0]);
+    }
+
+    public function testAdjustmentMistakesAreReported(): void
+    {
+        $section = $this->sectionPage([
+            $this->blockData('form-textbox', ['label' => 'Name', 'name' => 'name']),
+            $this->blockData('form-info', ['text' => 'Hello'], '99999999-0000-4000-8000-000000000001'),
+            $this->blockData('form-textbox', ['label' => 'Town', 'name' => 'town']),
+        ], slug: 's');
+        $block = $this->sectionRefAdjusting('page://s', [
+            ['question' => 'name', 'label' => 'First', 'options' => '', 'help' => ''],
+            ['question' => 'name', 'label' => 'Second', 'options' => '', 'help' => ''],
+            ['question' => 'f_99999999', 'label' => 'Info', 'options' => '', 'help' => ''],
+            ['question' => 'bad key!', 'label' => 'X', 'options' => '', 'help' => ''],
+            ['question' => 'town', 'label' => 'Your town', 'options' => '', 'help' => ''],
+        ]);
+        $block['content']['leaveOut'] = 'town';
+        $form = $this->formPage([$block]);
+
+        $definition = new PanelFormDefinition($form, 't', $this->resolver(['page://s' => $section]));
+        $problems = implode("\n", $definition->validate());
+
+        $this->assertSame('Second', $definition->getFields($form)[0]->label, 'the last row for a question is used');
+        $this->assertStringContainsString('"name" is adjusted more than once', $problems);
+        $this->assertStringContainsString('"f_99999999" is display-only text', $problems);
+        $this->assertStringContainsString('"bad key!" is not a usable field name', $problems);
+        $this->assertStringContainsString('"town" is adjusted but also left out', $problems);
+        $this->assertCount(4, $definition->validate());
+    }
+
+    public function testAStaleAdjustmentStaysChoosableMarked(): void
+    {
+        $section = $this->sectionPage([$this->blockData('form-textbox', ['label' => 'Name', 'name' => 'name'])], legend: 'S', slug: 's');
+        $form = $this->formPage([$this->sectionRefAdjusting('page://s', [
+            ['question' => 'renamed', 'label' => 'X', 'options' => '', 'help' => ''],
+        ])]);
+
+        $choices = (new PanelFormDefinition($form, 't', $this->resolver(['page://s' => $section])))->leaveOutChoices();
+
+        $this->assertSame(['name' => 'Name (S)', 'renamed' => 'No longer in its section: renamed'], $choices);
+    }
+
+    public function testRewordingAnOptionAShowWhenUsesIsReported(): void
+    {
+        $section = $this->sectionPage([
+            $this->blockData('form-radio-group', ['label' => 'Member?', 'name' => 'member', 'options' => "Yes\nNo"]),
+        ], slug: 'start');
+        $form = $this->formPage([
+            $this->sectionRefAdjusting('page://start', [['question' => 'member', 'label' => '', 'options' => "Yes, I am\nNo", 'help' => '']]),
+            $this->sectionInline([$this->blockData('form-textbox', ['label' => 'Number', 'name' => 'number'])], 'Members', 'member', 'Yes'),
+        ]);
+
+        $definition = new PanelFormDefinition($form, 't', $this->resolver(['page://start' => $start = $section]));
+
+        $this->assertStringContainsString('"Yes" is not one of the options of "member"', $definition->validate()[0]);
+        $this->assertArrayHasKey('member:Yes, I am', $definition->conditionChoices(), 'the reworded option can be re-picked');
+    }
+
+    /**
+     * @param list<array<string, string>> $rows
+     * @return array<string, mixed>
+     */
+    private function sectionRefAdjusting(string $reference, array $rows): array
+    {
+        $block = $this->sectionRef($reference);
+        $block['content']['adjust'] = \Kirby\Data\Yaml::encode($rows);
+        return $block;
+    }
+
     /**
      * @return array<string, mixed>
      */

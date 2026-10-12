@@ -172,6 +172,18 @@ final class FormKeyLockGuardTest extends TestCase
         $this->guard(['survey' => ['email']], ['page://contact' => $section])->check($form, $this->saving([$leaving]));
     }
 
+    public function testAdjustingAQuestionResponsesUseIsSaved(): void
+    {
+        $section = $this->section('contact', [$this->textbox('Email', 'email')]);
+        $form = $this->builtForm([$this->sectionRef('page://contact')]);
+        $adjusted = $this->sectionRef('page://contact');
+        $adjusted['content']['adjust'] = \Kirby\Data\Yaml::encode([['question' => 'email', 'label' => 'Your email', 'options' => '', 'help' => '']]);
+
+        $this->guard(['survey' => ['email']], ['page://contact' => $section])->check($form, $this->saving([$adjusted]));
+
+        $this->addToAssertionCount(1);
+    }
+
     public function testRenamingAKeyInALibrarySectionAFormsResponsesUseIsRefused(): void
     {
         $section = $this->section('contact', [$this->textbox('Email', 'email')]);
