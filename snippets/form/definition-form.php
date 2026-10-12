@@ -28,7 +28,46 @@ if ($form->submissionSuccessful) :
     return;
 endif;
 
-?>
+// Opened from an about link: a box naming what the feedback is about, with
+// its dates and details. Labels go through t(): the kind and detail labels
+// come from the forms.aboutKinds config, so the site's language file needs
+// them too.
+if ($form->about !== null) :
+    $about = $form->about;
+    $text = static fn(string $key): string => is_string($translated = t($key, $key)) ? $translated : $key;
+    $start = $about->date !== '' ? strtotime($about->date) : false;
+    $end = $about->endDate !== '' && $about->endDate !== $about->date ? strtotime($about->endDate) : false;
+    $isRange = $start !== false && $end !== false && $end > $start;
+    $dates = '';
+    if ($isRange) {
+        $dates = date('Y', $start) !== date('Y', $end)
+            ? date('j F Y', $start) . ' – ' . date('j F Y', $end)
+            : (date('n', $start) !== date('n', $end)
+                ? date('j F', $start) . ' – ' . date('j F Y', $end)
+                : date('j', $start) . '–' . date('j F Y', $end));
+    } elseif ($start !== false) {
+        $dates = date('j F Y', $start);
+    }
+    $kind = $about->kind !== '' ? $text($about->kind) : $text('Page');
+    $rows = [[$kind, $about->title]];
+    if ($dates !== '') {
+        $rows[] = [$isRange ? $text('Dates') : $text('Date'), $dates];
+    }
+    foreach ($about->details as $detail) {
+        $rows[] = [$text($detail['label']), $detail['value']];
+    }
+    $heading = str_replace('{kind}', mb_strtolower($kind), $text('You are giving feedback on this {kind}'));
+    ?>
+<section class="container border border-2 border-success rounded py-3 mb-4" aria-labelledby="form-about-heading" data-form-about>
+    <h2 id="form-about-heading" class="h5 mt-0 mb-3"><?= htmlspecialchars($heading, ENT_QUOTES, 'UTF-8') ?></h2>
+    <dl class="row mb-0">
+        <?php foreach ($rows as [$label, $value]) : ?>
+        <dt class="col-sm-3"><?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?></dt>
+        <dd class="col-sm-9"><?= htmlspecialchars($value, ENT_QUOTES, 'UTF-8') ?></dd>
+        <?php endforeach; ?>
+    </dl>
+</section>
+<?php endif ?>
 <?php if ($form->introHtml !== '') : ?>
 <div class="container mb-4">
     <?= $form->introHtml ?>
@@ -37,17 +76,8 @@ endif;
 <div class="container bg-light py-4 mb-2">
     <form method="post" novalidate>
         <input type="hidden" name="csrf" value="<?= htmlspecialchars($form->csrfToken, ENT_QUOTES, 'UTF-8') ?>">
-        <?php if ($form->about !== null) :
-            // Opened from an about link: name the subject, and post the signed
-            // value back (the server re-checks it). {subject} is its title,
-            // with its date when it has one.
-            $aboutDate = $form->about->date !== '' ? strtotime($form->about->date) : false;
-            $aboutText = $form->about->title . ($aboutDate !== false ? ', ' . date('j F Y', $aboutDate) : '');
-            $aboutLabel = t('Feedback on: {subject}', 'Feedback on: {subject}');
-            $aboutLabel = is_string($aboutLabel) ? $aboutLabel : 'Feedback on: {subject}';
-            ?>
+        <?php if ($form->about !== null) : ?>
         <input type="hidden" name="about" value="<?= htmlspecialchars($form->about->signedValue, ENT_QUOTES, 'UTF-8') ?>">
-        <p class="lead mb-3" data-form-about><?= htmlspecialchars(str_replace('{subject}', $aboutText, $aboutLabel), ENT_QUOTES, 'UTF-8') ?></p>
         <?php endif; ?>
 
         <?php

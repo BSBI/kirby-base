@@ -593,6 +593,10 @@ before.
 - Pages are found either from a content `index` (with `titleColumn` and `dateColumn`) or
   from the children of a `parent` page, so choosing never walks the whole site.
 - `dateField` names the page's date field. Without it the subject has no date.
+  `endDateField` names its end date, for a date range.
+- `details` lists other fields to show and fill from, field => label (e.g.
+  `['ledBy' => 'Led by']`). Field names are letters, digits and underscores, and not
+  `title` or `date`. A page shows only the details it has a value for.
 - A form accepts the kinds ticked in its **Feedback is about** setting (`aboutKinds` in the
   `form_builder` settings, offered from the `site.formAboutKinds` query).
 
@@ -605,16 +609,20 @@ form without a subject; the form still works.
 first 16 hex characters of HMAC-SHA256 over `form UUID id|subject UUID id`, so a link
 works only for its own form. `AboutLink::read()` gives the subject only when the signature
 matches, the page still exists, and its kind is one the form accepts. `subject()` returns
-an `AboutSubject` (UUID, title and date snapshot, and the signed value to post back).
+an `AboutSubject` (UUID, title, date, end date, kind label and details, and the signed
+value to post back).
 
 **Fill from the link (`fillFrom`).** A question-block setting on `form-textbox` and
-`form-textarea`: *Its title* or *Its date*, or blank to ask the question. `PanelFieldReader`
-keeps **title** only on text and long-answer questions, and **date** only on text and date
-questions; anything else is blank. `PanelFormDefinition::fillFromKeys()` returns key =>
-`title` or `date` (`BaseFormDefinition` returns none). With a subject, those questions are
-left out of the rendered form (`ResolvedForm`, dropping a section left empty) and are not
-required. On submit, `AboutSubject::fillAnswers()` replaces whatever was posted for them
-with the subject's title, or its date as `Y-m-d`.
+`form-textarea`: blank to ask the question, or a choice from `site.formAboutFillOptions`
+(`AboutKinds::fillOptions()`): *Its title*, *Its date*, and every kind's `details`.
+`PanelFieldReader` keeps **date** only on text and date questions, and **title** or a
+detail (any field-name value) only on text and long-answer questions; anything else is
+blank. `PanelFormDefinition::fillFromKeys()` returns key => what fills it
+(`BaseFormDefinition` returns none). With a subject, the questions it has a value for
+(`AboutSubject::answered()`) are left out of the rendered form (`ResolvedForm`, dropping
+a section left empty) and filled on submit by `AboutSubject::fillAnswers()`, replacing
+whatever was posted: the title, the date as `Y-m-d`, or the detail's value. A question
+the subject has no value for (no date, no "led by") is asked as usual.
 
 **Stored fields.** The main response gains `about` (the `page://` UUID), `about_title` and
 `about_date`, written by `FormSubmissionWriter` from the `AboutSubject`. Separate copies
@@ -666,9 +674,12 @@ types with responses about a subject.
 - Blueprint `tabs/formfeedback` is a **Feedback** tab holding that section. Add
   `feedback: tabs/formfeedback` to the blueprint of each page type that is a kind.
 
-**Rendering.** `form/definition-form` shows "Feedback on: <title>, <date>" (through
-`t('Feedback on: {subject}')`, in a `data-form-about` paragraph) and a hidden `about`
-input with the signed value.
+**Rendering.** `form/definition-form` starts with a box (`data-form-about`, above the
+intro): a heading "You are giving feedback on this {kind}", then a list of the kind's
+label and the title, the date or dates (a range when there's an end date), and the
+details. Every label goes through `t()`, so the kind and detail labels from the config
+need entries in the site's language file. The form carries a hidden `about` input with
+the signed value.
 
 **The consuming site's job.**
 

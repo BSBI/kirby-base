@@ -43,6 +43,13 @@ fields:
     label: Fill from the link
     empty: Ask the question
     options:
-      title: Its title
-      date: Its date
-    help: When someone opens the form from a link about an event (or other page), this question is hidden and answered with that page's title or date. Without such a link it's asked as usual. Its title works on text answers; its date on text and date answers.
+      type: query
+      query: site.formAboutFillOptions
+      value: "{{ item.key }}"
+      text: "{{ item.value }}"
+    help: >
+      When someone opens the form from a link about an event (or other page), this
+      question is hidden and answered from that page: its title, its date, or a detail
+      such as who led it. If the page has no value for it, the question is asked as usual,
+      as it is without a link. Its date works on text and date answers; the others on text
+      answers.

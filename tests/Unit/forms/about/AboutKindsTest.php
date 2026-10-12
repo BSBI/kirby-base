@@ -24,7 +24,7 @@ final class AboutKindsTest extends TestCase
         $files = [
             'form/form_builder.txt'           => "Title: Form\n\n----\n\nAboutkinds: event, project, unknown",
             'events/events.txt'               => "Title: Events",
-            'events/1_walk/event.txt'         => "Title: Kenfig walk\n\n----\n\nStartdate: 2026-09-14",
+            'events/1_walk/event.txt'         => "Title: Kenfig walk\n\n----\n\nStartdate: 2026-09-14\n\n----\n\nEnddate: 2026-09-15\n\n----\n\nLedby: Ann Leader",
             'events/2_talk/event.txt'         => "Title: Winter talk\n\n----\n\nStartdate: 2026-12-01",
             'events/3_old/event.txt'          => "Title: Kenfig walk\n\n----\n\nStartdate: 2024-09-15",
             'events/draft-only/event.txt'     => "Title: Unpublished",
@@ -41,7 +41,10 @@ final class AboutKindsTest extends TestCase
         file_put_contents($fixture . '/site.txt', 'Title: Test');
         self::$kirby = KirbyTestEnvironment::bootWithContent($fixture, 'kirby-base-about-kinds', [
             'options' => ['forms.aboutKinds' => [
-                'event'   => ['label' => 'Event', 'templates' => ['event'], 'parent' => 'events', 'dateField' => 'startDate'],
+                'event'   => [
+                    'label' => 'Event', 'templates' => ['event'], 'parent' => 'events',
+                    'dateField' => 'startDate', 'endDateField' => 'endDate', 'details' => ['ledBy' => 'Led by'],
+                ],
                 'project' => ['label' => 'Project', 'templates' => ['project'], 'parent' => 'projects'],
                 'broken'  => ['label' => 'No templates'],
             ]],
@@ -69,6 +72,24 @@ final class AboutKindsTest extends TestCase
         $this->assertNull($kinds->kindOf($this->page('events/news')));
         $this->assertSame('2026-09-14', $kinds->dateOf($this->page('events/walk')));
         $this->assertSame('', $kinds->dateOf($this->page('projects/survey')));
+    }
+
+    public function testAPagesEndDateAndDetails(): void
+    {
+        $kinds = new AboutKinds(self::$kirby);
+
+        $this->assertSame('2026-09-15', $kinds->endDateOf($this->page('events/walk')));
+        $this->assertSame(['ledBy' => ['label' => 'Led by', 'value' => 'Ann Leader']], $kinds->detailsOf($this->page('events/walk')));
+        $this->assertSame([], $kinds->detailsOf($this->page('events/talk')), 'no value, no detail');
+        $this->assertSame([], $kinds->detailsOf($this->page('projects/survey')));
+    }
+
+    public function testFillFromOptionsAreTitleDateAndEachKindsDetails(): void
+    {
+        $this->assertSame(
+            ['title' => 'Its title', 'date' => 'Its date', 'ledBy' => 'Led by'],
+            (new AboutKinds(self::$kirby))->fillOptions()
+        );
     }
 
     public function testChoicesAreListedPagesOfTheKindsNewestFirstAndSearchable(): void

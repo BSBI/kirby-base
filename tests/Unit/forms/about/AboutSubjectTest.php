@@ -26,6 +26,19 @@ final class AboutSubjectTest extends TestCase
         );
     }
 
+    public function testADetailFillsItsQuestionAndABlankValueLeavesItToBeAsked(): void
+    {
+        $walk = new AboutSubject('page://walk', 'Kenfig walk', '', 'walk.sig', 'Event', '', ['ledBy' => ['label' => 'Led by', 'value' => 'Ann Leader']]);
+        $fillFrom = ['event_name' => 'title', 'event_date' => 'date', 'leader' => 'ledBy', 'other' => 'unknown'];
+
+        $this->assertSame(['event_name' => 'title', 'leader' => 'ledBy'], $walk->answered($fillFrom));
+        $this->assertSame(
+            ['event_date' => '2026-01-01', 'event_name' => 'Kenfig walk', 'leader' => 'Ann Leader'],
+            $walk->fillAnswers(['event_date' => '2026-01-01'], $fillFrom),
+            'an undated page leaves the posted date alone'
+        );
+    }
+
     public function testTheStoredFields(): void
     {
         $this->assertSame(
