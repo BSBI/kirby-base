@@ -618,6 +618,8 @@ panel.plugin('open-foundations/kirby-base', {
           type: '',
           form: '',
           pageId: '',
+          about: '',
+          aboutFixed: '',
           from: '',
           to: '',
           result: null,
@@ -634,6 +636,9 @@ panel.plugin('open-foundations/kirby-base', {
           // On a form's own page, the analysis is fixed to that form.
           this.pageId = response.pageId || '';
           this.form = this.pageId;
+          // On a page feedback is about (e.g. an event), fixed to that page.
+          this.aboutFixed = response.about || '';
+          this.about = this.aboutFixed;
         } catch (error) {
           console.error('Failed to load the analysis section:', error);
         }
@@ -643,7 +648,7 @@ panel.plugin('open-foundations/kirby-base', {
         if (this.type) {
           this.fetch(false);
         } else {
-          this.status = this.pageId ? 'This form has no responses to analyse yet.' : 'No responses to analyse yet.';
+          this.status = this.aboutFixed ? 'No feedback about this page yet.' : (this.pageId ? 'This form has no responses to analyse yet.' : 'No responses to analyse yet.');
         }
       },
       methods: {
@@ -653,13 +658,16 @@ panel.plugin('open-foundations/kirby-base', {
           this.status = 'Loading the analysis…';
           const query = { type: this.type };
           if (this.form) query.form = this.form;
+          if (this.about) query.about = this.about;
           if (this.from) query.from = this.from;
           if (this.to) query.to = this.to;
           if (refresh) query.refresh = '1';
           try {
             this.result = await this.$api.get('forms/analysis', query);
             this.open = {};
-            this.status = 'Showing ' + this.result.total + ' responses of ' + this.type + (this.pageId ? ' on this form' : (this.form ? ', one form' : '')) + '.';
+            this.status = 'Showing ' + this.result.total + ' responses of ' + this.type
+              + (this.aboutFixed ? ' about this page' : (this.pageId ? ' on this form' : (this.form ? ', one form' : '')))
+              + (this.about && !this.aboutFixed ? ', about one page' : '') + '.';
           } catch (error) {
             this.status = 'The analysis could not be loaded.';
             console.error('Failed to load the analysis:', error);
@@ -668,6 +676,7 @@ panel.plugin('open-foundations/kirby-base', {
         },
         changeType: function () {
           this.form = this.pageId;
+          this.about = this.aboutFixed;
           this.fetch(false);
         },
         toggle: function (key) {
@@ -787,14 +796,21 @@ panel.plugin('open-foundations/kirby-base', {
           </component>
 
           <header class="k-section-header" style="display:flex; flex-wrap:wrap; gap:0.75rem 1rem; align-items:flex-end;">
-            <div v-if="!pageId || types.length > 1" style="display:flex; flex-direction:column; font-size:0.8rem;">
-              <!-- On a form's own page, only when it has more than one kind of response (e.g. its EDI copies). -->
-              <label :for="uid('type')">{{ pageId ? 'Responses' : 'Form type' }}</label>
+            <div v-if="(!pageId && !aboutFixed) || types.length > 1" style="display:flex; flex-direction:column; font-size:0.8rem;">
+              <!-- On a form's or subject's own page, only when it has more than one kind of response (e.g. its EDI copies). -->
+              <label :for="uid('type')">{{ pageId || aboutFixed ? 'Responses' : 'Form type' }}</label>
               <select :id="uid('type')" v-model="type" @change="changeType" style="font-size:0.875rem; padding:0.3rem;">
                 <option v-for="t in types" :key="t.type" :value="t.type">{{ t.type }} ({{ t.count }})</option>
               </select>
             </div>
-            <div v-if="!pageId" style="display:flex; flex-direction:column; font-size:0.8rem;">
+            <div v-if="!aboutFixed && result && result.subjects && result.subjects.length > 0" style="display:flex; flex-direction:column; font-size:0.8rem;">
+              <label :for="uid('about')">About</label>
+              <select :id="uid('about')" v-model="about" @change="fetch(false)" style="font-size:0.875rem; padding:0.3rem; max-width:22rem;">
+                <option value="">All</option>
+                <option v-for="s in result.subjects" :key="s.id" :value="s.id">{{ s.title }}</option>
+              </select>
+            </div>
+            <div v-if="!pageId && !aboutFixed" style="display:flex; flex-direction:column; font-size:0.8rem;">
               <label :for="uid('form')">Form</label>
               <select :id="uid('form')" v-model="form" @change="fetch(false)" style="font-size:0.875rem; padding:0.3rem; max-width:22rem;">
                 <option value="">All forms of this type</option>
@@ -919,6 +935,108 @@ panel.plugin('open-foundations/kirby-base', {
             </div>
           </div>
           <k-empty v-else-if="result && !loading" icon="chart">No responses match.</k-empty>
+        </section>
+      `
+    },
+
+    formaboutlinks: {
+      data: function () {
+        return {
+          headline: 'Link about an event or page',
+          formId: '',
+          kinds: [],
+          search: '',
+          choices: [],
+          subject: '',
+          link: '',
+          loading: false,
+          status: ''
+        }
+      },
+      created: async function () {
+        try {
+          const response = await this.load();
+          this.headline = response.headline || this.headline;
+          this.formId = response.formId || '';
+          this.kinds = response.kinds || [];
+        } catch (error) {
+          console.error('Failed to load the about links section:', error);
+        }
+        if (this.kinds.length > 0) {
+          this.find();
+        }
+      },
+      methods: {
+        uid: function (name) {
+          return 'fal-' + this._uid + '-' + name;
+        },
+        find: async function () {
+          this.loading = true;
+          this.status = 'Searching…';
+          try {
+            const result = await this.$api.get('forms/about/choices', { form: this.formId, q: this.search });
+            this.choices = result.choices || [];
+            this.status = this.choices.length === 0 ? 'Nothing found.' : this.choices.length + ' found.';
+          } catch (error) {
+            this.status = 'The list could not be loaded.';
+            console.error('Failed to load the about choices:', error);
+          }
+          this.loading = false;
+        },
+        choiceText: function (c) {
+          return c.title + (c.date ? ' (' + c.date + ')' : '') + (c.where ? ' · ' + c.where : '') + (this.kinds.length > 1 ? ' · ' + c.kind : '');
+        },
+        makeLink: async function () {
+          this.link = '';
+          if (!this.subject) return;
+          try {
+            const result = await this.$api.get('forms/about/link', { form: this.formId, subject: this.subject });
+            this.link = result.link || '';
+            this.status = this.link ? 'Link ready.' : 'No link could be made for that page.';
+          } catch (error) {
+            this.status = 'The link could not be made.';
+            console.error('Failed to make the about link:', error);
+          }
+        },
+        copy: async function () {
+          try {
+            await navigator.clipboard.writeText(this.link);
+            this.status = 'Link copied.';
+          } catch (error) {
+            this.$refs.link.select();
+            this.status = 'Copying isn\'t available here: the link is selected, so copy it with your keyboard.';
+          }
+        }
+      },
+      template: `
+        <section class="k-section k-formaboutlinks-section">
+          <header class="k-section-header"><h2 class="k-headline">{{ headline }}</h2></header>
+          <p v-if="kinds.length === 0" style="font-size:0.8rem; color:var(--color-text-dimmed);">
+            To make a link that says which event (or other page) the feedback is about, tick it under
+            "Feedback is about" in this form's settings and save.
+          </p>
+          <div v-else style="display:flex; flex-direction:column; gap:0.6rem; font-size:0.8rem;">
+            <div style="display:flex; flex-direction:column; gap:0.25rem;">
+              <label :for="uid('search')">Search {{ kinds.join(', ').toLowerCase() }}</label>
+              <span style="display:flex; gap:0.4rem;">
+                <input :id="uid('search')" type="search" v-model="search" @keydown.enter.prevent="find" style="flex:1; font-size:0.875rem; padding:0.3rem;">
+                <k-button icon="search" variant="filled" size="sm" :disabled="loading" @click="find">Search</k-button>
+              </span>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:0.25rem;">
+              <label :for="uid('subject')">About</label>
+              <select :id="uid('subject')" v-model="subject" @change="makeLink" style="font-size:0.875rem; padding:0.3rem; max-width:100%;">
+                <option value="">Choose…</option>
+                <option v-for="c in choices" :key="c.value" :value="c.value">{{ choiceText(c) }}</option>
+              </select>
+            </div>
+            <div v-if="link" style="display:flex; flex-direction:column; gap:0.25rem;">
+              <label :for="uid('link')">Link to send</label>
+              <input :id="uid('link')" ref="link" type="text" readonly :value="link" @focus="$event.target.select()" style="font-size:0.8rem; padding:0.3rem;">
+              <span><k-button icon="copy" variant="filled" size="sm" @click="copy">Copy link</k-button></span>
+            </div>
+          </div>
+          <div role="status" aria-live="polite" style="font-size:0.8rem; color:var(--color-text-dimmed); margin-top:0.5rem;">{{ status }}</div>
         </section>
       `
     },

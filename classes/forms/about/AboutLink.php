@@ -30,7 +30,7 @@ final readonly class AboutLink
 
     private string $secret;
 
-    public function __construct(private App $kirby, private AboutKinds $kinds, ?string $secret = null)
+    public function __construct(App $kirby, private AboutKinds $kinds, ?string $secret = null)
     {
         $configured = $kirby->option('forms.aboutSecret');
         $this->secret = $secret

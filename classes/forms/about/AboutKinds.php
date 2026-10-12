@@ -170,7 +170,7 @@ final readonly class AboutKinds
         }
         $pages = [];
         foreach ($parent->children()->listed() as $page) {
-            if ($page instanceof Page && in_array($page->intendedTemplate()->name(), $settings['templates'], true) && $matches($page)) {
+            if (in_array($page->intendedTemplate()->name(), $settings['templates'], true) && $matches($page)) {
                 $pages[] = $page;
             }
         }

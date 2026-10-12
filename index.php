@@ -195,6 +195,7 @@ $pluginConfig = [
         'formsubmissionsindex' => require __DIR__ . '/sections/formsubmissionsindex.php',
         'formsinuse' => require __DIR__ . '/sections/formsinuse.php',
         'formanalysis' => require __DIR__ . '/sections/formanalysis.php',
+        'formaboutlinks' => require __DIR__ . '/sections/formaboutlinks.php',
         'quicklinks' => require __DIR__ . '/sections/quicklinks.php',
         'searchanalytics' => require __DIR__ . '/sections/searchanalytics.php',
         'searchindexstats' => require __DIR__ . '/sections/searchindexstats.php',

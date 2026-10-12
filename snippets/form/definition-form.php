@@ -43,10 +43,12 @@ endif;
             // with its date when it has one.
             $aboutDate = $form->about->date !== '' ? strtotime($form->about->date) : false;
             $aboutText = $form->about->title . ($aboutDate !== false ? ', ' . date('j F Y', $aboutDate) : '');
+            $aboutLabel = t('Feedback on: {subject}', 'Feedback on: {subject}');
+            $aboutLabel = is_string($aboutLabel) ? $aboutLabel : 'Feedback on: {subject}';
             ?>
         <input type="hidden" name="about" value="<?= htmlspecialchars($form->about->signedValue, ENT_QUOTES, 'UTF-8') ?>">
         <p class="lead mb-3" data-form-about>
-            <?= htmlspecialchars(str_replace('{subject}', $aboutText, t('Feedback on: {subject}', 'Feedback on: {subject}')), ENT_QUOTES, 'UTF-8') ?>
+            <?= htmlspecialchars(str_replace('{subject}', $aboutText, $aboutLabel), ENT_QUOTES, 'UTF-8') ?>
         </p>
         <?php endif; ?>
 
