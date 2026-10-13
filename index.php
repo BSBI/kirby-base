@@ -24,6 +24,7 @@ use BSBI\WebBase\forms\FormLibraryPanel;
 use BSBI\WebBase\forms\FormsInUse;
 use BSBI\WebBase\forms\about\AboutAccess;
 use BSBI\WebBase\forms\about\AboutKinds;
+use BSBI\WebBase\forms\about\AboutKindSaver;
 use BSBI\WebBase\forms\about\AboutLink;
 use BSBI\WebBase\helpers\FormBuilderIndexDefinition;
 use BSBI\WebBase\helpers\FormExtraSectionsIndexDefinition;
@@ -280,20 +281,23 @@ $pluginConfig = [
                 },
             ],
             [
-                // The signed link to a form about one page (AboutLink), and
-                // whether the form is saved accepting its kind (until then the
-                // link opens the form without naming it); ?form= the form's
-                // page id, ?subject= the page's page:// UUID.
+                // The signed link to a form about one page (AboutLink). A link
+                // works only once the form is saved accepting the page's kind,
+                // so this saves that tick if it isn't (AboutKindSaver), which is
+                // why it is a POST. Returns `saved` (the link works) and
+                // `savedNow` (this request saved the tick); form= the form's
+                // page id, subject= the page's page:// UUID.
                 'pattern' => 'forms/about/link',
-                'method'  => 'GET',
+                'method'  => 'POST',
                 'action'  => function (): array {
                     $kirby = kirby();
                     if (!FormLibraryPanel::isAllowed($kirby->user()?->role()->id(), FormLibraryPanel::roles($kirby))) {
                         throw new \Kirby\Exception\PermissionException('You are not allowed to make links to the forms.');
                     }
-                    $formId = is_string(get('form')) ? trim((string) get('form')) : '';
+                    $param = static fn(mixed $value): string => is_string($value) ? trim($value) : '';
+                    $formId = $param($kirby->request()->get('form'));
                     $form = $formId === '' ? null : ($kirby->site()->findPageOrDraft($formId) ?? $kirby->site()->draft($formId));
-                    $subjectId = is_string(get('subject')) ? trim((string) get('subject')) : '';
+                    $subjectId = $param($kirby->request()->get('subject'));
                     if (!$form instanceof \Kirby\Cms\Page || preg_match('#^page://([A-Za-z0-9_-]+)$#', $subjectId, $match) !== 1) {
                         return ['link' => ''];
                     }
@@ -303,10 +307,13 @@ $pluginConfig = [
                     if (!$subject instanceof \Kirby\Cms\Page || $kind === null) {
                         return ['link' => '', 'saved' => false];
                     }
-                    // The link works once the form is saved with this kind ticked.
+                    $accepted = (new AboutKindSaver($kirby, $kinds))->accept($form, $kind);
                     return [
-                        'link'  => (new AboutLink($kirby, $kinds))->link($form, $subject),
-                        'saved' => in_array($kind, $kinds->forForm($form), true),
+                        'link'     => (new AboutLink($kirby, $kinds))->link($form, $subject),
+                        'saved'    => $accepted !== AboutKindSaver::REFUSED,
+                        'savedNow' => $accepted === AboutKindSaver::SAVED,
+                        'kind'     => $kind,
+                        'kindLabel' => $kinds->labelOf($subject),
                     ];
                 },
             ],

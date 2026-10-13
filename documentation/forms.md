@@ -654,14 +654,22 @@ types with responses about a subject.
   sidebar): a button opening Kirby's page picker dialog (`k-models-dialog`) over the
   form's kinds, and the signed link with a **Copy** button. It says so when the form has no kinds ticked. It follows the ticks before they
   are saved (the panel's unsaved `changes` version, and `?kinds=` on the choices route),
-  and re-reads the saved ones after a save; `forms/about/link` returns `saved: false`
-  while the subject's kind isn't saved on the form, and the section then says to save
-  first, since until then the link opens the form without naming the page.
+  and re-reads the saved ones after a save. A link works only once the form is saved
+  accepting the subject's kind, so picking a page saves that tick if it isn't saved
+  (`AboutKindSaver`): only the `aboutKinds` field, to the published content in the
+  default language, keeping the other saved ticks. The editor's other unsaved changes
+  stay unsaved, and discarding them keeps the saved tick (a link may already be out).
+  The section says the tick was saved. If it can't be saved (the user can't update the
+  page, or the save fails, logged to `forms`), the route returns `saved: false` and the
+  section says to save first, since until then the link opens the form without naming
+  the page.
 - API routes, both limited to the roles in `forms.libraryRoles`:
   - `GET forms/about/choices?form=<page id>&kinds=&search=&page=&limit=`: one page of
     the choices for the kinds (`AboutKinds::picker()`, the dialog's `{data, pagination}`;
     newest first, up to 500, older ones by searching)
-  - `GET forms/about/link?form=<page id>&subject=<page:// UUID>`: the signed link
+  - `POST forms/about/link` (`form=<page id>`, `subject=<page:// UUID>`): the signed
+    link, saving the subject's kind on the form first if needed; returns `link`, `saved`
+    (the link works), `savedNow` (this request saved the tick), `kind` and `kindLabel`
 - `GET forms/analysis` also takes `about=<page:// UUID>`. Outside the Forms roles it
   answers only for one page (`about`, no `form`) that `AboutAccess` allows, and leaves out
   the `forms` and `subjects` lists. `AboutAccess` lets the Forms roles see every page's
