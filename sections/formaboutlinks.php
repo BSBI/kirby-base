@@ -10,10 +10,11 @@ use BSBI\WebBase\forms\about\AboutKinds;
  * On a panel-built form's page: pick what the feedback is about (an event,
  * project, …, from the kinds ticked in "Feedback is about") and copy a signed
  * link to the form naming it (AboutLink). The Vue section searches with the
- * `forms/about/choices` API route and gets the link from `forms/about/link`;
- * both check the role. This section supplies the form's id, every kind, and
- * the kinds ticked as last saved; it follows unsaved ticks too, and says when
- * the form must be saved before a link works.
+ * `forms/about/choices` API route and gets the link from `forms/about/link`,
+ * which saves the page's kind in "Feedback is about" if it isn't saved, so the
+ * link works at once; both check the role. This section supplies the form's
+ * id, every kind, and the kinds ticked as last saved; it follows unsaved ticks
+ * too, and says to save first only when the tick couldn't be saved.
  */
 return [
     'props' => [

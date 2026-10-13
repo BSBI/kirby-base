@@ -1000,7 +1000,9 @@ panel.plugin('open-foundations/kirby-base', {
         uid: function (name) {
           return 'fal-' + this._uid + '-' + name;
         },
-        // Re-reads the saved ticks, e.g. after a save, so a link's warning goes.
+        // Re-reads the saved ticks, e.g. after a save, so a link's warning
+        // goes. Making a link can save a tick, so it is only remade while the
+        // link doesn't work yet.
         reload: async function () {
           try {
             const response = await this.load();
@@ -1011,7 +1013,7 @@ panel.plugin('open-foundations/kirby-base', {
           } catch (error) {
             console.error('Failed to load the about links section:', error);
           }
-          if (this.subject) {
+          if (this.subject && !this.linkSaved) {
             this.makeLink();
           }
         },
@@ -1044,11 +1046,17 @@ panel.plugin('open-foundations/kirby-base', {
           this.link = '';
           if (!this.subject) return;
           try {
-            const result = await this.$api.get('forms/about/link', { form: this.formId, subject: this.subject });
+            // Saves the page's kind in "Feedback is about" if it isn't saved,
+            // so the link works without the editor saving the form first.
+            const result = await this.$api.post('forms/about/link', { form: this.formId, subject: this.subject });
             this.link = result.link || '';
             this.linkSaved = result.saved !== false;
+            if (result.savedNow && result.kind) {
+              this.savedKinds = this.savedKinds.concat([result.kind]);
+            }
             this.status = !this.link ? 'No link could be made for that page.'
-              : (this.linkSaved ? 'Link ready.' : 'Link ready, but save the form first: until then it opens the form without naming the page.');
+              : (!this.linkSaved ? 'Link ready, but save the form first: until then it opens the form without naming the page.'
+                : (result.savedNow ? 'Link ready. "Feedback is about: ' + result.kindLabel + '" has been saved on this form, so the link works now.' : 'Link ready.'));
           } catch (error) {
             this.status = 'The link could not be made.';
             console.error('Failed to make the about link:', error);
