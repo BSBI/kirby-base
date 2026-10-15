@@ -28,6 +28,7 @@ use BSBI\WebBase\forms\about\AboutKindSaver;
 use BSBI\WebBase\forms\about\AboutLink;
 use BSBI\WebBase\helpers\FormBuilderIndexDefinition;
 use BSBI\WebBase\helpers\FormExtraSectionsIndexDefinition;
+use BSBI\WebBase\helpers\IndexRebuilds;
 use BSBI\WebBase\helpers\maintenance\CacheClearTask;
 use BSBI\WebBase\helpers\maintenance\LogRetentionTask;
 use BSBI\WebBase\helpers\maintenance\MaintenancePanel;
@@ -921,6 +922,9 @@ if (option('maintenance.showPanel', false)) {
         },
     ];
 }
+
+// The index rebuilds: POSTs through the API, so Kirby checks the session and CSRF (#52)
+array_push($pluginConfig['api']['routes'], ...IndexRebuilds::apiRoutes());
 
 Kirby::plugin('open-foundations/kirby-base', $pluginConfig);
 

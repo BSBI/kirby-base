@@ -430,7 +430,8 @@ last response) stay free.
   with the forms whose responses use them.
 
 **After deploying a release that adds `section_ids`**, rebuild the `form_builders` index
-(Indexes panel, or `/content-index-rebuild?name=form_builders`). Until then the column is
+(Indexes panel, or a POST to the API's `indexes/rebuild/content` with
+`name=form_builders`). Until then the column is
 empty, and library-section saves aren't checked (form saves are).
 
 ## Extra sections on hand-written forms

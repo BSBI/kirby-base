@@ -48,6 +48,11 @@ $currentUser = $userService->getCurrentUser();
 
 See [content-index.md](content-index.md) for a full guide to creating content indexes.
 
+# Search
+
+See [search.md](search.md) for the search index: the `allPages` collection it indexes,
+and the optional Panel search.
+
 
 # Extending KirbyBase
 

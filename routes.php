@@ -4,6 +4,7 @@ use BSBI\WebBase\forms\FormSubmissionExporter;
 use BSBI\WebBase\helpers\ContentIndexRegistry;
 use BSBI\WebBase\helpers\CsvWriter;
 use BSBI\WebBase\helpers\FileArchiveService;
+use BSBI\WebBase\helpers\IndexRebuilds;
 use BSBI\WebBase\helpers\KirbyInternalHelper;
 use BSBI\WebBase\helpers\SearchIndexHelper;
 use BSBI\WebBase\helpers\SessionFlash;
@@ -209,33 +210,6 @@ return [
         }
     ],
     [
-        'pattern' => 'search-rebuild',
-        'method' => 'GET',
-        'action' => function () {
-            $helper = new KirbyInternalHelper();
-            if ($helper->isCurrentUserAdminOrEditor()) {
-                try {
-                    $searchIndex = new SearchIndexHelper();
-                    $result = $searchIndex->rebuildIndex();
-                    $searchCount = $result['search_index'];
-                    $allPagesCount = $result['all_pages'];
-                    return new Response(
-                        "Search index rebuilt successfully. Indexed $searchCount pages for site search, $allPagesCount pages for panel search.",
-                        'text/plain',
-                        200
-                    );
-                } catch (Exception $e) {
-                    return new Response(
-                        'Failed to rebuild search index: ' . $e->getMessage(),
-                        'text/plain',
-                        500
-                    );
-                }
-            }
-            return new Response('You must be an administrator to access this page.', 'text/plain', 403);
-        }
-    ],
-    [
         'pattern' => 'search-stats',
         'method' => 'GET',
         'action' => function () {
@@ -258,66 +232,6 @@ return [
                 }
             }
             return new Response('You must be an administrator to access this page.', 'text/plain', 403);
-        }
-    ],
-    [
-        'pattern' => 'content-index-rebuild',
-        'method' => 'GET',
-        'action' => function () {
-            $helper = new KirbyInternalHelper();
-            if (!$helper->isCurrentUserAdminOrEditor()) {
-                return new Response('You must be an administrator to access this page.', 'text/plain', 403);
-            }
-
-            $name = kirby()->request()->get('name', '');
-
-            // Resolve the target managers up front so a bad ?name= returns a clean 404.
-            if (!empty($name)) {
-                $manager = ContentIndexRegistry::get($name);
-                if ($manager === null) {
-                    return new Response("Content index '$name' not found.", 'text/plain', 404);
-                }
-                $managers = [$name => $manager];
-            } else {
-                $managers = ContentIndexRegistry::all();
-            }
-
-            // A rebuild deletes-and-refills the whole index in one transaction, so for
-            // a large index (thousands of pages, first-time thumbnail generation) the
-            // web request can run well past PHP's default 30s max_execution_time and
-            // 256M memory_limit. Without lifting these the request is killed
-            // mid-transaction and SQLite rolls the rebuild back, silently leaving the
-            // index unchanged. This stays a normal blocking request (no streaming) so
-            // the panel's fetch resolves only once the rebuild has committed and the
-            // reloaded stats show the new "last rebuilt" time.
-            @set_time_limit(0);
-            @ini_set('memory_limit', '512M');
-
-            try {
-                $output = "Content index rebuild complete:\n";
-                foreach ($managers as $indexName => $manager) {
-                    $count = $manager->rebuildIndex($helper);
-                    $output .= "  $indexName: $count pages indexed\n";
-                }
-                return new Response($output, 'text/plain', 200);
-            } catch (Throwable $e) {
-                // A concurrent rebuild holds a write lock on the index; report it
-                // cleanly rather than surfacing a raw PDOException. The rebuild that
-                // holds the lock will still complete on its own request.
-                if (stripos($e->getMessage(), 'database is locked') !== false) {
-                    return new Response(
-                        'A rebuild is already in progress for this index. '
-                        . 'Please wait for it to finish before starting another.',
-                        'text/plain',
-                        409
-                    );
-                }
-                return new Response(
-                    'Failed to rebuild content index: ' . $e->getMessage(),
-                    'text/plain',
-                    500
-                );
-            }
         }
     ],
     [
@@ -348,31 +262,6 @@ return [
         }
     ],
     [
-        'pattern' => 'imagebank-index-rebuild',
-        'method'  => 'GET',
-        'action'  => function () {
-            $helper = new KirbyInternalHelper();
-            if (!$helper->isCurrentUserAdminOrEditor()) {
-                return new Response('You must be an administrator to access this page.', 'text/plain', 403);
-            }
-            try {
-                $imageBankIndex = new \BSBI\WebBase\helpers\ImageBankIndexHelper();
-                $count = $imageBankIndex->rebuildIndex();
-                return new Response(
-                    "imageBank index rebuilt successfully. $count files indexed.",
-                    'text/plain',
-                    200
-                );
-            } catch (Exception $e) {
-                return new Response(
-                    'Failed to rebuild imageBank index: ' . $e->getMessage(),
-                    'text/plain',
-                    500
-                );
-            }
-        }
-    ],
-    [
         'pattern' => 'imagebank-index-stats',
         'method'  => 'GET',
         'action'  => function () {
@@ -398,31 +287,6 @@ return [
                 return new Response(
                     json_encode(['error' => $e->getMessage()]),
                     'application/json',
-                    500
-                );
-            }
-        }
-    ],
-    [
-        'pattern' => 'filelinks-index-rebuild',
-        'method'  => 'GET',
-        'action'  => function () {
-            $helper = new KirbyInternalHelper();
-            if (!$helper->isCurrentUserAdminOrEditor()) {
-                return new Response('You must be an administrator to access this page.', 'text/plain', 403);
-            }
-            try {
-                $fileLinkIndex = new \BSBI\WebBase\helpers\FileLinkIndexHelper();
-                $count = $fileLinkIndex->rebuildIndex();
-                return new Response(
-                    "File-link index rebuilt successfully. $count pages with links indexed.",
-                    'text/plain',
-                    200
-                );
-            } catch (Throwable $e) {
-                return new Response(
-                    'Failed to rebuild file-link index: ' . $e->getMessage(),
-                    'text/plain',
                     500
                 );
             }
@@ -539,4 +403,6 @@ return [
             }
         }
     ],
+    // the rebuilds are POSTs through the Panel API now (#52); the old GETs refuse
+    ...IndexRebuilds::retiredRoutes(),
 ];

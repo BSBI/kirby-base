@@ -68,7 +68,7 @@ Manages the lifecycle of a single SQLite index database. Created from a ContentI
 - **Schema creation and migration** — creates the table schema from the definition and adds missing columns when definitions change
 - **Page indexing** — inserts or updates a single page in the index (`indexPage()`)
 - **Page removal** — removes a page from the index (`removePage()`)
-- **Full rebuild** — clears and reconstructs the entire index from the collection (`rebuildIndex()`)
+- **Full rebuild** — re-indexes the whole collection in place (`rebuildIndex()`); see [Rebuilds](#rebuilds)
 - **Query builder creation** — returns a `ContentIndexQuery` instance for building and executing queries
 - **Statistics** — returns row counts and last rebuild timestamp
 
@@ -169,22 +169,44 @@ During plugin initialization, any definitions returned by `option('contentIndexD
 
 ### Rebuild Indexes
 
-**Route**: `/content-index-rebuild`  
-**Method**: GET  
-**Parameters**: `name` (optional, index name to rebuild)  
+**Route**: `indexes/rebuild/content` in Kirby's API (`/api/indexes/rebuild/content`)  
+**Method**: POST, with the Panel's CSRF token in `X-CSRF`  
+**Parameters**: `name` (optional, index name to rebuild; without it, every index)  
 **Authorization**: Admin/editor only
 
-Rebuilds one or all indexes from scratch by clearing the table and re-extracting all rows from the collection.
+The Rebuild buttons on the Panel's Indexes page call it. From Panel JavaScript:
 
-```bash
-# Rebuild all indexes
-curl https://example.com/content-index-rebuild
-
-# Rebuild specific index
-curl https://example.com/content-index-rebuild?name=form_submissions
+```js
+await this.$api.post('indexes/rebuild/content', { name: 'form_submissions' });
 ```
 
-Returns a plain text response with row counts per index.
+Returns `{message}` with row counts per index. An unknown name is a 404, and an index
+busy past SQLite's wait is a 409.
+
+**Until #52 this was `GET /content-index-rebuild`.** A GET needs no token, so a link
+followed by a signed-in admin could start a rebuild. The old URL now answers 405 and
+rebuilds nothing; so do `/search-rebuild`, `/imagebank-index-rebuild` and
+`/filelinks-index-rebuild`, whose rebuilds moved to `indexes/rebuild/search`,
+`…/imagebank` and `…/filelinks`. A browser test that primed an index with a GET now
+needs a POST with the token.
+
+### Rebuilds
+
+A rebuild never empties the table, and never holds SQLite's write lock while it reads
+pages:
+
+- **In place, in batches.** Rows for 100 pages are built with no lock held, then
+  written in one short transaction. A page save waiting on the index waits for one
+  batch's writes at most.
+- **Readers see the old rows** until each is replaced, never a half-empty index.
+- **A sweep at the end** handles rows the walk did not see. A row whose page still
+  exists is re-indexed, which keeps a page created after the walk passed it. A row
+  whose page has gone is removed.
+- **`last_rebuild` is written last.** A rebuild that dies part way leaves it unchanged,
+  so a site can trust an index only once it has been rebuilt.
+
+`indexPage()` builds the new row before touching the old one, and replaces it in one
+transaction. A page whose row cannot be built keeps the row it had.
 
 ### Index Statistics
 
@@ -289,7 +311,7 @@ This means schema additions are non-destructive, but removals/reorders require a
 
 - **Indexed columns**: Define indexes on columns you'll frequently query. The `form_submissions` index includes `form_type` and `submitted_at`.
 - **Page limiting**: Only listed pages are indexed unless the definition overrides `shouldIndex()`.
-- **Rebuild timing**: Full rebuilds iterate the entire collection and reconstruct the table. On large sites, rebuild times can be noticeable; consider running them during off-peak hours.
+- **Rebuild timing**: Full rebuilds iterate the entire collection, which on a large site takes a while. Saves carry on meanwhile; see [Rebuilds](#rebuilds).
 - **Disk space**: SQLite uses WAL (write-ahead logging) for concurrency. Expect some additional disk space for WAL files.
 
 ## Testing
@@ -368,11 +390,9 @@ In your site's `config/config.php`:
 
 ### Step 3: Rebuild
 
-Call the rebuild route to populate the index with existing data:
-
-```bash
-curl https://example.com/content-index-rebuild?name=events
-```
+Rebuild it from the Panel's Indexes page (the area appears with
+`contentIndex.showIndexStatsPanel`) to populate it with existing data. A site with no
+Indexes area can call `$manager->rebuildIndex($helper)` from its own script.
 
 ### Step 4: Use in Code
 

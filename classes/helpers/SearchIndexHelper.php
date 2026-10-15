@@ -1016,13 +1016,31 @@ class SearchIndexHelper
     }
 
     /**
-     * Rebuild the entire search index using the allPages collection
+     * Rebuild the entire search index.
      *
-     * @return array{search_index: int, all_pages: int} Number of pages indexed in each table
+     * Search rows come from the site's `allPages` collection. A site without one gets
+     * every listed and unlisted page (`site()->index()`), which suits a small site; the
+     * rebuild logs that it fell back, and a large site should provide the collection.
+     *
+     * The Panel-search table (`all_pages`) walks every page on the site, drafts included,
+     * so it is rebuilt only when `search.panelSearch` is on, the only thing that reads it.
+     *
+     * @return array{search_index: int, all_pages: int|null, used_fallback: bool} pages in
+     *     each table (`all_pages` null when Panel search is off), and whether the search
+     *     rows came from the site's pages for want of an `allPages` collection
      * @throws Throwable If database transaction fails
      */
     public function rebuildIndex(): array
     {
+        $usedFallback = !$this->kirby->collections()->has('allPages');
+        if ($usedFallback) {
+            KirbyBaseHelper::writeToLogFile(
+                'search-index',
+                'Search rebuild: no allPages collection, so indexing every listed and unlisted page (site()->index()). '
+                . 'Provide an allPages collection to choose the pages.'
+            );
+        }
+
         // Use transaction for much better performance
         $this->database->beginTransaction();
 
@@ -1034,9 +1052,8 @@ class SearchIndexHelper
 
             $count = 0;
 
-            // Use allPages collection (much smaller than site->index())
-            // Get both public and members pages by temporarily impersonating admin
-            $allPages = $this->kirby->collection('allPages');
+            // The site's own choice of pages, or every published page without one
+            $allPages = $usedFallback ? $this->kirby->site()->index() : $this->kirby->collection('allPages');
 
             // Prepare statements once for reuse
             $stmt = $this->database->prepare('
@@ -1070,8 +1087,8 @@ class SearchIndexHelper
                 }
             }
 
-            // Rebuild all_pages table with every page on the site
-            $allPagesCount = $this->rebuildAllPages();
+            // Rebuild all_pages table with every page on the site, for Panel search only
+            $allPagesCount = option('search.panelSearch', false) ? $this->rebuildAllPages() : null;
 
             // Update metadata
             $metaStmt = $this->database->prepare('INSERT OR REPLACE INTO search_meta (key, value) VALUES (:key, :value)');
@@ -1083,7 +1100,7 @@ class SearchIndexHelper
             throw $e;
         }
 
-        return ['search_index' => $count, 'all_pages' => $allPagesCount];
+        return ['search_index' => $count, 'all_pages' => $allPagesCount, 'used_fallback' => $usedFallback];
     }
 
     /**
