@@ -136,7 +136,6 @@ class ContentIndexManager
 
         /** @var Page $page */
         foreach ($collection as $page) {
-            $seen[$page->id()] = true;
             try {
                 // Listed pages only, unless the definition says otherwise
                 if (!$this->definition->shouldIndex($page)) {
@@ -151,6 +150,9 @@ class ContentIndexManager
                 continue;
             }
 
+            // only a page given a row counts as seen: any other's old row is left to the
+            // sweep, which removes it as the emptied table once did
+            $seen[$page->id()] = true;
             $batch[$page->id()] = $rowData;
             $count++;
             if (count($batch) >= self::REBUILD_BATCH_SIZE) {
@@ -169,7 +171,7 @@ class ContentIndexManager
     /**
      * Re-index or remove every row the rebuild's walk did not see.
      *
-     * @param array<string, true> $seen page IDs the walk visited
+     * @param array<string, true> $seen page IDs the walk gave a row
      * @param KirbyBaseHelper $helper Helper instance for field access
      */
     private function sweep(array $seen, KirbyBaseHelper $helper): void

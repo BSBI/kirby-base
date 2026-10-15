@@ -28,6 +28,9 @@ final class ContentIndexRebuildTest extends TestCase
     /** @var list<string> slugs whose getRowData throws */
     private static array $failing = [];
 
+    /** @var list<string> slugs whose definition gives no row: the page is no longer indexed */
+    private static array $rowless = [];
+
     /** @var list<string> slugs the collection leaves out, as if created after the walk passed */
     private static array $unwalked = [];
 
@@ -57,6 +60,7 @@ final class ContentIndexRebuildTest extends TestCase
     {
         self::$onRow = null;
         self::$failing = [];
+        self::$rowless = [];
         self::$unwalked = [];
         $this->removeTree(self::$root . '/content');
         $this->removeTree(self::$root . '/site/indexes');
@@ -106,6 +110,19 @@ final class ContentIndexRebuildTest extends TestCase
         $manager->rebuildIndex($this->helper());
 
         $this->assertEqualsCanonicalizing(['alpha', 'late'], $manager->query()->getPageIds());
+    }
+
+    public function testRebuildRemovesTheRowOfAWalkedPageNoLongerIndexed(): void
+    {
+        $this->makePage('1_alpha', 'Alpha');
+        $this->makePage('2_beta', 'Beta');
+        $manager = $this->manager();
+        $this->insertRow('beta', 'Beta');
+        self::$rowless = ['beta'];
+
+        $manager->rebuildIndex($this->helper());
+
+        $this->assertSame(['alpha'], $manager->query()->getPageIds());
     }
 
     public function testAnotherWriterIsNotBlockedWhileTheRebuildReadsPages(): void
@@ -215,6 +232,9 @@ final class ContentIndexRebuildTest extends TestCase
     {
         if (in_array($page->slug(), self::$failing, true)) {
             throw new RuntimeException('row data unavailable');
+        }
+        if (in_array($page->slug(), self::$rowless, true)) {
+            return [];
         }
         if (self::$onRow !== null) {
             (self::$onRow)($page);

@@ -116,7 +116,7 @@ final class IndexRebuilds
                     'fallback' => 'The index is busy, probably with another rebuild. Try again in a minute.',
                 ]);
             }
-            throw new KirbyException(['httpCode' => 500, 'fallback' => 'Failed to rebuild content index: ' . $e->getMessage()]);
+            throw self::failed('content index', $e);
         }
 
         return ['message' => $message];
@@ -136,7 +136,7 @@ final class IndexRebuilds
         try {
             $result = (new SearchIndexHelper())->rebuildIndex();
         } catch (Throwable $e) {
-            throw new KirbyException(['httpCode' => 500, 'fallback' => 'Failed to rebuild search index: ' . $e->getMessage()]);
+            throw self::failed('search index', $e);
         }
 
         $message = "Search index rebuilt. Indexed {$result['search_index']} pages for site search";
@@ -164,7 +164,7 @@ final class IndexRebuilds
         try {
             $count = (new ImageBankIndexHelper())->rebuildIndex();
         } catch (Throwable $e) {
-            throw new KirbyException(['httpCode' => 500, 'fallback' => 'Failed to rebuild imageBank index: ' . $e->getMessage()]);
+            throw self::failed('imageBank index', $e);
         }
 
         return ['message' => "imageBank index rebuilt. $count files indexed."];
@@ -184,10 +184,24 @@ final class IndexRebuilds
         try {
             $count = (new FileLinkIndexHelper())->rebuildIndex();
         } catch (Throwable $e) {
-            throw new KirbyException(['httpCode' => 500, 'fallback' => 'Failed to rebuild file-link index: ' . $e->getMessage()]);
+            throw self::failed('file-link index', $e);
         }
 
         return ['message' => "File-link index rebuilt. $count pages with links indexed."];
+    }
+
+    /**
+     * A failed rebuild, as the Panel sees it: the detail goes to the server's error log,
+     * not to the browser, since a PDO or filesystem message can carry paths and schema.
+     */
+    private static function failed(string $what, Throwable $e): KirbyException
+    {
+        error_log("Index rebuild: failed to rebuild the $what: " . $e->getMessage());
+
+        return new KirbyException([
+            'httpCode' => 500,
+            'fallback' => "Failed to rebuild the $what. The server's error log has the detail.",
+        ]);
     }
 
     /**

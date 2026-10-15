@@ -199,9 +199,9 @@ pages:
   written in one short transaction. A page save waiting on the index waits for one
   batch's writes at most.
 - **Readers see the old rows** until each is replaced, never a half-empty index.
-- **A sweep at the end** handles rows the walk did not see. A row whose page still
-  exists is re-indexed, which keeps a page created after the walk passed it. A row
-  whose page has gone is removed.
+- **A sweep at the end** handles every row the walk did not write. A row whose page
+  still gets a row is re-indexed, which keeps a page created after the walk passed it.
+  A row whose page has gone, or is no longer indexed, is removed.
 - **`last_rebuild` is written last.** A rebuild that dies part way leaves it unchanged,
   so a site can trust an index only once it has been rebuilt.
 
