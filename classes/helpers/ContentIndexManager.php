@@ -26,6 +26,9 @@ class ContentIndexManager
     /** @var string Default database directory relative to site root */
     private const string DEFAULT_DATABASE_PATH = '/logs/content-indexes/';
 
+    /** Pages written per transaction during a rebuild: the longest a page save waits. */
+    private const int REBUILD_BATCH_SIZE = 100;
+
     private ContentIndexDefinition $definition;
     private PDO $database;
     private App $kirby;
@@ -56,6 +59,10 @@ class ContentIndexManager
     /**
      * Index (upsert) a single page into the content index.
      *
+     * The row is built before anything is written, and the old row is replaced in one
+     * transaction, so a page whose row cannot be built keeps the row it had. A page the
+     * definition no longer indexes (a draft, an unlisted page) loses its row.
+     *
      * @param Page $page The Kirby page to index
      * @param KirbyBaseHelper $helper Helper instance for field access
      * @return bool True if the page was indexed successfully
@@ -63,37 +70,18 @@ class ContentIndexManager
     public function indexPage(Page $page, KirbyBaseHelper $helper): bool
     {
         try {
-            // Remove existing entry first (handles slug changes and draft transitions)
-            $this->removePage($page->id());
-
-            // Listed pages only, unless the definition says otherwise
-            if (!$this->definition->shouldIndex($page)) {
-                return false;
-            }
-
-            $rowData = $this->definition->getRowData($page, $helper);
+            $rowData = $this->definition->shouldIndex($page)
+                ? $this->definition->getRowData($page, $helper)
+                : [];
 
             if (empty($rowData)) {
+                // handles slug changes and draft transitions
+                $this->removePage($page->id());
                 return false;
             }
 
-            $columns = array_keys($rowData);
-            $placeholders = array_map(fn(string $col) => ':' . $col, $columns);
-
-            $sql = sprintf(
-                'INSERT INTO %s (%s) VALUES (%s)',
-                $this->tableName,
-                implode(', ', $columns),
-                implode(', ', $placeholders)
-            );
-
-            $stmt = $this->database->prepare($sql);
-
-            foreach ($rowData as $column => $value) {
-                $stmt->bindValue(':' . $column, $value);
-            }
-
-            return $stmt->execute();
+            $this->writeRows([$page->id() => $rowData]);
+            return true;
         } catch (Throwable $e) {
             error_log('Content index error indexing page ' . $page->id() . ': ' . $e->getMessage());
             return false;
@@ -113,16 +101,28 @@ class ContentIndexManager
     }
 
     /**
-     * Rebuild the entire index from the collection.
+     * Rebuild the index from the collection, in place.
+     *
+     * Rows are built a batch of pages at a time with no lock held, then written in one
+     * short transaction per batch, so a page save waiting on the index waits for one
+     * batch's writes at most, never for the whole walk. The table is never emptied:
+     * readers see the old rows until each is replaced.
+     *
+     * Rows the walk did not reach are swept at the end: re-indexed if their page exists
+     * (it may have been created after the walk passed it), removed if it has gone. The
+     * rebuild is recorded last, so one that dies part way leaves `last_rebuild` as it was.
      *
      * @param KirbyBaseHelper $helper Helper instance for field access
      * @return int Number of pages indexed
-     * @throws Throwable If database transaction fails
+     * @throws Throwable If the collection is missing or a write fails
      */
     public function rebuildIndex(KirbyBaseHelper $helper): int
     {
         $collectionName = $this->definition->getCollectionName();
-        $collection = $this->kirby->collection($collectionName);
+        // Kirby throws a bare "cannot be found" for a missing collection; name the index
+        $collection = $this->kirby->collections()->has($collectionName)
+            ? $this->kirby->collection($collectionName)
+            : null;
 
         if ($collection === null) {
             throw new Exception(
@@ -130,68 +130,117 @@ class ContentIndexManager
             );
         }
 
-        $this->database->beginTransaction();
+        $seen = [];
+        $batch = [];
+        $count = 0;
 
-        try {
-            $this->database->exec("DELETE FROM {$this->tableName}");
-
-            $count = 0;
-
-            /** @var Page $page */
-            foreach ($collection as $page) {
-                try {
-                    // Listed pages only, unless the definition says otherwise
-                    if (!$this->definition->shouldIndex($page)) {
-                        continue;
-                    }
-
-                    $rowData = $this->definition->getRowData($page, $helper);
-                    if (empty($rowData)) {
-                        continue;
-                    }
-
-                    $columns = array_keys($rowData);
-                    $placeholders = array_map(fn(string $col) => ':' . $col, $columns);
-
-                    $sql = sprintf(
-                        'INSERT INTO %s (%s) VALUES (%s)',
-                        $this->tableName,
-                        implode(', ', $columns),
-                        implode(', ', $placeholders)
-                    );
-
-                    $stmt = $this->database->prepare($sql);
-
-                    foreach ($rowData as $column => $value) {
-                        $stmt->bindValue(':' . $column, $value);
-                    }
-
-                    $stmt->execute();
-                    $count++;
-                } catch (Throwable $e) {
-                    error_log('Content index rebuild: failed to index page ' . $page->id() . ': ' . $e->getMessage());
+        /** @var Page $page */
+        foreach ($collection as $page) {
+            try {
+                // Listed pages only, unless the definition says otherwise
+                if (!$this->definition->shouldIndex($page)) {
+                    continue;
                 }
+                $rowData = $this->definition->getRowData($page, $helper);
+            } catch (Throwable $e) {
+                error_log('Content index rebuild: failed to index page ' . $page->id() . ': ' . $e->getMessage());
+                continue;
+            }
+            if (empty($rowData)) {
+                continue;
             }
 
-            // Update metadata
-            $this->database->exec("
-                CREATE TABLE IF NOT EXISTS content_index_meta (
-                    key TEXT PRIMARY KEY,
-                    value TEXT
-                )
-            ");
-            $metaStmt = $this->database->prepare(
-                'INSERT OR REPLACE INTO content_index_meta (key, value) VALUES (:key, :value)'
-            );
-            $metaStmt->execute(['key' => 'last_rebuild', 'value' => date('Y-m-d H:i:s')]);
+            // only a page given a row counts as seen: any other's old row is left to the
+            // sweep, which removes it as the emptied table once did
+            $seen[$page->id()] = true;
+            $batch[$page->id()] = $rowData;
+            $count++;
+            if (count($batch) >= self::REBUILD_BATCH_SIZE) {
+                $this->writeRows($batch);
+                $batch = [];
+            }
+        }
+        $this->writeRows($batch);
 
+        $this->sweep($seen, $helper);
+        $this->recordRebuild();
+
+        return $count;
+    }
+
+    /**
+     * Re-index or remove every row the rebuild's walk did not see.
+     *
+     * @param array<string, true> $seen page IDs the walk gave a row
+     * @param KirbyBaseHelper $helper Helper instance for field access
+     */
+    private function sweep(array $seen, KirbyBaseHelper $helper): void
+    {
+        foreach ($this->query()->getPageIds() as $pageId) {
+            if (isset($seen[$pageId])) {
+                continue;
+            }
+            $page = $this->kirby->page($pageId);
+            if ($page === null || !$this->indexPage($page, $helper)) {
+                $this->removePage($pageId);
+            }
+        }
+    }
+
+    /**
+     * Replace the rows for some pages, in one transaction.
+     *
+     * @param array<string, array<string, mixed>> $rows row data keyed by page ID
+     * @throws Throwable If a write fails; the transaction is rolled back
+     */
+    private function writeRows(array $rows): void
+    {
+        if ($rows === []) {
+            return;
+        }
+
+        $delete = $this->database->prepare("DELETE FROM {$this->tableName} WHERE page_id = :page_id");
+        $this->database->beginTransaction();
+        try {
+            foreach ($rows as $pageId => $rowData) {
+                $delete->execute(['page_id' => $pageId]);
+
+                $columns = array_keys($rowData);
+                $placeholders = array_map(fn(string $col) => ':' . $col, $columns);
+                $stmt = $this->database->prepare(sprintf(
+                    'INSERT INTO %s (%s) VALUES (%s)',
+                    $this->tableName,
+                    implode(', ', $columns),
+                    implode(', ', $placeholders)
+                ));
+                foreach ($rowData as $column => $value) {
+                    $stmt->bindValue(':' . $column, $value);
+                }
+                $stmt->execute();
+            }
             $this->database->commit();
         } catch (Throwable $e) {
             $this->database->rollBack();
             throw $e;
         }
+    }
 
-        return $count;
+    /**
+     * Record when the index was last rebuilt, for the Indexes page and for sites that
+     * trust the index only once it has been.
+     */
+    private function recordRebuild(): void
+    {
+        $this->database->exec("
+            CREATE TABLE IF NOT EXISTS content_index_meta (
+                key TEXT PRIMARY KEY,
+                value TEXT
+            )
+        ");
+        $metaStmt = $this->database->prepare(
+            'INSERT OR REPLACE INTO content_index_meta (key, value) VALUES (:key, :value)'
+        );
+        $metaStmt->execute(['key' => 'last_rebuild', 'value' => date('Y-m-d H:i:s')]);
     }
 
     /**

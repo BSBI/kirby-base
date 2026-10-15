@@ -2008,11 +2008,11 @@ panel.plugin('open-foundations/kirby-base', {
         rebuild: async function() {
           this.rebuilding = true;
           try {
-            await fetch('/search-rebuild');
+            await this.$api.post('indexes/rebuild/search');
             const response = await this.load();
             this.stats = response.stats || this.stats;
           } catch (error) {
-            console.error("Failed to rebuild search index:", error);
+            this.$panel.notification.error("The search index could not be rebuilt: " + error.message);
           } finally {
             this.rebuilding = false;
           }
@@ -2074,11 +2074,11 @@ panel.plugin('open-foundations/kirby-base', {
         rebuild: async function(indexName) {
           this.rebuildingIndex = indexName;
           try {
-            await fetch('/content-index-rebuild?name=' + encodeURIComponent(indexName));
+            await this.$api.post('indexes/rebuild/content', { name: indexName });
             const response = await this.load();
             this.indexes = response.indexes || [];
           } catch (error) {
-            console.error("Failed to rebuild content index:", error);
+            this.$panel.notification.error("The " + indexName + " index could not be rebuilt: " + error.message);
           } finally {
             this.rebuildingIndex = null;
           }
@@ -3050,11 +3050,11 @@ panel.plugin('open-foundations/kirby-base', {
         rebuild: async function () {
           this.rebuilding = true;
           try {
-            await fetch('/imagebank-index-rebuild');
+            await this.$api.post('indexes/rebuild/imagebank');
             const response = await this.load();
             this.stats = response.stats;
           } catch (error) {
-            console.error('Failed to rebuild imageBank index:', error);
+            this.$panel.notification.error('The image bank index could not be rebuilt: ' + error.message);
           } finally {
             this.rebuilding = false;
           }
@@ -3480,24 +3480,24 @@ panel.plugin('open-foundations/kirby-base', {
           this.rebuilding = type === 'content' ? name : type;
           try {
             if (type === 'search') {
-              await fetch('/search-rebuild');
+              await this.$api.post('indexes/rebuild/search');
               const res = await fetch('/search-stats');
               this.currentSearchStats = await res.json();
             } else if (type === 'content') {
-              await fetch('/content-index-rebuild?name=' + encodeURIComponent(name));
+              await this.$api.post('indexes/rebuild/content', { name: name });
               const res = await fetch('/content-index-stats');
               this.currentContentIndexes = await res.json();
             } else if (type === 'imagebank') {
-              await fetch('/imagebank-index-rebuild');
+              await this.$api.post('indexes/rebuild/imagebank');
               const res = await fetch('/imagebank-index-stats');
               this.currentImageBankStats = await res.json();
             } else if (type === 'filelinks') {
-              await fetch('/filelinks-index-rebuild');
+              await this.$api.post('indexes/rebuild/filelinks');
               const res = await fetch('/filelinks-index-stats');
               this.currentFileLinkStats = await res.json();
             }
           } catch (error) {
-            console.error('Index rebuild failed:', error);
+            this.$panel.notification.error('The index could not be rebuilt: ' + error.message);
           } finally {
             this.rebuilding = null;
           }
