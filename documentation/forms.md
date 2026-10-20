@@ -246,12 +246,20 @@ export) is the same as for a hand-written definition.
     - an unusable field name
     - a question adjusted twice (the last row is used)
     - a question both adjusted and left out
-    Under it, a **Library wording** info box shows the library's own wording of every
-    library section's questions on the form, as last saved, so an editor can see what
-    they are rewording. Its text is the page method `page.formLibraryWording`
-    (`FormBuilderOptions::libraryWordingFor()`: `PanelFormDefinition::libraryWording()`
-    as markdown, each section once, left-out questions included, adjustments not
-    applied). Editor text has its markdown escaped; the info box escapes HTML.
+    An Adjust row's boxes are the custom fields `formadjusttext` and
+    `formadjustlines` (`fields/formadjust*.php`; component `kbAdjustBox` in
+    `index.js`). While blank, each shows the chosen question's library wording
+    greyed out (its placeholder), with an **Edit the library's wording** button that
+    copies it in to be changed; a blank box still keeps the library's, so later
+    library edits come through. Only the boxes the chosen question has are shown
+    (rows and columns for a rating grid, and so on); a box that has a value always
+    shows, and with no question chosen they all do. PHP supplies each library
+    question's text per part, by key, as last saved
+    (`FormBuilderOptions::libraryWordingFor()` →
+    `PanelFormDefinition::libraryWording()`, left-out questions included,
+    adjustments not applied); the component reads the row's chosen question from
+    the fieldset's `formData`, so it follows the Question select as it changes, and
+    takes its part from the field's (lower-cased) name.
   - `form-section-inline`: a section written for this form only (`title`, `formFields`)
 
   Either can set `showWhen` to show the section only when a radio or dropdown question

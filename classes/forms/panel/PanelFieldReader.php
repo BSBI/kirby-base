@@ -164,56 +164,52 @@ final class PanelFieldReader
             $rawLabel,
             $type !== FormFieldSpec::TYPE_INFO ? $this->reportAs($block) : '',
             $this->fillFrom($block, $type),
-            self::wording($type, $options, $lines('rows'), $lines('columns'), [
+            self::wording($type, $rawLabel, $help, $options, $lines('rows'), $lines('columns'), [
                 $text('leftLabel', 'Strongly disagree'),
                 $text('middleLabel'),
                 $text('rightLabel', 'Strongly agree'),
-            ], self::scale($block), $help)
+            ])
         );
     }
 
     /**
-     * Returns a question's wording beyond its label, as lines for editors
-     * ("Options: Yes / No", "Help: …"), raw: options for a choice question,
-     * rows and columns for a rating grid, range and labels for a scale, then
-     * any help text.
+     * Returns a question's wording as read, raw, by ADJUSTABLE name: only the
+     * ones its type has (label and help for every question; options for a
+     * choice question; rows and columns for a rating grid; the three labels
+     * for a scale). Lists are one per line, as an editor types them.
      *
-     * @param string                                   $type    A FormFieldSpec::TYPE_* constant
-     * @param list<string>                             $options
-     * @param list<string>                             $rows
-     * @param list<string>                             $columns
-     * @param array{0: string, 1: string, 2: string}   $labels  A scale's left, middle and right labels
-     * @param array{scaleMin: int, scaleMax: int}      $scale
-     * @return list<string>
+     * @param string                                 $type    A FormFieldSpec::TYPE_* constant
+     * @param list<string>                           $options
+     * @param list<string>                           $rows
+     * @param list<string>                           $columns
+     * @param array{0: string, 1: string, 2: string} $labels  A scale's left, middle and right labels
+     * @return array<string, string>
      */
     private static function wording(
         string $type,
+        string $label,
+        string $help,
         array $options,
         array $rows,
         array $columns,
-        array $labels,
-        array $scale,
-        string $help
-    ): array
-    {
-        $details = match ($type) {
+        array $labels
+    ): array {
+        if ($type === FormFieldSpec::TYPE_INFO) {
+            return [];
+        }
+        $wording = ['label' => $label, 'help' => $help];
+        return $wording + match ($type) {
             FormFieldSpec::TYPE_CHECKBOX_GROUP,
             FormFieldSpec::TYPE_RADIO_GROUP,
-            FormFieldSpec::TYPE_SELECT        => ['Options: ' . implode(' / ', $options)],
-            FormFieldSpec::TYPE_RATING_MATRIX => [
-                'Rows: ' . implode(' / ', $rows),
-                'Columns: ' . implode(' / ', $columns),
-            ],
+            FormFieldSpec::TYPE_SELECT        => ['options' => implode("\n", $options)],
+            FormFieldSpec::TYPE_RATING_MATRIX => ['rows' => implode("\n", $rows), 'columns' => implode("\n", $columns)],
             FormFieldSpec::TYPE_LIKERT        => [
-                sprintf('Scale: %d to %d', $scale['scaleMin'], $scale['scaleMax']),
-                'Labels: ' . implode(' / ', array_filter($labels, static fn(string $label): bool => $label !== '')),
+                'leftLabel'   => $labels[0],
+                'middleLabel' => $labels[1],
+                'rightLabel'  => $labels[2],
             ],
             default                           => [],
         };
-        if ($help !== '') {
-            $details[] = 'Help: ' . $help;
-        }
-        return $details;
     }
 
     /**

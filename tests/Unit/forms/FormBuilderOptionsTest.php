@@ -5,9 +5,6 @@ declare(strict_types=1);
 namespace BSBI\WebBase\Tests\Unit\forms;
 
 use BSBI\WebBase\forms\FormBuilderOptions;
-use BSBI\WebBase\Testing\KirbyTestEnvironment;
-use Kirby\Cms\App;
-use Kirby\Cms\Page;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -17,13 +14,6 @@ use PHPUnit\Framework\TestCase;
  */
 final class FormBuilderOptionsTest extends TestCase
 {
-    private static App $app;
-
-    public static function setUpBeforeClass(): void
-    {
-        self::$app = KirbyTestEnvironment::boot('kirby-base-form-builder-options-' . uniqid());
-    }
-
     /**
      * @return array<string, array{0: string, 1: string}>
      */
@@ -103,55 +93,5 @@ final class FormBuilderOptionsTest extends TestCase
             ['email', 'Enjoyed', 'overall'],
             FormBuilderOptions::reportColumns(['overall, Enjoyed', ' email '], ['', 'Enjoyed'], [])
         );
-    }
-
-    public function testLibraryWordingTextListsEachSectionsQuestions(): void
-    {
-        $text = FormBuilderOptions::libraryWordingText([
-            ['section' => 'Start', 'questions' => [
-                ['label' => 'Member?', 'details' => ['Options: Yes / No', 'Help: Library help']],
-                ['label' => 'Comments', 'details' => []],
-            ]],
-            ['section' => 'End', 'questions' => [
-                ['label' => 'Useful?', 'details' => ['Scale: 1 to 5']],
-            ]],
-        ]);
-
-        $this->assertSame(
-            "**Start**\n\n- Member?\n  - Options: Yes / No\n  - Help: Library help\n- Comments\n\n"
-            . "**End**\n\n- Useful?\n  - Scale: 1 to 5",
-            $text
-        );
-    }
-
-    public function testLibraryWordingTextEscapesMarkdown(): void
-    {
-        $text = FormBuilderOptions::libraryWordingText([
-            ['section' => 'A *bold* section', 'questions' => [['label' => 'Name_first [1]', 'details' => ['Help: use `x`']]]],
-        ]);
-
-        $this->assertStringContainsString('**A \\*bold\\* section**', $text);
-        $this->assertStringContainsString('- Name\\_first \\[1\\]', $text);
-        $this->assertStringContainsString('Help: use \\`x\\`', $text);
-    }
-
-    public function testLibraryWordingTextIsNotReadAsKirbyTags(): void
-    {
-        // The info box HTML-escapes the text and then runs kirbytext.
-        $app = self::$app;
-        $text = FormBuilderOptions::libraryWordingText([
-            ['section' => 'S', 'questions' => [['label' => 'Go (link: javascript:alert(1) text: x)', 'details' => ['Help: (IMAGE: a.jpg)']]]],
-        ]);
-
-        $html = $app->kirbytext((new Page(['slug' => 'p']))->toSafeString($text));
-
-        $this->assertStringNotContainsString('<a', $html);
-        $this->assertStringNotContainsString('<img', $html);
-        $this->assertStringContainsString('link: javascript:alert', $html);
-    }
-
-    public function testLibraryWordingTextSaysWhenThereIsNothingToShow(): void
-    {
-        $this->assertStringContainsString('No library sections', FormBuilderOptions::libraryWordingText([]));
     }
 }

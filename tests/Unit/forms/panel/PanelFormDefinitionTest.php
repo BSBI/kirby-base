@@ -549,15 +549,12 @@ final class PanelFormDefinitionTest extends TestCase
         $wording = (new PanelFormDefinition($form, 't', $this->resolver(['page://start' => $start, 'page://end' => $end])))->libraryWording();
 
         $this->assertSame([
-            ['section' => 'Start', 'questions' => [
-                ['label' => 'Member?', 'details' => ['Options: Yes / No', 'Help: Library help']],
-                ['label' => 'Rate the day', 'details' => ['Rows: Venue / Talks', 'Columns: Poor / Good']],
-            ]],
-            ['section' => 'End', 'questions' => [
-                ['label' => 'Useful?', 'details' => ['Scale: 1 to 5', 'Labels: Strongly disagree / Neither / Strongly agree']],
-                ['label' => 'Comments', 'details' => []],
-            ]],
-        ], $wording, 'the library\'s own wording, once per section, left-out questions included, no inline sections');
+            'member'   => ['label' => 'Member?', 'help' => 'Library help', 'options' => "Yes\nNo"],
+            'rate'     => ['label' => 'Rate the day', 'help' => '', 'rows' => "Venue\nTalks", 'columns' => "Poor\nGood"],
+            'useful'   => ['label' => 'Useful?', 'help' => '', 'leftLabel' => 'Strongly disagree', 'middleLabel' => 'Neither', 'rightLabel' => 'Strongly agree'],
+            'comments' => ['label' => 'Comments', 'help' => ''],
+        ], $wording, 'each question\'s library text for each box it has, by key: left-out questions included, '
+            . 'no display-only text or inline sections');
     }
 
     /**

@@ -87,6 +87,8 @@ $pluginConfig = [
     ],
     'fields' => [
         'permanenturl' => require __DIR__ . '/fields/permanenturl.php',
+        'formadjusttext' => require __DIR__ . '/fields/formadjusttext.php',
+        'formadjustlines' => require __DIR__ . '/fields/formadjustlines.php',
         'maplocation' => [
             'props' => [
                 'value' => function ($value = null) {
@@ -198,14 +200,6 @@ $pluginConfig = [
          */
         'formLeaveOutChoices' => function (): array {
             return FormBuilderOptions::leaveOutChoicesFor($this);
-        },
-        /**
-         * The text of a library section block's "Library wording" box: the
-         * library's own wording of the questions in this form's library
-         * sections, as last saved (markdown).
-         */
-        'formLibraryWording' => function (): string {
-            return FormBuilderOptions::libraryWordingFor($this);
         },
     ],
     'sections' => [

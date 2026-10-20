@@ -58,7 +58,7 @@ class PanelFormDefinition extends BaseFormDefinition
     /** @var array<string, true> Library section ids used, filled by build() */
     private array $sectionIds = [];
 
-    /** @var array<string, array{label: string, page: Page}> Library sections on the form by page id, first use first */
+    /** @var array<string, Page> Library sections on the form by page id, first use first */
     private array $librarySections = [];
 
     private FormProblems $problems;
@@ -206,27 +206,27 @@ class PanelFormDefinition extends BaseFormDefinition
 
     /**
      * Returns the library wording of the questions in the form's library
-     * sections, for editors adjusting them: each section once, in first-use
-     * order and under its label there, with every question it asks (left-out
-     * ones included) as the library has it, ignoring this form's adjustments.
-     * Display-only text is not listed; inline sections are this form's own.
+     * sections, by key, for editors adjusting them: each question's text for
+     * each part of it that can be adjusted (PanelField::$wording). Every
+     * question a library section asks is included (left-out ones too), as the
+     * library has it, ignoring this form's adjustments; a key asked twice
+     * keeps its first. Display-only text is not included, and inline sections
+     * are this form's own.
      *
-     * @return list<array{section: string, questions: list<array{label: string, details: list<string>}>}>
+     * @return array<string, array<string, string>>
      */
     public function libraryWording(): array
     {
         $this->build();
         $reader = new PanelSectionReader($this->resolver);
         $wording = [];
-        foreach ($this->librarySections as $section) {
-            $questions = [];
+        foreach ($this->librarySections as $page) {
             // Problems reading the section are the Form check's to report.
-            foreach ($reader->read($section['page'], new FormProblems()) as $field) {
+            foreach ($reader->read($page, new FormProblems()) as $field) {
                 if ($field->isSubmittable()) {
-                    $questions[] = ['label' => $field->label, 'details' => $field->wording];
+                    $wording[$field->key] ??= $field->wording;
                 }
             }
-            $wording[] = ['section' => $section['label'], 'questions' => $questions];
         }
         return $wording;
     }
@@ -400,7 +400,7 @@ class PanelFormDefinition extends BaseFormDefinition
                 ));
                 return null;
             }
-            $this->librarySections[$page->id()] ??= ['label' => '', 'page' => $page];
+            $this->librarySections[$page->id()] ??= $page;
             foreach ($sectionReader->chainIds($page) as $sectionId) {
                 $this->sectionIds[$sectionId] = true;
             }
@@ -408,9 +408,6 @@ class PanelFormDefinition extends BaseFormDefinition
             $pageTitle = PanelContent::text($page->content(), 'title');
             $name = sprintf('Section "%s"', $pageTitle !== '' ? $pageTitle : $page->slug());
             $sectionLabel = $legend !== '' ? $legend : ($pageTitle !== '' ? $pageTitle : $page->slug());
-            if ($this->librarySections[$page->id()]['label'] === '') {
-                $this->librarySections[$page->id()]['label'] = $sectionLabel;
-            }
             return [
                 'id'     => $block->id(),
                 'legend'   => $legend,

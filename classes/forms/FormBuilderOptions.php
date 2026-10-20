@@ -72,7 +72,7 @@ final class FormBuilderOptions
     private static array $conditionChoices = [];
     /** @var array<string, array<string, string>> Leave-out choices per page id, for one request */
     private static array $leaveOutChoices = [];
-    /** @var array<string, string> Library wording text per page id, for one request */
+    /** @var array<string, array<string, array<string, string>>> Library wording per page id, for one request */
     private static array $libraryWording = [];
 
     /**
@@ -117,59 +117,23 @@ final class FormBuilderOptions
     }
 
     /**
-     * Returns the text of a form page's "Library wording" box: its library
-     * sections' questions as the library words them (PanelFormDefinition::
-     * libraryWording()), built once per page per request, as the show-when
-     * choices are. Each library section block shows the same box.
+     * Returns the library wording of a form page's library questions, by key
+     * (PanelFormDefinition::libraryWording()), for the boxes of an Adjust row,
+     * built once per page per request, as the show-when choices are.
      *
      * @param Page $page A panel-built form page, or one with extra sections
+     * @return array<string, array<string, string>>
      */
-    public static function libraryWordingFor(Page $page): string
+    public static function libraryWordingFor(Page $page): array
     {
         return self::$libraryWording[$page->id()]
-            ??= self::libraryWordingText((new PanelFormDefinition(
+            ??= (new PanelFormDefinition(
                 $page,
                 '',
                 new KirbySectionPageResolver($page->kirby()),
                 self::sectionsFieldFor($page),
                 self::reservedKeysFor($page)
-            ))->libraryWording());
-    }
-
-    /**
-     * Returns library wording (PanelFormDefinition::libraryWording()) as
-     * markdown for a panel info box: each section's name in bold, then a list
-     * of its questions with their wording beneath. Editor text has its
-     * markdown escaped and can't form a KirbyTag; the info box escapes HTML
-     * itself.
-     *
-     * @param list<array{section: string, questions: list<array{label: string, details: list<string>}>}> $wording
-     */
-    public static function libraryWordingText(array $wording): string
-    {
-        if ($wording === []) {
-            return 'No library sections on this form yet. Choose one and save, and its questions are listed here.';
-        }
-        // Markdown escaped, and a zero-width space after any "(" that would
-        // start a KirbyTag ("(link: …"), which a backslash doesn't stop.
-        $escape = static fn(string $text): string => (string) preg_replace(
-            ['/[\\`*_{}\[\]()#+\-.!|~]/', '/\((?=[a-z0-9_-]+:)/i'],
-            ['\\\\$0', "(\u{200B}"],
-            $text
-        );
-        $parts = [];
-        foreach ($wording as $section) {
-            $lines = [];
-            foreach ($section['questions'] as $question) {
-                $lines[] = '- ' . $escape($question['label']);
-                foreach ($question['details'] as $detail) {
-                    $lines[] = '  - ' . $escape($detail);
-                }
-            }
-            $heading = '**' . $escape($section['section']) . '**';
-            $parts[] = $lines !== [] ? $heading . "\n\n" . implode("\n", $lines) : $heading;
-        }
-        return implode("\n\n", $parts);
+            ))->libraryWording();
     }
 
     /**
