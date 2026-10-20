@@ -651,6 +651,20 @@ the subject has no value for (no date, no "led by") is asked as usual.
 `about_date`, written by `FormSubmissionWriter` from the `AboutSubject`. Separate copies
 (such as EDI) do not record the subject.
 
+**Response titles.** A response is titled with its submission time, then what it is
+about when that is known (`FormSubmissionTitle`): "Submission: Oct-20-14.03.12 — Spring
+botany walk (12 May 2026)". The subject is the about link's title and date, or else the
+respondent's answers to the questions an about link would fill with the title and date
+(`fillFromKeys()`). A `Y-m-d` date reads "12 May 2026"; other answers are kept as typed,
+on one line, and the description is cut at 80 characters. Only what is known is named,
+and with nothing the title is the time alone. `KirbyBaseHelper::createFormSubmission()`
+passes the description to `FormSubmissionWriter::write()` for the main response only, so
+separate copies (such as EDI) keep the time alone. Updating a response within a session
+renames that part too, unless an editor has renamed the response (its title no longer
+starts `FormSubmissionSlug::TITLE_PREFIX`). Control and format characters (such as a
+right-to-left override) are dropped from typed answers. The slug stays the time. The title is the CSV's first column,
+written formula-safe by `CsvWriter`. Responses saved before 3.60.0 keep their time-only titles.
+
 **Session slots.** With updating within a session on, the slot is
 `form_submission_<form id>_<type>_<subject UUID>`, so feedback on two events in one
 browser session gives two responses.

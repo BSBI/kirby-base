@@ -16,6 +16,9 @@ use Kirby\Toolkit\Str;
  */
 final class FormSubmissionSlug
 {
+    /** How every response's title starts, before its submission time. */
+    public const TITLE_PREFIX = 'Submission: ';
+
     /**
      * Returns the slug and title for a submission made at $timestamp.
      *
@@ -34,6 +37,6 @@ final class FormSubmissionSlug
             $suffix = '-' . $counter;
         }
 
-        return ['slug' => $base . $suffix, 'title' => 'Submission: ' . $timestamp . $suffix];
+        return ['slug' => $base . $suffix, 'title' => self::TITLE_PREFIX . $timestamp . $suffix];
     }
 }
