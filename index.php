@@ -199,6 +199,14 @@ $pluginConfig = [
         'formLeaveOutChoices' => function (): array {
             return FormBuilderOptions::leaveOutChoicesFor($this);
         },
+        /**
+         * The text of a library section block's "Library wording" box: the
+         * library's own wording of the questions in this form's library
+         * sections, as last saved (markdown).
+         */
+        'formLibraryWording' => function (): string {
+            return FormBuilderOptions::libraryWordingFor($this);
+        },
     ],
     'sections' => [
         'formproblems' => require __DIR__ . '/sections/formproblems.php',

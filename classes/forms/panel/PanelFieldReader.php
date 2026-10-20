@@ -23,14 +23,14 @@ use Kirby\Cms\Block;
  * because that snippet escapes them.
  *
  * Adjustments (a form's "Adjust questions on this form" on a library section)
- * replace a question's label, options or help text, by key, before reading;
- * a blank adjustment keeps the block's own. Options only apply to choice
- * questions.
+ * replace a question's label, options, rating-grid rows and columns, scale
+ * labels or help text, by key, before reading; a blank adjustment keeps the
+ * block's own. Each only applies to the question types that have it.
  */
 final class PanelFieldReader
 {
     /**
-     * @param array<string, array{label: string, options: string, help: string}> $adjustments By question key
+     * @param array<string, array<string, string>> $adjustments By question key: ADJUSTABLE name => text
      */
     public function __construct(private array $adjustments = [])
     {
@@ -47,6 +47,12 @@ final class PanelFieldReader
         'form-rating-matrix'  => FormFieldSpec::TYPE_RATING_MATRIX,
         'form-info'           => FormFieldSpec::TYPE_INFO,
     ];
+
+    /**
+     * What an adjustment may replace: the block field names, each blank to
+     * keep the block's own. Rows, columns and options are one per line.
+     */
+    public const ADJUSTABLE = ['label', 'help', 'options', 'rows', 'columns', 'leftLabel', 'middleLabel', 'rightLabel'];
 
     /** HTML input types an editor may pick for a text input. */
     public const INPUT_TYPES = ['text', 'email', 'tel', 'number', 'date', 'url'];
@@ -107,7 +113,11 @@ final class PanelFieldReader
             $rawLabel = $adjusted['label'];
         }
         $label    = $this->escape($rawLabel);
-        $options  = ($adjusted['options'] ?? '') !== '' ? self::linesOf($adjusted['options']) : $this->lines($block, 'options');
+        // The block's text, or this form's adjustment of it when there is one.
+        $text     = fn(string $name, string $default = ''): string
+            => ($adjusted[$name] ?? '') !== '' ? $adjusted[$name] : $this->text($block, $name, $default);
+        $lines    = fn(string $name): array => self::linesOf($text($name));
+        $options  = $lines('options');
 
         $escapedOptions = $this->escapeAll($options);
 
@@ -120,22 +130,22 @@ final class PanelFieldReader
             FormFieldSpec::TYPE_LIKERT         => FormFieldSpec::likert(
                 $key,
                 $label,
-                $this->escape($this->text($block, 'leftLabel', 'Strongly disagree')),
-                $this->escape($this->text($block, 'middleLabel')),
-                $this->escape($this->text($block, 'rightLabel', 'Strongly agree')),
+                $this->escape($text('leftLabel', 'Strongly disagree')),
+                $this->escape($text('middleLabel')),
+                $this->escape($text('rightLabel', 'Strongly agree')),
                 ...self::scale($block),
             ),
             FormFieldSpec::TYPE_RATING_MATRIX  => FormFieldSpec::ratingMatrix(
                 $key,
                 $label,
-                $this->lines($block, 'rows'),
-                $this->lines($block, 'columns'),
+                $lines('rows'),
+                $lines('columns'),
             ),
             default                            => FormFieldSpec::info($key, $this->text($block, 'text'), true),
         };
 
+        $help = $type !== FormFieldSpec::TYPE_INFO ? $text('help') : '';
         if ($type !== FormFieldSpec::TYPE_INFO) {
-            $help = ($adjusted['help'] ?? '') !== '' ? $adjusted['help'] : $this->text($block, 'help');
             if ($help !== '') {
                 $spec->help($this->escape($help));
             }
@@ -153,8 +163,57 @@ final class PanelFieldReader
             $isChoice ? $options : [],
             $rawLabel,
             $type !== FormFieldSpec::TYPE_INFO ? $this->reportAs($block) : '',
-            $this->fillFrom($block, $type)
+            $this->fillFrom($block, $type),
+            self::wording($type, $options, $lines('rows'), $lines('columns'), [
+                $text('leftLabel', 'Strongly disagree'),
+                $text('middleLabel'),
+                $text('rightLabel', 'Strongly agree'),
+            ], self::scale($block), $help)
         );
+    }
+
+    /**
+     * Returns a question's wording beyond its label, as lines for editors
+     * ("Options: Yes / No", "Help: …"), raw: options for a choice question,
+     * rows and columns for a rating grid, range and labels for a scale, then
+     * any help text.
+     *
+     * @param string                                   $type    A FormFieldSpec::TYPE_* constant
+     * @param list<string>                             $options
+     * @param list<string>                             $rows
+     * @param list<string>                             $columns
+     * @param array{0: string, 1: string, 2: string}   $labels  A scale's left, middle and right labels
+     * @param array{scaleMin: int, scaleMax: int}      $scale
+     * @return list<string>
+     */
+    private static function wording(
+        string $type,
+        array $options,
+        array $rows,
+        array $columns,
+        array $labels,
+        array $scale,
+        string $help
+    ): array
+    {
+        $details = match ($type) {
+            FormFieldSpec::TYPE_CHECKBOX_GROUP,
+            FormFieldSpec::TYPE_RADIO_GROUP,
+            FormFieldSpec::TYPE_SELECT        => ['Options: ' . implode(' / ', $options)],
+            FormFieldSpec::TYPE_RATING_MATRIX => [
+                'Rows: ' . implode(' / ', $rows),
+                'Columns: ' . implode(' / ', $columns),
+            ],
+            FormFieldSpec::TYPE_LIKERT        => [
+                sprintf('Scale: %d to %d', $scale['scaleMin'], $scale['scaleMax']),
+                'Labels: ' . implode(' / ', array_filter($labels, static fn(string $label): bool => $label !== '')),
+            ],
+            default                           => [],
+        };
+        if ($help !== '') {
+            $details[] = 'Help: ' . $help;
+        }
+        return $details;
     }
 
     /**
@@ -216,18 +275,6 @@ final class PanelFieldReader
     {
         $value = PanelContent::text($block->content(), $field);
         return $value !== '' ? $value : $default;
-    }
-
-    /**
-     * Returns the non-blank, trimmed lines of a textarea value.
-     *
-     * @param Block  $block
-     * @param string $field
-     * @return string[]
-     */
-    private function lines(Block $block, string $field): array
-    {
-        return self::linesOf(PanelContent::text($block->content(), $field));
     }
 
     /**

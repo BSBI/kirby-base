@@ -64,14 +64,17 @@ fields:
     label: Adjust questions on this form
     help: >
       Optional. Reword one of this library section's questions on this form only: its
-      label, its options (one per line, choice questions only) or its help text. Leave
+      label, help text, options (choice questions), rows and columns (rating grids) or
+      scale labels (agree/disagree scales). The library's wording is listed below. Leave
       a box blank to keep the library's (a library help text can't be removed here). The
       question keeps its place and field name, so its answers stay in the same CSV
       column; other forms using the section keep the library's wording. Answers are
-      stored as the option's words, so after rewording an option, answers given under
-      its old wording, on this form or another, count separately in the analysis. Save
-      first after choosing a section, so its questions are listed. If you reword an
-      option that a "show when" uses, re-pick that condition.
+      stored as the option's words (for a rating grid, the row's and column's), so after
+      rewording one, answers given under its old wording, on this form or another,
+      count separately in the analysis. Scale answers are numbers, so rewording a
+      scale's labels doesn't affect them. Save first after choosing a section, so its
+      questions are listed. If you reword an option that a "show when" uses, re-pick
+      that condition.
     columns:
       question:
         width: 1/3
@@ -91,12 +94,47 @@ fields:
         type: text
         label: Label on this form
         help: Blank keeps the library's.
-      options:
-        type: textarea
-        label: Options on this form
-        buttons: false
-        help: One per line. Blank keeps the library's. Choice questions only.
       help:
         type: text
         label: Help text on this form
         help: Blank keeps the library's.
+      options:
+        type: textarea
+        label: Options on this form
+        buttons: false
+        help: Choice questions only. One per line. Blank keeps the library's.
+      rows:
+        type: textarea
+        label: Rows on this form
+        buttons: false
+        width: 1/2
+        help: Rating grids only. One per line. Blank keeps the library's.
+      columns:
+        type: textarea
+        label: Columns on this form
+        buttons: false
+        width: 1/2
+        help: Rating grids only. One per line. Blank keeps the library's.
+      leftLabel:
+        type: text
+        label: Left scale label on this form
+        width: 1/3
+        help: Agree/disagree scales only. Blank keeps the library's.
+      middleLabel:
+        type: text
+        label: Middle scale label on this form
+        width: 1/3
+        help: Agree/disagree scales only. Blank keeps the library's.
+      rightLabel:
+        type: text
+        label: Right scale label on this form
+        width: 1/3
+        help: Agree/disagree scales only. Blank keeps the library's.
+  libraryWording:
+    type: info
+    label: Library wording
+    text: "{{ page.formLibraryWording }}"
+    help: >
+      The questions of every library section on this form, as the library words them
+      and as last saved: save first after choosing a section. Adjustments on this form
+      aren't shown here.
