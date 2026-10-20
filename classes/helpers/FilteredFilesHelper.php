@@ -281,7 +281,7 @@ class FilteredFilesHelper
     public static function getOptions(array $filterDefs, string $pageId): array
     {
         $options    = [];
-        $parentPage = kirby()->page($pageId);
+        $parentPage = PanelPageAccess::find($pageId);
 
         foreach ($filterDefs as $field => $def) {
             $type = $def['type'] ?? 'pages';
@@ -291,6 +291,9 @@ class FilteredFilesHelper
                 if ($collection !== null) {
                     $items = [];
                     foreach ($collection as $page) {
+                        if (!PanelPageAccess::isListable($page)) {
+                            continue;
+                        }
                         $items[] = ['value' => $page->id(), 'text' => $page->title()->value()];
                     }
                     $options[$field] = $items;
@@ -357,7 +360,7 @@ class FilteredFilesHelper
     ): array {
         $empty = ['items' => [], 'total' => 0, 'page' => 1, 'pageSize' => $pageSize, 'totalPages' => 0];
 
-        $parentPage = kirby()->page($pageId);
+        $parentPage = PanelPageAccess::find($pageId);
         if ($parentPage === null) {
             KirbyBaseHelper::writeToLogFile('errors', 'FilteredFilesHelper: parent page not found: ' . $pageId);
             return $empty;

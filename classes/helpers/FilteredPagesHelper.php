@@ -207,6 +207,9 @@ class FilteredPagesHelper
                 if ($collection !== null) {
                     $items = [];
                     foreach ($collection as $page) {
+                        if (!PanelPageAccess::isListable($page)) {
+                            continue;
+                        }
                         $items[] = ['value' => $page->id(), 'text' => $page->title()->value()];
                     }
                     $options[$field] = $items;
@@ -229,9 +232,9 @@ class FilteredPagesHelper
                 }
             }
             if ($type === 'dateYear' && $modelId !== '') {
-                $parentPage = kirby()->page($modelId);
+                $parentPage = PanelPageAccess::find($modelId);
                 if ($parentPage !== null) {
-                    $children = $parentPage->children();
+                    $children = $parentPage->children()->filter('isListable', true);
                     if ($template !== '') {
                         $children = $children->filterBy('intendedTemplate', $template);
                     }
@@ -295,13 +298,15 @@ class FilteredPagesHelper
     ): array {
         $empty = ['items' => [], 'total' => 0, 'page' => 1, 'pageSize' => $pageSize, 'totalPages' => 0];
 
-        $parentPage = kirby()->page($modelId);
+        $parentPage = PanelPageAccess::find($modelId);
         if ($parentPage === null) {
             KirbyBaseHelper::writeToLogFile('errors', 'FilteredPagesHelper: parent page not found: ' . $modelId);
             return $empty;
         }
 
-        $children = $parentPage->childrenAndDrafts()->filterBy('intendedTemplate', $template);
+        $children = $parentPage->childrenAndDrafts()
+            ->filterBy('intendedTemplate', $template)
+            ->filter('isListable', true);
 
         $pages = [];
         foreach ($children as $child) {

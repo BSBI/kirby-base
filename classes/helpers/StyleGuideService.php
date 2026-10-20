@@ -53,7 +53,8 @@ class StyleGuideService
         }
 
         $page = self::resolvePage($pageId);
-        if ($page === null) {
+        // A page the user may not open is not found, as in the panel (bsbi-web#830).
+        if ($page === null || !$page->isAccessible()) {
             return ['error' => 'Page not found: ' . $pageId];
         }
 
