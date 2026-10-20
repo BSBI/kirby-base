@@ -105,6 +105,47 @@ final class FormSubmissionWriterTest extends TestCase
         $this->assertNull($plain->content()->get('about')->value());
     }
 
+    public function testAResponseTitleNamesWhatItIsAboutAfterTheTime(): void
+    {
+        $form = $this->form();
+
+        $items = [['question' => 'Q', 'answer' => 'a']];
+        $saved = (new FormSubmissionWriter())->write($form, 'feedback', $items, null, 'Spring walk (12 May 2026)');
+
+        $this->assertMatchesRegularExpression(
+            '/^Submission: [A-Za-z]{3}-\d+-[\d.]+ — Spring walk \(12 May 2026\)$/',
+            $saved->title()->value()
+        );
+        $this->assertStringNotContainsString('spring', $saved->slug(), 'the slug stays the time');
+    }
+
+    public function testUpdatingAResponseRenamesWhatItsTitleNames(): void
+    {
+        $form = $this->form();
+        $writer = new FormSubmissionWriter($this->slots());
+
+        $first = $writer->write($form, 'feedback', [['question' => 'Q', 'answer' => 'a']], null, 'Spring walk');
+        $second = $writer->write($form, 'feedback', [['question' => 'Q', 'answer' => 'b']], null, 'Autumn walk');
+
+        $this->assertSame($first->id(), $second->id());
+        $this->assertSame(
+            explode(' — ', $first->title()->value())[0] . ' — Autumn walk',
+            $this->reload($form)->children()->first()?->title()->value()
+        );
+    }
+
+    public function testATitleAnEditorRenamedIsLeftAloneOnUpdate(): void
+    {
+        $form = $this->form();
+        $writer = new FormSubmissionWriter($this->slots());
+
+        $first = $writer->write($form, 'feedback', [['question' => 'Q', 'answer' => 'a']], null, 'Spring walk');
+        $first->update(['title' => 'Ann: complaint, followed up']);
+        $writer->write($form, 'feedback', [['question' => 'Q', 'answer' => 'b']], null, 'Autumn walk');
+
+        $this->assertSame('Ann: complaint, followed up', $this->reload($form)->children()->first()?->title()->value());
+    }
+
     public function testEachSubjectHasItsOwnSlot(): void
     {
         $form = $this->form();

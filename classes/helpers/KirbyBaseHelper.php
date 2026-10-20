@@ -5,6 +5,7 @@ namespace BSBI\WebBase\helpers;
 use BSBI\WebBase\forms\BaseFormDefinition;
 use BSBI\WebBase\forms\FormPageInterface;
 use BSBI\WebBase\forms\FormSubmissionBuilder;
+use BSBI\WebBase\forms\FormSubmissionTitle;
 use BSBI\WebBase\forms\FormSubmissionWriter;
 use BSBI\WebBase\forms\about\AboutSubject;
 use BSBI\WebBase\forms\KirbySessionSlots;
@@ -5387,7 +5388,8 @@ abstract class KirbyBaseHelper
      *                           main response records it, copies don't
      * @param array<string, string> $fillFrom
      *                           The definition's fillFromKeys(): with a subject, these
-     *                           questions are answered from it
+     *                           questions are answered from it; the response's title
+     *                           names the subject, or else these questions' answers
      * @return ActionStatus
      * @throws KirbyRetrievalException
      */
@@ -5410,7 +5412,15 @@ abstract class KirbyBaseHelper
 
                 $writer = new FormSubmissionWriter($updateWithinSession ? new KirbySessionSlots($this->kirby) : null);
                 try {
-                    $writer->write($parentPage, $formType, $formSubmission, $about);
+                    // The main response's title also names what it's about; copies
+                    // (e.g. EDI) don't record that, so keep the time alone.
+                    $writer->write(
+                        $parentPage,
+                        $formType,
+                        $formSubmission,
+                        $about,
+                        FormSubmissionTitle::describe($formSubmission, $fillFrom, $about)
+                    );
                     foreach ($columns === [] ? [] : $copies as $copyType => $keys) {
                         $copyItems = array_values(array_filter(
                             $formSubmission,

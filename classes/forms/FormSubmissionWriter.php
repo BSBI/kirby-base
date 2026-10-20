@@ -18,6 +18,10 @@ use Kirby\Data\Data;
  *
  * A response about a subject (from an about link) records the subject, and
  * has a slot per subject, so feedback on two events is two responses.
+ *
+ * A response's title is its submission time, then what it is about when that
+ * is known (FormSubmissionTitle), so responses can be told apart in the panel;
+ * updating a response renames that part too, unless an editor has renamed it.
  */
 final readonly class FormSubmissionWriter
 {
@@ -35,9 +39,17 @@ final readonly class FormSubmissionWriter
      * @param string                                                              $formType Stored on the response; blank for none
      * @param list<array{question: string, answer: string, key?: string, column?: string}> $items
      * @param AboutSubject|null                                                   $about    What the response is about, if anything
+     * @param string $describedAs What the title names after the time
+     *                            (FormSubmissionTitle::describe()); blank for none
      * @return Page
      */
-    public function write(Page $form, string $formType, array $items, ?AboutSubject $about = null): Page
+    public function write(
+        Page $form,
+        string $formType,
+        array $items,
+        ?AboutSubject $about = null,
+        string $describedAs = ''
+    ): Page
     {
         $submission = Data::encode($items, 'yaml');
         $slot = 'form_submission_' . $form->id() . '_' . $formType . ($about !== null ? '_' . $about->uuid : '');
@@ -46,13 +58,22 @@ final readonly class FormSubmissionWriter
         $page = $existing !== null ? $form->findPageOrDraft($existing) : null;
 
         if ($page instanceof Page) {
-            $saved = $form->kirby()->impersonate('kirby', static fn(): Page => $page->update(['submission' => $submission] + ($about?->fields() ?? [])));
+            $content = ['submission' => $submission] + ($about?->fields() ?? []);
+            // Renamed in the panel: the editor's title stays.
+            $title = $page->title()->toString();
+            if (str_starts_with($title, FormSubmissionSlug::TITLE_PREFIX)) {
+                $content['title'] = FormSubmissionTitle::with($title, $describedAs);
+            }
+            $saved = $form->kirby()->impersonate('kirby', static fn(): Page => $page->update($content));
         } else {
             $name = FormSubmissionSlug::next(
                 date('M-j-H.i.s'),
                 static fn(string $slug): bool => $form->findPageOrDraft($slug) !== null
             );
-            $content = ['title' => $name['title'], 'submission' => $submission];
+            $content = [
+                'title'      => FormSubmissionTitle::with($name['title'], $describedAs),
+                'submission' => $submission,
+            ];
             if ($formType !== '') {
                 $content['form_type'] = $formType;
             }
