@@ -227,19 +227,41 @@ export) is the same as for a hand-written definition.
     says the question is left out. Leaving out a question that the form's responses use
     is refused by key locking, as removing it would be. "What forms get" on a section
     describes the section; a form may leave some of it out or reword it.
-    It also has an optional `adjust` (structure: `question` key, `label`, `options`,
-    `help`). On this form only, those replace the question's label, options (choice
-    questions only) or help text, and a blank keeps the library's. The question keeps
-    its place, key, export column and everything else. `PanelFieldReader` applies them
-    when reading, so escaping is unchanged. Key locking allows it, because no key is
-    lost. Stored answers are option words, so reworded options keep the column but
-    split the analysis by wording. The Form check reports:
+    It also has an optional `adjust` (structure: `question` key, then the
+    `PanelFieldReader::ADJUSTABLE` texts: `label`, `help`, `options`, `rows`,
+    `columns`, `leftLabel`, `middleLabel`, `rightLabel`; Kirby stores a row's names
+    in lower case, and they are read either way). On this form only, those replace
+    the question's label, help text, options (choice questions), rows and columns
+    (rating grids) or scale labels (agree/disagree scales), and a blank keeps the
+    library's. A scale's range can't be adjusted, so its answers stay comparable with
+    other forms'. The question keeps its place, key, export column and everything
+    else. `PanelFieldReader` applies them when reading, so escaping is unchanged. Key
+    locking allows it, because no key is lost. Stored answers are option words (a
+    rating grid's, "row: column"), so reworded options, rows or columns keep the
+    column but split the analysis by wording; scale answers are numbers. The Form
+    check reports:
     - an adjustment for a question the section doesn't have (kept choosable, marked)
-    - options given for a question without any
+    - options, rows or columns, or scale labels, given for a question without them
     - display-only text, which can't be adjusted
     - an unusable field name
     - a question adjusted twice (the last row is used)
     - a question both adjusted and left out
+    An Adjust row's boxes are the custom fields `formadjusttext` and
+    `formadjustlines` (`fields/formadjust*.php`; component `kbAdjustBox` in
+    `index.js`). While blank, each shows the chosen question's library wording
+    greyed out (its placeholder), with an **Edit the library's wording** button that
+    copies it in to be changed; a blank box still keeps the library's, so later
+    library edits come through. Only the boxes the chosen question has are shown
+    (rows and columns for a rating grid, and so on); a box that has a value always
+    shows, and with no question chosen they all do. Picking another question in the
+    same row clears its boxes (their text was for the other question); the drawer's
+    arrows, which move between rows, don't (the row's `_id` changes too). PHP supplies each library
+    question's text per part, by key, as last saved
+    (`FormBuilderOptions::libraryWordingFor()` →
+    `PanelFormDefinition::libraryWording()`, left-out questions included,
+    adjustments not applied); the component reads the row's chosen question from
+    the fieldset's `formData`, so it follows the Question select as it changes, and
+    takes its part from the field's (lower-cased) name.
   - `form-section-inline`: a section written for this form only (`title`, `formFields`)
 
   Either can set `showWhen` to show the section only when a radio or dropdown question

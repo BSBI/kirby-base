@@ -29,6 +29,8 @@ final readonly class PanelField
      * @param string        $reportAs Export column chosen by the editor; blank means the key
      * @param string        $fillFrom What an "about" link fills this answer with: 'title',
      *                                'date', or blank for an ordinary question
+     * @param array<string, string> $wording Its wording, raw, by PanelFieldReader::ADJUSTABLE
+     *                                name, for the parts its type has
      */
     public function __construct(
         public FormFieldSpec $spec,
@@ -38,6 +40,7 @@ final readonly class PanelField
         public string $label = '',
         public string $reportAs = '',
         public string $fillFrom = '',
+        public array $wording = [],
     ) {
     }
 

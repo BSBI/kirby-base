@@ -58,6 +58,9 @@ class PanelFormDefinition extends BaseFormDefinition
     /** @var array<string, true> Library section ids used, filled by build() */
     private array $sectionIds = [];
 
+    /** @var array<string, Page> Library sections on the form by page id, first use first */
+    private array $librarySections = [];
+
     private FormProblems $problems;
 
     /**
@@ -199,6 +202,33 @@ class PanelFormDefinition extends BaseFormDefinition
     {
         $this->build();
         return $this->leaveOutChoices;
+    }
+
+    /**
+     * Returns the library wording of the questions in the form's library
+     * sections, by key, for editors adjusting them: each question's text for
+     * each part of it that can be adjusted (PanelField::$wording). Every
+     * question a library section asks is included (left-out ones too), as the
+     * library has it, ignoring this form's adjustments; a key asked twice
+     * keeps its first. Display-only text is not included, and inline sections
+     * are this form's own.
+     *
+     * @return array<string, array<string, string>>
+     */
+    public function libraryWording(): array
+    {
+        $this->build();
+        $reader = new PanelSectionReader($this->resolver);
+        $wording = [];
+        foreach ($this->librarySections as $page) {
+            // Problems reading the section are the Form check's to report.
+            foreach ($reader->read($page, new FormProblems()) as $field) {
+                if ($field->isSubmittable()) {
+                    $wording[$field->key] ??= $field->wording;
+                }
+            }
+        }
+        return $wording;
     }
 
     /**
@@ -370,6 +400,7 @@ class PanelFormDefinition extends BaseFormDefinition
                 ));
                 return null;
             }
+            $this->librarySections[$page->id()] ??= $page;
             foreach ($sectionReader->chainIds($page) as $sectionId) {
                 $this->sectionIds[$sectionId] = true;
             }
@@ -474,7 +505,12 @@ class PanelFormDefinition extends BaseFormDefinition
             if (!is_array($row)) {
                 continue;
             }
-            $text = static fn(string $name): string => is_scalar($row[$name] ?? null) ? trim((string) $row[$name]) : '';
+            // Kirby stores a structure row's field names in lower case.
+            $row = array_change_key_case($row);
+            $text = static function (string $name) use ($row): string {
+                $value = $row[strtolower($name)] ?? null;
+                return is_scalar($value) ? trim((string) $value) : '';
+            };
             $key = $text('question');
             if ($key === '') {
                 continue;
@@ -486,7 +522,8 @@ class PanelFormDefinition extends BaseFormDefinition
             if (isset($adjustments[$key])) {
                 $this->problems->add(sprintf('%s: "%s" is adjusted more than once; the last is used.', $sectionName, $key));
             }
-            $adjustments[$key] = ['label' => $text('label'), 'options' => $text('options'), 'help' => $text('help')];
+            $adjustable = PanelFieldReader::ADJUSTABLE;
+            $adjustments[$key] = array_combine($adjustable, array_map($text, $adjustable));
         }
         if ($adjustments === []) {
             return $sectionReader->read($page, $this->problems);
@@ -521,15 +558,41 @@ class PanelFormDefinition extends BaseFormDefinition
                     $sectionName,
                     $key
                 ));
-            } elseif ($adjustment['options'] !== '' && !$field->hasOptions()) {
-                $this->problems->add(sprintf(
-                    '%s: "%s" has adjusted options, but only choice questions have options; they are ignored.',
-                    $sectionName,
-                    $key
-                ));
+            } else {
+                $this->reportMisfits($adjustment, $field, $sectionName);
             }
         }
         return $fields;
+    }
+
+    /**
+     * Reports the parts of an adjustment its question doesn't have, which are
+     * ignored: options on anything but a choice question, rows or columns on
+     * anything but a rating grid, labels on anything but a scale.
+     *
+     * @param array<string, string> $adjustment PanelFieldReader::ADJUSTABLE name => text
+     */
+    private function reportMisfits(array $adjustment, PanelField $field, string $sectionName): void
+    {
+        $set = static fn(string ...$names): bool => array_filter(
+            $names,
+            static fn(string $name): bool => ($adjustment[$name] ?? '') !== ''
+        ) !== [];
+        $misfits = [
+            'options, but only choice questions have options'
+                => $set('options') && !$field->hasOptions(),
+            'rows or columns, but only rating grids have them'
+                => $set('rows', 'columns') && $field->type !== FormFieldSpec::TYPE_RATING_MATRIX,
+            'scale labels, but only agree/disagree scales have them'
+                => $set('leftLabel', 'middleLabel', 'rightLabel') && $field->type !== FormFieldSpec::TYPE_LIKERT,
+        ];
+        foreach ($misfits as $what => $isMisfit) {
+            if ($isMisfit) {
+                $this->problems->add(
+                    sprintf('%s: "%s" has adjusted %s; they are ignored.', $sectionName, $field->key, $what)
+                );
+            }
+        }
     }
 
     /**

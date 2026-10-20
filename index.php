@@ -87,6 +87,8 @@ $pluginConfig = [
     ],
     'fields' => [
         'permanenturl' => require __DIR__ . '/fields/permanenturl.php',
+        'formadjusttext' => require __DIR__ . '/fields/formadjusttext.php',
+        'formadjustlines' => require __DIR__ . '/fields/formadjustlines.php',
         'maplocation' => [
             'props' => [
                 'value' => function ($value = null) {

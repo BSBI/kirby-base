@@ -78,3 +78,15 @@
   word-break: break-all;
   text-decoration: underline;
 }
+
+/* A library section's Adjust box: room between the box and its "Edit the
+   library's wording" button (index.js, kbAdjustBox). */
+.k-formadjust-field-copy {
+  margin-top: var(--spacing-2);
+}
+
+/* A box the chosen question doesn't have is hidden; so is its layout column,
+   which would otherwise leave a gap in the drawer. */
+.k-column:has(> .k-formadjust-field-hidden) {
+  display: none;
+}

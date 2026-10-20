@@ -24,6 +24,97 @@ function kbBuildQuery(params) {
     .join('&');
 }
 
+/**
+ * A box in a library section's Adjust row (fields/formadjusttext.php and
+ * fields/formadjustlines.php): a text or textarea field that, while blank,
+ * shows the chosen question's library wording greyed out, with a button that
+ * copies it in to be edited. A blank box keeps the library's wording.
+ *
+ * `library` (question key => part => text) comes from PHP. The fieldset passes
+ * the row's values as `formData`, so the box follows the Question select. The
+ * part is the field's name (`label`, `options`, `leftlabel`…; Kirby lower-cases
+ * field names). A box the chosen question has no such part for is hidden while
+ * empty (rows on a text question); with no question chosen, every box shows.
+ * Picking another question in the row clears the box.
+ *
+ * @param {string} base The core field component the box extends, for its props.
+ * @param {string} type The k-input type: 'text' or 'textarea'.
+ * @returns {Object} The field component.
+ */
+function kbAdjustBox(base, type) {
+  return {
+    extends: base,
+    props: {
+      library: { type: [Object, Array], default: function () { return {}; } },
+      formData: { type: Object, default: function () { return {}; } }
+    },
+    computed: {
+      parts: function () {
+        var key = (this.formData && this.formData.question) || '';
+        if (key === '' || Array.isArray(this.library) || !this.library[key]) {
+          return null;
+        }
+        var parts = {};
+        var entry = this.library[key];
+        Object.keys(entry).forEach(function (name) { parts[name.toLowerCase()] = entry[name]; });
+        return parts;
+      },
+      part: function () {
+        return (this.name || '').toLowerCase();
+      },
+      libraryText: function () {
+        return this.parts && typeof this.parts[this.part] === 'string' ? this.parts[this.part] : '';
+      },
+      isBlank: function () {
+        return String(this.value || '').trim() === '';
+      },
+      isShown: function () {
+        return this.parts === null || this.part in this.parts || !this.isBlank;
+      },
+      inputType: function () {
+        return type;
+      },
+      selection: function () {
+        var data = this.formData || {};
+        return { row: data._id || '', question: data.question || '' };
+      }
+    },
+    watch: {
+      // Picking another question in the same row clears the box: its text was
+      // for the other question. Text typed before any question was picked is
+      // kept. Moving to another row (the drawer's arrows) changes the row id
+      // too, and leaves that row's boxes as saved.
+      selection: function (now, before) {
+        var sameRow = now.row !== '' && now.row === before.row;
+        if (sameRow && before.question !== '' && now.question !== before.question && !this.isBlank) {
+          this.$emit('input', '');
+        }
+      }
+    },
+    methods: {
+      useLibrary: function () {
+        this.$emit('input', this.libraryText);
+        this.$nextTick(function () {
+          if (this.$refs.input && this.$refs.input.focus) {
+            this.$refs.input.focus();
+          }
+        });
+      }
+    },
+    // Several boxes have the copy button, so its name also says which box it fills.
+    template:
+      '<k-field v-if="isShown" v-bind="$props" :input="_uid" class="k-formadjust-field">' +
+      '  <k-input v-bind="$props" :id="_uid" ref="input" :type="inputType"' +
+      '    :buttons="false" :placeholder="libraryText"' +
+      '    @input="$emit(\'input\', $event)" />' +
+      '  <k-button v-if="isBlank && libraryText !== \'\'" icon="copy" size="xs" variant="filled"' +
+      '    class="k-formadjust-field-copy" @click="useLibrary">' +
+      '    Edit the library\'s wording<span class="sr-only"> for {{ label || name }}</span></k-button>' +
+      '</k-field>' +
+      '<div v-else class="k-formadjust-field-hidden" hidden></div>'
+  };
+}
+
 panel.plugin('open-foundations/kirby-base', {
   writerMarks: {
     /**
@@ -182,6 +273,8 @@ panel.plugin('open-foundations/kirby-base', {
         '  </div>' +
         '</k-field>'
     },
+    formadjusttext: kbAdjustBox('k-text-field', 'text'),
+    formadjustlines: kbAdjustBox('k-textarea-field', 'textarea'),
     maplocation: {
       props: {
         value: {

@@ -72,6 +72,8 @@ final class FormBuilderOptions
     private static array $conditionChoices = [];
     /** @var array<string, array<string, string>> Leave-out choices per page id, for one request */
     private static array $leaveOutChoices = [];
+    /** @var array<string, array<string, array<string, string>>> Library wording per page id, for one request */
+    private static array $libraryWording = [];
 
     /**
      * Returns a form page's show-when choices (PanelFormDefinition::
@@ -112,6 +114,26 @@ final class FormBuilderOptions
                 self::sectionsFieldFor($page),
                 self::reservedKeysFor($page)
             ))->leaveOutChoices();
+    }
+
+    /**
+     * Returns the library wording of a form page's library questions, by key
+     * (PanelFormDefinition::libraryWording()), for the boxes of an Adjust row,
+     * built once per page per request, as the show-when choices are.
+     *
+     * @param Page $page A panel-built form page, or one with extra sections
+     * @return array<string, array<string, string>>
+     */
+    public static function libraryWordingFor(Page $page): array
+    {
+        return self::$libraryWording[$page->id()]
+            ??= (new PanelFormDefinition(
+                $page,
+                '',
+                new KirbySectionPageResolver($page->kirby()),
+                self::sectionsFieldFor($page),
+                self::reservedKeysFor($page)
+            ))->libraryWording();
     }
 
     /**

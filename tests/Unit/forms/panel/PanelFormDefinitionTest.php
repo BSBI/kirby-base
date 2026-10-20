@@ -455,6 +455,108 @@ final class PanelFormDefinitionTest extends TestCase
         $this->assertArrayHasKey('member:Yes, I am', $definition->conditionChoices(), 'the reworded option can be re-picked');
     }
 
+    public function testARatingGridsRowsAndColumnsCanBeAdjusted(): void
+    {
+        $section = $this->sectionPage([
+            $this->blockData('form-rating-matrix', ['label' => 'Rate the day', 'name' => 'rate', 'rows' => "Venue\nTalks", 'columns' => "Poor\nGood"]),
+        ], slug: 's');
+        $form = $this->formPage([$this->sectionRefAdjusting('page://s', [
+            ['question' => 'rate', 'rows' => "Venue\nTalks\nLunch", 'columns' => ''],
+        ])]);
+
+        $definition = new PanelFormDefinition($form, 't', $this->resolver(['page://s' => $section]));
+        $field = $definition->getFields($form)[0];
+
+        $this->assertSame(['Venue', 'Talks', 'Lunch'], $field->rows);
+        $this->assertSame(['Poor', 'Good'], $field->columns, 'blank columns keep the library\'s');
+        $this->assertSame([], $definition->validate());
+    }
+
+    public function testAScalesLabelsCanBeAdjustedButNotItsRange(): void
+    {
+        $section = $this->sectionPage([
+            $this->blockData('form-likert', ['label' => 'Was it useful?', 'name' => 'useful', 'leftLabel' => 'Not at all', 'rightLabel' => 'Very', 'scaleMin' => '1', 'scaleMax' => '5']),
+        ], slug: 's');
+        $form = $this->formPage([$this->sectionRefAdjusting('page://s', [
+            // As Kirby stores a structure row: its field names in lower case.
+            ['question' => 'useful', 'leftlabel' => 'Not useful', 'middlelabel' => 'Neither', 'rightlabel' => ''],
+        ])]);
+
+        $definition = new PanelFormDefinition($form, 't', $this->resolver(['page://s' => $section]));
+        $field = $definition->getFields($form)[0];
+
+        $this->assertSame('Not useful', $field->leftLabel);
+        $this->assertSame('Neither', $field->middleLabel);
+        $this->assertSame('Very', $field->rightLabel, 'blank keeps the library\'s');
+        $this->assertSame([1, 5], [$field->scaleMin, $field->scaleMax]);
+        $this->assertSame([], $definition->validate());
+    }
+
+    public function testAdjustedGridAndScaleTextIsEscapedAsTheLibrarysIs(): void
+    {
+        $section = $this->sectionPage([
+            $this->blockData('form-likert', ['label' => 'Useful?', 'name' => 'useful']),
+        ], slug: 's');
+        $form = $this->formPage([$this->sectionRefAdjusting('page://s', [
+            ['question' => 'useful', 'leftLabel' => '<b>No</b>'],
+        ])]);
+
+        $field = (new PanelFormDefinition($form, 't', $this->resolver(['page://s' => $section])))->getFields($form)[0];
+
+        $this->assertSame('&lt;b&gt;No&lt;/b&gt;', $field->leftLabel);
+    }
+
+    public function testGridAndScaleAdjustmentsOnOtherQuestionsAreReportedAndIgnored(): void
+    {
+        $section = $this->sectionPage([
+            $this->blockData('form-radio-group', ['label' => 'Member?', 'name' => 'member', 'options' => "Yes\nNo"]),
+            $this->blockData('form-rating-matrix', ['label' => 'Rate', 'name' => 'rate', 'rows' => 'Venue', 'columns' => "Poor\nGood"]),
+        ], slug: 's');
+        $form = $this->formPage([$this->sectionRefAdjusting('page://s', [
+            ['question' => 'member', 'rows' => 'A', 'leftLabel' => 'No'],
+            ['question' => 'rate', 'options' => "A\nB", 'rightLabel' => 'Yes'],
+        ])]);
+
+        $definition = new PanelFormDefinition($form, 't', $this->resolver(['page://s' => $section]));
+        $problems = implode("\n", $definition->validate());
+
+        $this->assertSame(['Yes', 'No'], $definition->getFields($form)[0]->options);
+        $this->assertStringContainsString('"member" has adjusted rows or columns, but only rating grids have them', $problems);
+        $this->assertStringContainsString('"member" has adjusted scale labels, but only agree/disagree scales have them', $problems);
+        $this->assertStringContainsString('"rate" has adjusted options, but only choice questions have options', $problems);
+        $this->assertStringContainsString('"rate" has adjusted scale labels', $problems);
+        $this->assertCount(4, $definition->validate());
+    }
+
+    public function testLibraryWordingListsEachLibrarySectionsQuestionsAsTheLibraryHasThem(): void
+    {
+        $start = $this->sectionPage([
+            $this->blockData('form-radio-group', ['label' => 'Member?', 'name' => 'member', 'options' => "Yes\nNo", 'help' => 'Library help']),
+            $this->blockData('form-info', ['text' => 'Hello'], '99999999-0000-4000-8000-000000000001'),
+            $this->blockData('form-rating-matrix', ['label' => 'Rate the day', 'name' => 'rate', 'rows' => "Venue\nTalks", 'columns' => "Poor\nGood"]),
+        ], legend: 'Start', slug: 'start');
+        $end = $this->sectionPage([
+            $this->blockData('form-likert', ['label' => 'Useful?', 'name' => 'useful', 'middleLabel' => 'Neither']),
+            $this->blockData('form-textarea', ['label' => 'Comments', 'name' => 'comments']),
+        ], legend: 'End', slug: 'end');
+        $form = $this->formPage([
+            $this->sectionRefAdjusting('page://start', [['question' => 'member', 'label' => 'Are you a member?', 'options' => "Yes\nNo\nLapsed"]]),
+            $this->sectionInline([$this->blockData('form-textbox', ['label' => 'Inline', 'name' => 'inline'])], 'Mine'),
+            $this->sectionRefLeavingOut('page://end', 'comments'),
+            $this->sectionRef('page://start'),
+        ]);
+
+        $wording = (new PanelFormDefinition($form, 't', $this->resolver(['page://start' => $start, 'page://end' => $end])))->libraryWording();
+
+        $this->assertSame([
+            'member'   => ['label' => 'Member?', 'help' => 'Library help', 'options' => "Yes\nNo"],
+            'rate'     => ['label' => 'Rate the day', 'help' => '', 'rows' => "Venue\nTalks", 'columns' => "Poor\nGood"],
+            'useful'   => ['label' => 'Useful?', 'help' => '', 'leftLabel' => 'Strongly disagree', 'middleLabel' => 'Neither', 'rightLabel' => 'Strongly agree'],
+            'comments' => ['label' => 'Comments', 'help' => ''],
+        ], $wording, 'each question\'s library text for each box it has, by key: left-out questions included, '
+            . 'no display-only text or inline sections');
+    }
+
     /**
      * @param list<array<string, string>> $rows
      * @return array<string, mixed>
