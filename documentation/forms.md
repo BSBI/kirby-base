@@ -253,7 +253,9 @@ export) is the same as for a hand-written definition.
     copies it in to be changed; a blank box still keeps the library's, so later
     library edits come through. Only the boxes the chosen question has are shown
     (rows and columns for a rating grid, and so on); a box that has a value always
-    shows, and with no question chosen they all do. PHP supplies each library
+    shows, and with no question chosen they all do. Picking another question in the
+    same row clears its boxes (their text was for the other question); the drawer's
+    arrows, which move between rows, don't (the row's `_id` changes too). PHP supplies each library
     question's text per part, by key, as last saved
     (`FormBuilderOptions::libraryWordingFor()` →
     `PanelFormDefinition::libraryWording()`, left-out questions included,

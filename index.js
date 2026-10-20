@@ -35,6 +35,7 @@ function kbBuildQuery(params) {
  * part is the field's name (`label`, `options`, `leftlabel`…; Kirby lower-cases
  * field names). A box the chosen question has no such part for is hidden while
  * empty (rows on a text question); with no question chosen, every box shows.
+ * Picking another question in the row clears the box.
  *
  * @param {string} base The core field component the box extends, for its props.
  * @param {string} type The k-input type: 'text' or 'textarea'.
@@ -72,6 +73,22 @@ function kbAdjustBox(base, type) {
       },
       inputType: function () {
         return type;
+      },
+      selection: function () {
+        var data = this.formData || {};
+        return { row: data._id || '', question: data.question || '' };
+      }
+    },
+    watch: {
+      // Picking another question in the same row clears the box: its text was
+      // for the other question. Text typed before any question was picked is
+      // kept. Moving to another row (the drawer's arrows) changes the row id
+      // too, and leaves that row's boxes as saved.
+      selection: function (now, before) {
+        var sameRow = now.row !== '' && now.row === before.row;
+        if (sameRow && before.question !== '' && now.question !== before.question && !this.isBlank) {
+          this.$emit('input', '');
+        }
       }
     },
     methods: {
