@@ -3630,7 +3630,7 @@ abstract class KirbyBaseHelper
      */
     protected function getRequestAsString(string $key, string $fallback = ''): string
     {
-        return $this->asString(get($key), $fallback);
+        return $this->asString(PostedText::scrub(get($key)), $fallback);
     }
 
     /**
@@ -4564,10 +4564,10 @@ abstract class KirbyBaseHelper
         $feedbackForm->setTurnstileSiteKey($this->getTurnstileSiteKey());
         if ($this->kirby->request()->is('POST') && get('submit')) {
 
-            $name = get('name', '');
-            $email = get('email', '');
-            $feedback = get('feedback', '');
-            $fromPage = get('page', '');
+            $name = PostedText::scrub(get('name', ''));
+            $email = PostedText::scrub(get('email', ''));
+            $feedback = PostedText::scrub(get('feedback', ''));
+            $fromPage = PostedText::scrub(get('page', ''));
 
             $data = [
                 'name' => is_string($name) ? $name : '',
@@ -5404,7 +5404,7 @@ abstract class KirbyBaseHelper
     ): ActionStatus {
         if ($this->kirby->request()->is('POST')) {
             if (csrf(get('csrf')) === true) {
-                $postData = (array) $this->kirby->request()->data();
+                $postData = (array) PostedText::scrub($this->kirby->request()->data());
                 $formSubmission = (new FormSubmissionBuilder())->items(
                     $about !== null ? $about->fillAnswers($postData, $fillFrom) : $postData,
                     $columns
