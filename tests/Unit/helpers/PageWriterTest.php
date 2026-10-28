@@ -30,7 +30,9 @@ final class PageWriterTest extends TestCase
 
     public static function setUpBeforeClass(): void
     {
-        $root = sys_get_temp_dir() . '/kirby-base-page-writer-' . uniqid();
+        // realpath: macOS's temp folder is a symlink (/var → /private/var), and Kirby
+        // reports roots resolved, so an unresolved root never compares equal
+        $root = realpath(sys_get_temp_dir()) . '/kirby-base-page-writer-' . uniqid();
         mkdir($root . '/content', 0777, true);
         mkdir($root . '/cache', 0777, true);
 
