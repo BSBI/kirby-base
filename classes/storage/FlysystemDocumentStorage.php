@@ -102,7 +102,10 @@ final readonly class FlysystemDocumentStorage implements DocumentStorage
     public function copy(string $from, string $to): void
     {
         try {
-            $this->filesystem->copy($from, $to);
+            // An explicit visibility, as store() and write() use: without one,
+            // Flysystem's S3 adapter first reads the source's ACL (GetObjectAcl)
+            // to copy it, a permission an upload-only IAM user doesn't have.
+            $this->filesystem->copy($from, $to, ['visibility' => Visibility::PRIVATE]);
         } catch (FilesystemException $e) {
             throw new DocumentStorageException('Cannot copy ' . $from . ': ' . $e->getMessage(), 0, $e);
         }
