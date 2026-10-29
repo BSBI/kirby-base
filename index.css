@@ -55,6 +55,10 @@
 
 .k-maintenance-task-action {
   flex-shrink: 0;
+  /* An on-demand task has Preview beside Run. */
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
 }
 
 /* Glossary links in the panel writer: the panel's base reset unstyles all

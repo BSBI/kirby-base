@@ -3352,10 +3352,11 @@ panel.plugin('open-foundations/kirby-base', {
             });
         },
         // Fetch every deferred task's real preview from the time-limit-lifted endpoint.
+        // On-demand tasks (OnDemandPreviewTask) wait for their Preview button instead.
         loadDeferredPreviews: function () {
           var self = this;
           (self.currentTasks || []).forEach(function (task) {
-            if (task.deferred) self.loadPreview(task);
+            if (task.deferred && !task.onDemand) self.loadPreview(task);
           });
         },
         loadPreview: function (task) {
@@ -3369,6 +3370,10 @@ panel.plugin('open-foundations/kirby-base', {
                 bytes: data.bytes,
                 humanBytes: data.humanBytes,
                 sample: data.sample,
+                // A placeholder has no wording yet: take the task's own summary lines too,
+                // or a non-destructive task reads "Would free 0 B" after its preview.
+                summary: data.summary,
+                emptySummary: data.emptySummary,
                 error: data.error,
                 deferred: false
               });
@@ -3515,7 +3520,8 @@ panel.plugin('open-foundations/kirby-base', {
                   <h2>{{ task.label }}</h2>
                   <p class="k-maintenance-task-desc">{{ task.description }}</p>
                   <p class="k-maintenance-task-preview" role="status" aria-live="polite" aria-atomic="true">
-                    <strong v-if="task.deferred || deferredLoading[task.key]">Calculating…</strong>
+                    <strong v-if="task.onDemand && task.deferred && !deferredLoading[task.key]">Not previewed yet: press Preview to see what it would do.</strong>
+                    <strong v-else-if="task.deferred || deferredLoading[task.key]">Calculating…</strong>
                     <strong v-else-if="task.error" style="color: var(--color-negative);">Preview failed</strong>
                     <strong v-else-if="task.items === 0">{{ task.emptySummary || 'Nothing to reclaim' }}</strong>
                     <strong v-else>{{ task.summary || ('Would free ' + task.humanBytes + ' · ' + task.items + ' item(s)') }}</strong>
@@ -3526,6 +3532,16 @@ panel.plugin('open-foundations/kirby-base', {
                 </div>
                 <div class="k-maintenance-task-action">
                   <k-button
+                    v-if="task.onDemand"
+                    icon="preview"
+                    :text="task.deferred ? 'Preview' : 'Preview again'"
+                    size="sm"
+                    variant="filled"
+                    :aria-label="(task.deferred ? 'Preview ' : 'Preview again: ') + task.label"
+                    :disabled="deferredLoading[task.key] || running !== null"
+                    @click="loadPreview(task)"
+                  />
+                  <k-button
                     :icon="running === task.key ? 'loader' : (task.icon || 'trash')"
                     :text="running === task.key ? (progress !== null ? ('Running ' + progress + '%') : 'Running…') : 'Run'"
                     size="sm"
@@ -3534,7 +3550,9 @@ panel.plugin('open-foundations/kirby-base', {
                     :aria-label="running === task.key
                       ? ('Running ' + task.label + (progress !== null ? ' ' + progress + '%' : ''))
                       : (task.deferred || deferredLoading[task.key]
-                        ? ('Calculating ' + task.label + ' preview, please wait')
+                        ? (task.onDemand && !deferredLoading[task.key]
+                          ? ('Preview ' + task.label + ' before running it')
+                          : ('Calculating ' + task.label + ' preview, please wait'))
                         : (task.items === 0 ? ((task.emptySummary || 'Nothing to reclaim') + ' for ' + task.label) : ('Run ' + task.label + (task.destructive === false ? ' (nothing is deleted)' : ' cleanup'))))"
                     :disabled="task.deferred || deferredLoading[task.key] || task.items === 0 || task.error || running !== null"
                     @click="runTask(task)"

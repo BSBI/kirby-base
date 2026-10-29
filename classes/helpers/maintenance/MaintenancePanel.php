@@ -39,7 +39,7 @@ final class MaintenancePanel
      * sensitive is disclosed in the props JSON.
      *
      * @param App $kirby the Kirby app
-     * @return array{authorized: bool, retentionDays: int, disk: array{freeBytes: int, totalBytes: int, usedPercent: int, freeHuman: string, totalHuman: string, note: string}|null, tasks: array<int, array{key: string, label: string, description: string, items: int, bytes: int, humanBytes: string, sample: array<int, string>, error: bool, deferred: bool}>}
+     * @return array{authorized: bool, retentionDays: int, disk: array{freeBytes: int, totalBytes: int, usedPercent: int, freeHuman: string, totalHuman: string, note: string}|null, tasks: array<int, array{key: string, label: string, description: string, items: int, bytes: int, humanBytes: string, sample: array<int, string>, error: bool, deferred: bool, onDemand: bool}>}
      */
     public static function dashboardProps(App $kirby): array
     {
@@ -162,12 +162,13 @@ final class MaintenancePanel
     /**
      * The props for one task card: label, preview counts, wording and destructiveness
      * (bsbi-web#734). A deferred card carries zero counts and `deferred: true`; the
-     * client fetches the real preview from the preview endpoint.
+     * client fetches the real preview from the preview endpoint — by itself, or for an
+     * `onDemand` task ({@see OnDemandPreviewTask}) only when the editor presses Preview.
      *
      * @param MaintenanceTask $task the task
      * @param MaintenanceOptions $options the options the preview runs with
      * @param bool|null $deferred force the deferred placeholder (true) or a computed preview (false); null decides by DeferredPreviewTask
-     * @return array{key: string, label: string, description: string, items: int, bytes: int, humanBytes: string, sample: array<int, string>, summary: string|null, emptySummary: string|null, destructive: bool, icon: string, error: bool, deferred: bool}
+     * @return array{key: string, label: string, description: string, items: int, bytes: int, humanBytes: string, sample: array<int, string>, summary: string|null, emptySummary: string|null, destructive: bool, icon: string, error: bool, deferred: bool, onDemand: bool}
      */
     public static function taskProps(MaintenanceTask $task, MaintenanceOptions $options, ?bool $deferred = null): array
     {
@@ -204,6 +205,7 @@ final class MaintenancePanel
             'icon'         => $nonDestructive ? $task->icon() : 'trash',
             'error'        => $error,
             'deferred'     => $deferred,
+            'onDemand'     => $task instanceof OnDemandPreviewTask,
         ];
     }
 

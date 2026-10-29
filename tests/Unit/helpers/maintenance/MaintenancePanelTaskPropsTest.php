@@ -11,6 +11,7 @@ use BSBI\WebBase\helpers\maintenance\MaintenancePreview;
 use BSBI\WebBase\helpers\maintenance\MaintenanceRunResult;
 use BSBI\WebBase\helpers\maintenance\MaintenanceTask;
 use BSBI\WebBase\helpers\maintenance\NonDestructiveTask;
+use BSBI\WebBase\helpers\maintenance\OnDemandPreviewTask;
 use BSBI\WebBase\helpers\maintenance\UuidCachePopulateTask;
 use BSBI\WebBase\Testing\KirbyTestEnvironment;
 use Kirby\Cms\App;
@@ -89,5 +90,31 @@ final class MaintenancePanelTaskPropsTest extends TestCase
         self::assertFalse($props['destructive']);
         self::assertSame('search', $props['icon']);
         self::assertSame('No dangling references', $props['emptySummary']);
+    }
+
+    public function testAnOnDemandTaskIsNotPreviewedUntilAsked(): void
+    {
+        $task = new class implements MaintenanceTask, OnDemandPreviewTask {
+            public bool $previewed = false;
+            public function key(): string { return 'on-demand'; }
+            public function label(): string { return 'Slow sync'; }
+            public function description(): string { return 'Calls an outside service.'; }
+            public function preview(MaintenanceOptions $options): MaintenancePreview { $this->previewed = true; return new MaintenancePreview(1, 0); }
+            public function run(MaintenanceOptions $options, int $offset = 0, int $limit = 0): MaintenanceRunResult { return MaintenanceRunResult::completed(1, 0); }
+        };
+
+        $props = MaintenancePanel::taskProps($task, new MaintenanceOptions());
+
+        self::assertFalse($task->previewed, 'the dashboard must not run an on-demand preview');
+        self::assertTrue($props['deferred']);
+        self::assertTrue($props['onDemand']);
+        self::assertSame(0, $props['items']);
+    }
+
+    public function testOtherTasksAreNotOnDemand(): void
+    {
+        self::assertFalse(MaintenancePanel::taskProps($this->cleanupStub(), new MaintenanceOptions())['onDemand']);
+        $props = MaintenancePanel::taskProps(new DanglingReferenceAuditTask(self::$kirby), new MaintenanceOptions(), deferred: true);
+        self::assertFalse($props['onDemand']);
     }
 }
