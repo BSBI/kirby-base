@@ -115,6 +115,16 @@ function kbAdjustBox(base, type) {
   };
 }
 
+// Escapes text for the places Kirby renders as HTML, such as dialog text.
+function kbEscapeHtml(text) {
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 panel.plugin('open-foundations/kirby-base', {
   writerMarks: {
     /**
@@ -311,7 +321,8 @@ panel.plugin('open-foundations/kirby-base', {
           this.$panel.dialog.open({
             component: 'k-form-dialog',
             props: {
-              text: 'This replaces the password for ' + this.userEmail + '. They will need the new one to log in.',
+              // Kirby renders dialog text as HTML, so the address is escaped.
+              text: 'This replaces the password for ' + kbEscapeHtml(this.userEmail) + '. They will need the new one to log in.',
               fields: {
                 notify: {
                   type: 'toggle',
@@ -359,8 +370,9 @@ panel.plugin('open-foundations/kirby-base', {
         '  <div class="k-memberpassword-field-row">' +
         '    <code class="k-memberpassword-field-value">{{ display }}</code>' +
         '    <template v-if="canReset">' +
+        // A toggle keeps one label; aria-pressed and the icon carry the state.
         '      <k-button v-if="current !== \'\'" size="sm" variant="filled" :icon="shown ? \'hidden\' : \'preview\'"' +
-        '        :aria-pressed="shown ? \'true\' : \'false\'" @click="toggle">{{ shown ? \'Hide password\' : \'Show password\' }}</k-button>' +
+        '        :aria-pressed="shown ? \'true\' : \'false\'" @click="toggle">Show password</k-button>' +
         '      <k-button size="sm" variant="filled" theme="negative" icon="refresh" :disabled="busy" @click="confirmReset">Reset password</k-button>' +
         '    </template>' +
         '  </div>' +

@@ -82,7 +82,7 @@ displayPassword:
 
 In the Panel it shows:
 
-- the password **masked**, with a **Show password** / **Hide password** button (`aria-pressed`);
+- the password **masked**, with a **Show password** toggle button (fixed label; `aria-pressed` and the icon show its state);
 - a **Reset password** button. It opens a confirmation with an **Email the new password** toggle (off by default). The new generated password becomes the user's real password, is recorded in the field and is shown. The outcome goes to a persistent `aria-live` status line.
 
 Only **admins** see the value or the buttons; anyone else sees "Only admins can see this". That hides it in the Panel, but the user's content is still readable through Kirby's API by any role with access to users. A site that wants the passwords admin-only must also keep other roles out of the Users area (`access.users: false`, `users: false`).

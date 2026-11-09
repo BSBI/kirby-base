@@ -102,6 +102,11 @@ final readonly class PanelPasswordResetService
      */
     private function email(User $user, string $password): bool
     {
+        $to = $user->email();
+        if ($to === null || $to === '') {
+            KirbyBaseHelper::writeToLogFile('errors', 'Password reset email not sent: ' . $user->id() . ' has no email address.');
+            return false;
+        }
         $from = $this->stringOption('memberPasswords.email.from') ?? $this->stringOption('defaultEmail');
         if ($from === null) {
             KirbyBaseHelper::writeToLogFile('errors', 'Password reset email not sent: set memberPasswords.email.from.');
@@ -112,7 +117,7 @@ final readonly class PanelPasswordResetService
             self::EMAIL_TEMPLATE,
             $from,
             $this->stringOption('memberPasswords.email.replyTo') ?? $from,
-            $user->email() ?? '',
+            $to,
             $this->stringOption('memberPasswords.email.subject')
                 ?? 'Your new password for ' . $this->kirby->site()->title()->value(),
             [
