@@ -98,6 +98,10 @@
   font-family: var(--font-mono);
   user-select: all;
 }
+/* The Show toggle's pressed state: a ring, so it isn't shown by colour alone. */
+.k-memberpassword-field-row .k-button[aria-pressed="true"] {
+  box-shadow: inset 0 0 0 2px currentColor;
+}
 .k-memberpassword-field-status:not(:empty) {
   margin-top: var(--spacing-2);
   font-size: var(--text-sm);

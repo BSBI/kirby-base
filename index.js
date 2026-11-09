@@ -374,11 +374,12 @@ panel.plugin('open-foundations/kirby-base', {
         '  <div class="k-memberpassword-field-row">' +
         '    <code class="k-memberpassword-field-value">{{ display }}</code>' +
         '    <template v-if="canReset">' +
-        // A toggle keeps one label; aria-pressed and the icon carry the state.
+        // A toggle keeps one label and icon; aria-pressed carries the state, and
+        // index.css draws a ring round it when pressed.
         // A plain <button> styled as k-button: k-button doesn't pass aria-pressed on.
         '      <button v-if="current !== \'\'" type="button" class="k-button" data-size="sm" data-variant="filled"' +
         '        data-has-icon="true" data-has-text="true" :aria-pressed="shown ? \'true\' : \'false\'" @click="toggle">' +
-        '        <span class="k-button-icon"><k-icon :type="shown ? \'hidden\' : \'preview\'" /></span>' +
+        '        <span class="k-button-icon"><k-icon type="preview" /></span>' +
         '        <span class="k-button-text">Show password</span>' +
         '      </button>' +
         '      <k-button size="sm" variant="filled" theme="negative" icon="refresh" :disabled="busy" @click="confirmReset">Reset password</k-button>' +
