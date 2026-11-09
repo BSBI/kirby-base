@@ -14,6 +14,7 @@ use BSBI\WebBase\helpers\GlossaryPanelService;
 use BSBI\WebBase\helpers\GlossaryService;
 use BSBI\WebBase\helpers\KirbyBaseHelper;
 use BSBI\WebBase\helpers\KirbyInternalHelper;
+use BSBI\WebBase\helpers\PanelPasswordResetService;
 use BSBI\WebBase\helpers\SearchIndexHelper;
 use BSBI\WebBase\helpers\SearchService;
 use BSBI\WebBase\helpers\StyleGuideService;
@@ -87,6 +88,8 @@ $pluginConfig = [
     ],
     'fields' => [
         'permanenturl' => require __DIR__ . '/fields/permanenturl.php',
+        // A user's stored password: masked, Show, and an admin-only Reset (bsbi-web#869).
+        'memberpassword' => require __DIR__ . '/fields/memberpassword.php',
         'formadjusttext' => require __DIR__ . '/fields/formadjusttext.php',
         'formadjustlines' => require __DIR__ . '/fields/formadjustlines.php',
         'maplocation' => [
@@ -123,6 +126,8 @@ $pluginConfig = [
         'glossary_item' => __DIR__ . '/templates/glossary_item.php',
         'emails/form-notification.html' => __DIR__ . '/templates/emails/form-notification.html.php',
         'emails/form-notification.text' => __DIR__ . '/templates/emails/form-notification.text.php',
+        'emails/password-reset-by-admin.html' => __DIR__ . '/templates/emails/password-reset-by-admin.html.php',
+        'emails/password-reset-by-admin.text' => __DIR__ . '/templates/emails/password-reset-by-admin.text.php',
         'search_log' => __DIR__ . '/templates/search_log.php',
     ],
     'controllers' => [
@@ -225,6 +230,17 @@ $pluginConfig = [
     ],
     'api' => [
         'routes' => [
+            [
+                // An admin resets a user's password from the memberpassword
+                // field (bsbi-web#869); body { notify: bool } emails it to them.
+                // Who may reset whom: PanelPasswordResetService.
+                'pattern' => 'kirby-base/users/(:any)/reset-password',
+                'method'  => 'POST',
+                'action'  => function (string $id): array {
+                    $notify = kirby()->request()->data()['notify'] ?? false;
+                    return PanelPasswordResetService::fromKirby(kirby())->reset($id, $notify === true);
+                },
+            ],
             [
                 // One form type's responses analysed, for the Forms page
                 // (FormAnalysis); ?form=, ?from= / ?to= (Y-m-d) and ?about=

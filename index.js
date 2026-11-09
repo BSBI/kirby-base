@@ -273,6 +273,100 @@ panel.plugin('open-foundations/kirby-base', {
         '  </div>' +
         '</k-field>'
     },
+    // A user's stored password (fields/memberpassword.php, bsbi-web#869):
+    // masked with a Show button, and an admin-only Reset that sets a new
+    // generated password and can email it. The value comes from the `stored`
+    // prop (admins only) and is never emitted back to the form: the server
+    // keeps what is on disk whatever the form sends.
+    memberpassword: {
+      props: {
+        label: String,
+        help: String,
+        stored: { type: String, default: '' },
+        canReset: { type: Boolean, default: false },
+        userId: { type: String, default: '' },
+        userEmail: { type: String, default: '' }
+      },
+      data: function () {
+        return {
+          current: this.stored,
+          shown: false,
+          busy: false,
+          status: ''
+        };
+      },
+      computed: {
+        display: function () {
+          if (!this.canReset) return 'Only admins can see this';
+          if (this.current === '') return 'No password recorded';
+          return this.shown ? this.current : '••••••••••••';
+        }
+      },
+      methods: {
+        toggle: function () {
+          this.shown = !this.shown;
+        },
+        confirmReset: function () {
+          var field = this;
+          this.$panel.dialog.open({
+            component: 'k-form-dialog',
+            props: {
+              text: 'This replaces the password for ' + this.userEmail + '. They will need the new one to log in.',
+              fields: {
+                notify: {
+                  type: 'toggle',
+                  label: 'Email',
+                  text: 'Email the new password to ' + this.userEmail
+                }
+              },
+              value: { notify: false },
+              submitButton: { text: 'Reset password', icon: 'refresh', theme: 'negative' }
+            },
+            on: {
+              submit: function (value) {
+                field.$panel.dialog.close();
+                field.reset(value && value.notify === true);
+              }
+            }
+          });
+        },
+        reset: function (notify) {
+          var field = this;
+          this.busy = true;
+          this.status = 'Resetting the password…';
+          this.$api.post('kirby-base/users/' + encodeURIComponent(this.userId) + '/reset-password', { notify: notify })
+            .then(function (result) {
+              field.current = result.password;
+              field.shown = true;
+              if (!notify) {
+                field.status = 'Password reset. Give the new password to the member.';
+              } else if (result.emailed) {
+                field.status = 'Password reset and emailed to ' + field.userEmail + '.';
+              } else {
+                field.status = 'Password reset, but the email could not be sent. Give the new password to the member.';
+              }
+            })
+            .catch(function (error) {
+              field.status = 'The password was not reset: ' + ((error && error.message) || 'unknown error');
+            })
+            .finally(function () {
+              field.busy = false;
+            });
+        }
+      },
+      template:
+        '<k-field :label="label" :help="help" class="k-memberpassword-field">' +
+        '  <div class="k-memberpassword-field-row">' +
+        '    <code class="k-memberpassword-field-value">{{ display }}</code>' +
+        '    <template v-if="canReset">' +
+        '      <k-button v-if="current !== \'\'" size="sm" variant="filled" :icon="shown ? \'hidden\' : \'preview\'"' +
+        '        :aria-pressed="shown ? \'true\' : \'false\'" @click="toggle">{{ shown ? \'Hide password\' : \'Show password\' }}</k-button>' +
+        '      <k-button size="sm" variant="filled" theme="negative" icon="refresh" :disabled="busy" @click="confirmReset">Reset password</k-button>' +
+        '    </template>' +
+        '  </div>' +
+        '  <p class="k-memberpassword-field-status" role="status" aria-live="polite">{{ status }}</p>' +
+        '</k-field>'
+    },
     formadjusttext: kbAdjustBox('k-text-field', 'text'),
     formadjustlines: kbAdjustBox('k-textarea-field', 'textarea'),
     maplocation: {

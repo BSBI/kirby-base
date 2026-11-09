@@ -83,6 +83,26 @@
   text-decoration: underline;
 }
 
+/* A user's stored password (index.js, memberpassword): the masked value and
+   its Show / Reset buttons, with the status line under them. */
+.k-memberpassword-field-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+.k-memberpassword-field-value {
+  padding: var(--spacing-1) var(--spacing-2);
+  border-radius: var(--rounded);
+  background: var(--input-color-back);
+  font-family: var(--font-mono);
+  user-select: all;
+}
+.k-memberpassword-field-status:not(:empty) {
+  margin-top: var(--spacing-2);
+  font-size: var(--text-sm);
+}
+
 /* A library section's Adjust box: room between the box and its "Edit the
    library's wording" button (index.js, kbAdjustBox). */
 .k-formadjust-field-copy {
