@@ -6,6 +6,7 @@ namespace BSBI\WebBase\helpers;
 
 use Kirby\Cms\Language;
 use Kirby\Cms\User;
+use Kirby\Content\ImmutableMemoryStorage;
 use Kirby\Content\VersionCache;
 use Kirby\Content\VersionId;
 
@@ -52,6 +53,27 @@ final class StoredPassword
     }
 
     /**
+     * The latest version of a user object. Kirby models are immutable: each
+     * save leaves the old object behind, pointing to its successor, and
+     * writing through an old one fails ("Storage for the user is immutable").
+     * Logging in runs hooks that save the user (e.g. lastLogin), so an object
+     * from before a login, or before changePassword(), is often stale; and in
+     * a real request `users()->find()` can return a stale one too
+     * (bsbi-web#868).
+     *
+     * @param User $user Any version of the user
+     * @return User The latest version
+     */
+    public static function currentAlteration(User $user): User
+    {
+        while (($storage = $user->storage()) instanceof ImmutableMemoryStorage
+            && ($next = $storage->nextModel()) instanceof User) {
+            $user = $next;
+        }
+        return $user;
+    }
+
+    /**
      * Records the user's new password in their `memberpassword` field. Does
      * nothing for a user whose blueprint has no such field.
      *
@@ -70,10 +92,7 @@ final class StoredPassword
      */
     public static function record(User $user, string $password): void
     {
-        // The caller's object may be an earlier alteration (e.g. from before
-        // changePassword()); Kirby's storage only writes through the latest.
-        $latest = $user->kirby()->users()->find($user->id());
-        $user = $latest instanceof User ? $latest : $user;
+        $user = self::currentAlteration($user);
         $field = self::fieldName($user);
         if ($field === null) {
             return;

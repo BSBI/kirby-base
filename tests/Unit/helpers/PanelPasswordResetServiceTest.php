@@ -7,6 +7,7 @@ namespace BSBI\WebBase\Tests\Unit\helpers;
 use BSBI\WebBase\helpers\EmailSender;
 use BSBI\WebBase\helpers\MemberPasswordGenerator;
 use BSBI\WebBase\helpers\PanelPasswordResetService;
+use BSBI\WebBase\helpers\StoredPassword;
 use Kirby\Cms\App;
 use Kirby\Exception\NotFoundException;
 use Kirby\Exception\PermissionException;
@@ -179,6 +180,35 @@ final class PanelPasswordResetServiceTest extends TestCase
         });
 
         $this->assertSame('new-password-1', $this->storedField('new@test.invalid'));
+    }
+
+    public function testRecordWorksThroughAUserObjectALaterSaveReplaced(): void
+    {
+        // Logging in runs hooks that save the user (e.g. lastLogin), which
+        // leaves any earlier object stale (bsbi-web#868). record() must still
+        // write, through the user's latest version. (In a real request even
+        // users()->find() returned a stale object; bsbi-web's own-password
+        // browser spec covers that path.)
+        $stale = self::$kirby->users()->find(self::MEMBER);
+        $this->assertNotNull($stale);
+        self::$kirby->impersonate('kirby', fn () => $stale->update(['lastLogin' => '2026-11-09 10:00']));
+
+        StoredPassword::record($stale, 'Fresh-Pass-word');
+
+        $this->assertSame('Fresh-Pass-word', $this->storedField(self::MEMBER));
+        $user = self::$kirby->users()->find(self::MEMBER);
+        $this->assertNotNull($user);
+        $this->assertSame('2026-11-09 10:00', (string) $user->content()->get('lastLogin')->value(), 'the other save is kept');
+    }
+
+    public function testCurrentAlterationFollowsLaterSaves(): void
+    {
+        $stale = self::$kirby->users()->find(self::MEMBER);
+        $this->assertNotNull($stale);
+        $saved = self::$kirby->impersonate('kirby', fn () => $stale->update(['lastLogin' => '2026-11-09 11:00']));
+
+        $this->assertSame($saved, StoredPassword::currentAlteration($stale));
+        $this->assertSame($saved, StoredPassword::currentAlteration($saved));
     }
 
     public function testPendingChangesGetTheNewPasswordToo(): void

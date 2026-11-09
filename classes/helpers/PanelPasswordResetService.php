@@ -81,8 +81,8 @@ final readonly class PanelPasswordResetService
 
         $password = $this->generator->generate();
 
-        $this->kirby->impersonate('kirby', fn () => $user->changePassword($password));
-        StoredPassword::record($user, $password);
+        $changed = $this->kirby->impersonate('kirby', fn () => $user->changePassword($password));
+        StoredPassword::record($changed instanceof User ? $changed : $user, $password);
 
         $emailed = $notify && $this->email($user, $password);
 
