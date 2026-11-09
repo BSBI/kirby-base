@@ -318,18 +318,22 @@ panel.plugin('open-foundations/kirby-base', {
         },
         confirmReset: function () {
           var field = this;
+          // Kirby renders dialog text and toggle text as HTML, so the address
+          // is escaped. With no address there is nothing to email to.
+          var email = kbEscapeHtml(this.userEmail);
+          var fields = {};
+          if (this.userEmail !== '') {
+            fields.notify = {
+              type: 'toggle',
+              label: 'Email',
+              text: 'Email the new password to ' + email
+            };
+          }
           this.$panel.dialog.open({
             component: 'k-form-dialog',
             props: {
-              // Kirby renders dialog text as HTML, so the address is escaped.
-              text: 'This replaces the password for ' + kbEscapeHtml(this.userEmail) + '. They will need the new one to log in.',
-              fields: {
-                notify: {
-                  type: 'toggle',
-                  label: 'Email',
-                  text: 'Email the new password to ' + this.userEmail
-                }
-              },
+              text: 'This replaces the password for ' + (email !== '' ? email : 'this user') + '. They will need the new one to log in.',
+              fields: fields,
               value: { notify: false },
               submitButton: { text: 'Reset password', icon: 'refresh', theme: 'negative' }
             },
