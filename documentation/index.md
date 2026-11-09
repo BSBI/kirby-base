@@ -242,7 +242,7 @@ You need to do this to update the plugin in your project
 - See [cookie-consent.md](cookie-consent.md)
 
 ## Custom fields
-- See [custom-fields.md](custom-fields.md)
+- See [custom-fields.md](custom-fields.md) (incl. `memberpassword`: stored passwords with Show and admin Reset)
 
 ## Requirements
 

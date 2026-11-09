@@ -115,6 +115,16 @@ function kbAdjustBox(base, type) {
   };
 }
 
+// Escapes text for the places Kirby renders as HTML, such as dialog text.
+function kbEscapeHtml(text) {
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 panel.plugin('open-foundations/kirby-base', {
   writerMarks: {
     /**
@@ -271,6 +281,111 @@ panel.plugin('open-foundations/kirby-base', {
         '    <a :href="effectiveUrl" target="_blank" rel="noopener" class="k-permanenturl-field-link">{{ effectiveUrl }}</a>' +
         '    <k-button icon="copy" size="xs" variant="filled" @click="copyUrl">Copy</k-button>' +
         '  </div>' +
+        '</k-field>'
+    },
+    // A user's stored password (fields/memberpassword.php, bsbi-web#869):
+    // masked with a Show button, and an admin-only Reset that sets a new
+    // generated password and can email it. The value comes from the `stored`
+    // prop (admins only) and is never emitted back to the form: the server
+    // keeps what is on disk whatever the form sends.
+    memberpassword: {
+      props: {
+        label: String,
+        help: String,
+        stored: { type: String, default: '' },
+        canReset: { type: Boolean, default: false },
+        userId: { type: String, default: '' },
+        userEmail: { type: String, default: '' }
+      },
+      data: function () {
+        return {
+          current: this.stored,
+          shown: false,
+          busy: false,
+          status: ''
+        };
+      },
+      computed: {
+        display: function () {
+          if (!this.canReset) return 'Only admins can see this';
+          if (this.current === '') return 'No password recorded';
+          return this.shown ? this.current : '••••••••••••';
+        }
+      },
+      methods: {
+        toggle: function () {
+          this.shown = !this.shown;
+        },
+        confirmReset: function () {
+          var field = this;
+          // Kirby renders dialog text and toggle text as HTML, so the address
+          // is escaped. With no address there is nothing to email to.
+          var email = kbEscapeHtml(this.userEmail);
+          var fields = {};
+          if (this.userEmail !== '') {
+            fields.notify = {
+              type: 'toggle',
+              label: 'Email',
+              text: 'Email the new password to ' + email
+            };
+          }
+          this.$panel.dialog.open({
+            component: 'k-form-dialog',
+            props: {
+              text: 'This replaces the password for ' + (email !== '' ? email : 'this user') + '. They will need the new one to log in.',
+              fields: fields,
+              value: { notify: false },
+              submitButton: { text: 'Reset password', icon: 'refresh', theme: 'negative' }
+            },
+            on: {
+              submit: function (value) {
+                field.$panel.dialog.close();
+                field.reset(value && value.notify === true);
+              }
+            }
+          });
+        },
+        reset: function (notify) {
+          var field = this;
+          this.busy = true;
+          this.status = 'Resetting the password…';
+          this.$api.post('kirby-base/users/' + encodeURIComponent(this.userId) + '/reset-password', { notify: notify })
+            .then(function (result) {
+              field.current = result.password;
+              field.shown = true;
+              if (!notify) {
+                field.status = 'Password reset. Give the new password to the member.';
+              } else if (result.emailed) {
+                field.status = 'Password reset and emailed to ' + field.userEmail + '.';
+              } else {
+                field.status = 'Password reset, but the email could not be sent. Give the new password to the member.';
+              }
+            })
+            .catch(function (error) {
+              field.status = 'The password was not reset: ' + ((error && error.message) || 'unknown error');
+            })
+            .finally(function () {
+              field.busy = false;
+            });
+        }
+      },
+      template:
+        '<k-field :label="label" :help="help" class="k-memberpassword-field">' +
+        '  <div class="k-memberpassword-field-row">' +
+        '    <code class="k-memberpassword-field-value">{{ display }}</code>' +
+        '    <template v-if="canReset">' +
+        // A toggle keeps one label and icon; aria-pressed carries the state, and
+        // index.css draws a ring round it when pressed.
+        // A plain <button> styled as k-button: k-button doesn't pass aria-pressed on.
+        '      <button v-if="current !== \'\'" type="button" class="k-button" data-size="sm" data-variant="filled"' +
+        '        data-has-icon="true" data-has-text="true" :aria-pressed="shown ? \'true\' : \'false\'" @click="toggle">' +
+        '        <span class="k-button-icon"><k-icon type="preview" /></span>' +
+        '        <span class="k-button-text">Show password</span>' +
+        '      </button>' +
+        '      <k-button size="sm" variant="filled" theme="negative" icon="refresh" :disabled="busy" @click="confirmReset">Reset password</k-button>' +
+        '    </template>' +
+        '  </div>' +
+        '  <p class="k-memberpassword-field-status" role="status" aria-live="polite">{{ status }}</p>' +
         '</k-field>'
     },
     formadjusttext: kbAdjustBox('k-text-field', 'text'),
