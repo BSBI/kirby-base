@@ -135,6 +135,12 @@ additional elements to the robots.txt, create a snippet called robots-txt-additi
 There is a tab blueprint called permissions.yml which can be added to any page.
 
 The requiredRoles field allows only users with specified roles to be able to access the page.
+The optional requiredRolesUntil date ends that restriction: the page stays restricted up to and
+including that day and is open to everyone from the next. It is worked out when the page is read
+(no scheduled job), an empty or unreadable date keeps the restriction, and a page whose own
+restriction has lapsed still falls under a restricted ancestor. `RoleRestriction::forPage()` is the
+one rule, used by both `UserService::checkPagePermissions()` and `isPageCacheable()`, so a page is
+only ever cached once it is public.
 The password allows the setting of a simple password for that page only.
 
 ### Login page

@@ -10,6 +10,11 @@ fields:
       text: "{{ item.title }}"
       value: "{{ item.name }}"
     help: 'Note: Admins and Editors are able to see all pages'
+  requiredRolesUntil:
+    label: Restricted until (optional)
+    type: date
+    display: DD/MM/YYYY
+    help: 'The last day it is restricted to the roles above: from the next day everyone can see it. Leave empty to keep it restricted indefinitely. A date in the past opens it straight away.'
   password:
     label: Password to protect this page
     type: text
