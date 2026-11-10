@@ -668,7 +668,8 @@ final class ScheduledPublishServiceTest extends TestCase
 
     public function testATitleWithALineBreakCannotForgeALogLine(): void
     {
-        $page = $this->createDraft('log-forge', ['title' => "Real title\n26:01:01 00:00:00 Forged line"]);
+        $page = self::$kirby->impersonate('kirby', fn (): Page => $this->createDraft('log-forge')
+            ->update(['title' => "Real title\n26:01:01 00:00:00 Forged line"]));
         $this->setQueue([$this->entry($page, '2026-09-03', '11:00:00')]);
 
         $this->service()->run(self::$now);
