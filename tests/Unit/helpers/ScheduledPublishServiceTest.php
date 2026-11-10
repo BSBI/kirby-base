@@ -463,9 +463,253 @@ final class ScheduledPublishServiceTest extends TestCase
         $this->assertStringContainsString('Published 1', $result);
     }
 
-    private function service(?EmailSender $emailService = null): ScheduledPublishService
+    // ── bsbi-web#855: many pages due at once ──────────────────────────────
+
+    public function testThirteenDuePagesAllPublishInOneRunWithinBudget(): void
     {
-        return new ScheduledPublishService(self::$kirby, $emailService);
+        $rows = [];
+        $pages = [];
+        for ($i = 1; $i <= 13; $i++) {
+            $pages[] = $page = $this->createDraft('many-' . $i);
+            $rows[] = $this->entry($page, '2026-09-03', '11:00:00');
+        }
+        $this->setQueue($rows);
+
+        $result = $this->service()->run(self::$now);
+
+        foreach ($pages as $page) {
+            $this->assertTrue($this->refreshed($page)->isListed(), $page->slug() . ' published');
+        }
+        $this->assertCount(0, $this->queueRows());
+        $this->assertCount(13, $this->historyRows());
+        $this->assertStringContainsString('Published 13', $result);
+    }
+
+    public function testTheTimeBudgetStopsTheRunAndTheNextRunCarriesOn(): void
+    {
+        $pages = [];
+        $rows = [];
+        for ($i = 1; $i <= 5; $i++) {
+            $pages[] = $page = $this->createDraft('budget-' . $i);
+            $rows[] = $this->entry($page, '2026-09-03', '11:00:00');
+        }
+        $this->setQueue($rows);
+
+        // Each look at the clock is 8 seconds later; the budget is 20 seconds.
+        $result = $this->service(null, $this->steppingClock(8.0), 20)->run(self::$now);
+
+        $published = array_filter($pages, fn (Page $page): bool => $this->refreshed($page)->isListed());
+        $this->assertNotEmpty($published, 'some pages publish before the budget runs out');
+        $this->assertLessThan(5, count($published), 'the run stops when the budget runs out');
+        // Progress is saved as it goes: what published is in the history and off the queue.
+        $this->assertCount(count($published), $this->historyRows());
+        $this->assertCount(5 - count($published), $this->queueRows());
+        $this->assertStringContainsString('still due', $result);
+
+        // The next run carries on with the rest.
+        $this->service()->run(self::$now);
+        foreach ($pages as $page) {
+            $this->assertTrue($this->refreshed($page)->isListed(), $page->slug() . ' published by the next run');
+        }
+        $this->assertCount(0, $this->queueRows());
+        $this->assertCount(5, $this->historyRows());
+    }
+
+    public function testConfirmationEmailsGoOutAfterThePublishing(): void
+    {
+        $pages = [];
+        $rows = [];
+        for ($i = 1; $i <= 3; $i++) {
+            $pages[] = $page = $this->createDraft('email-after-' . $i);
+            $rows[] = $this->entry($page, '2026-09-03', '11:00:00', 'editor-a');
+        }
+        $this->setQueue($rows);
+
+        $listedWhenSent = [];
+        $emailService = $this->createStub(EmailSender::class);
+        $emailService->method('send')->willReturnCallback(function () use (&$listedWhenSent, $pages): bool {
+            $listedWhenSent[] = count(array_filter($pages, fn (Page $page): bool => $this->refreshed($page)->isListed()));
+            return true;
+        });
+
+        $this->service($emailService)->run(self::$now);
+
+        // A slow mail server can't hold up publishing: every page is out before the first email.
+        $this->assertSame([3, 3, 3], $listedWhenSent);
+    }
+
+    public function testASecondRunWhileOneIsGoingDoesNothing(): void
+    {
+        $page = $this->createDraft('locked-page');
+        $this->setQueue([$this->entry($page, '2026-09-03', '11:00:00')]);
+
+        $logs = self::$kirby->root('logs');
+        if (!is_dir($logs)) {
+            mkdir($logs, 0777, true);
+        }
+        $handle = fopen($logs . '/scheduledPublish.lock', 'c');
+        $this->assertNotFalse($handle);
+        $this->assertTrue(flock($handle, LOCK_EX | LOCK_NB));
+        try {
+            $result = $this->service()->run(self::$now);
+        } finally {
+            flock($handle, LOCK_UN);
+            fclose($handle);
+        }
+
+        $this->assertStringContainsString('already running', $result);
+        $this->assertFalse($this->refreshed($page)->isListed());
+        $this->assertCount(1, $this->queueRows());
+
+        // Once the other run has finished, the next one goes ahead.
+        $this->service()->run(self::$now);
+        $this->assertTrue($this->refreshed($page)->isListed());
+    }
+
+    public function testALockThatCannotBeOpenedDoesNotStopPublishing(): void
+    {
+        // A lock file that can't be opened (permissions, a folder in its
+        // place) must not read as "already running": that would quietly stop
+        // scheduled publishing for good. It runs, unlocked, and says so.
+        $page = $this->createDraft('no-lock-page');
+        $this->setQueue([$this->entry($page, '2026-09-03', '11:00:00')]);
+        $lockPath = self::$kirby->root('logs') . '/scheduledPublish.lock';
+        if (!is_dir(dirname($lockPath))) {
+            mkdir(dirname($lockPath), 0777, true);
+        }
+        @unlink($lockPath);
+        mkdir($lockPath);
+        try {
+            $result = $this->service()->run(self::$now);
+        } finally {
+            rmdir($lockPath);
+        }
+
+        $this->assertStringContainsString('Published 1', $result);
+        $this->assertTrue($this->refreshed($page)->isListed());
+        $log = (string)file_get_contents(self::$kirby->root('logs') . '/scheduledPublish.log');
+        $this->assertStringContainsString('Could not open the run lock', $log);
+    }
+
+    public function testTheFirstDueEntryAlwaysPublishesEvenIfTheClockSaysOutOfTime(): void
+    {
+        $first = $this->createDraft('progress-first');
+        $second = $this->createDraft('progress-second');
+        $this->setQueue([
+            $this->entry($first, '2026-09-03', '11:00:00'),
+            $this->entry($second, '2026-09-03', '11:00:00'),
+        ]);
+
+        // Every look at the clock is a minute later than the last; budget 1s.
+        $this->service(null, $this->steppingClock(60.0), 1)->run(self::$now);
+
+        $this->assertTrue($this->refreshed($first)->isListed(), 'every run makes progress');
+        $this->assertFalse($this->refreshed($second)->isListed(), 'and then stops');
+        $this->assertCount(1, $this->queueRows());
+    }
+
+    public function testAMultiPageEntryCutOffPartWayCarriesOnWithoutDuplicates(): void
+    {
+        $pages = [];
+        for ($i = 1; $i <= 3; $i++) {
+            $pages[] = $this->createDraft('multi-' . $i);
+        }
+        $this->setQueue([[
+            'page' => array_map(fn (Page $page): string => $page->uuid()?->toString() ?? $page->id(), $pages),
+            'scheduledPublishDate' => '2026-09-03',
+            'scheduledPublishTime' => '11:00:00',
+            'scheduledBy' => '',
+        ]]);
+
+        // 12s per clock read, budget 20s: the second page fits, the third doesn't.
+        $result = $this->service(null, $this->steppingClock(12.0), 20)->run(self::$now);
+
+        $done = array_filter($pages, fn (Page $page): bool => $this->refreshed($page)->isListed());
+        $this->assertGreaterThan(0, count($done));
+        $this->assertLessThan(3, count($done));
+        $this->assertCount(1, $this->queueRows(), 'the entry stays until all its pages are out');
+        $this->assertCount(count($done), $this->historyRows());
+        $this->assertStringContainsString('still due', $result);
+
+        $this->service()->run(self::$now);
+
+        foreach ($pages as $page) {
+            $this->assertTrue($this->refreshed($page)->isListed());
+        }
+        $this->assertCount(0, $this->queueRows());
+        $this->assertCount(3, $this->historyRows(), 'one history row per page, no duplicates');
+    }
+
+    public function testAFailingEmailDoesNotStopTheOthersOrTheReport(): void
+    {
+        $pages = [];
+        $rows = [];
+        for ($i = 1; $i <= 3; $i++) {
+            $pages[] = $page = $this->createDraft('email-fail-' . $i);
+            $rows[] = $this->entry($page, '2026-09-03', '11:00:00', 'editor-a');
+        }
+        $this->setQueue($rows);
+
+        $calls = 0;
+        $emailService = $this->createStub(EmailSender::class);
+        $emailService->method('send')->willReturnCallback(function () use (&$calls): bool {
+            $calls++;
+            if ($calls === 1) {
+                throw new \RuntimeException('mail server down');
+            }
+            return true;
+        });
+
+        $result = $this->service($emailService)->run(self::$now);
+
+        $this->assertSame(3, $calls, 'every email is tried');
+        $this->assertStringContainsString('Published 3', $result);
+    }
+
+    public function testATitleWithALineBreakCannotForgeALogLine(): void
+    {
+        $page = self::$kirby->impersonate('kirby', fn (): Page => $this->createDraft('log-forge')
+            ->update(['title' => "Real title\n26:01:01 00:00:00 Forged line"]));
+        $this->setQueue([$this->entry($page, '2026-09-03', '11:00:00')]);
+
+        $this->service()->run(self::$now);
+
+        $log = (string)file_get_contents(self::$kirby->root('logs') . '/scheduledPublish.log');
+        $this->assertStringNotContainsString("\n26:01:01 00:00:00 Forged line", $log);
+        $this->assertStringContainsString('Real title 26:01:01 00:00:00 Forged line', $log);
+    }
+
+    public function testADueEntryPointingAtNoPageIsLogged(): void
+    {
+        $this->setQueue([[
+            'page' => ['page://no-such-page'],
+            'scheduledPublishDate' => '2026-09-03',
+            'scheduledPublishTime' => '11:00:00',
+            'scheduledBy' => '',
+        ]]);
+
+        $this->service()->run(self::$now);
+
+        $this->assertCount(1, $this->queueRows(), 'kept, for an editor to fix');
+        $log = (string)file_get_contents(self::$kirby->root('logs') . '/scheduledPublish.log');
+        $this->assertStringContainsString('points at no page', $log);
+    }
+
+    /**
+     * A clock that moves forward by $step seconds every time it is read.
+     */
+    private function steppingClock(float $step): \Closure
+    {
+        $time = 1000.0;
+        return static function () use (&$time, $step): float {
+            $time += $step;
+            return $time;
+        };
+    }
+
+    private function service(?EmailSender $emailService = null, ?\Closure $clock = null, ?int $budgetSeconds = null): ScheduledPublishService
+    {
+        return new ScheduledPublishService(self::$kirby, $emailService, $clock, $budgetSeconds);
     }
 
     /**
