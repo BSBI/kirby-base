@@ -505,7 +505,7 @@ panel.plugin('open-foundations/kirby-base', {
           });
           var satellite = L.tileLayer(
             'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-            { attribution: 'Tiles &copy; Esri', maxZoom: 18 }
+            { attribution: 'Tiles &copy; Esri', maxZoom: 18, referrerPolicy: 'strict-origin-when-cross-origin' }
           );
           osm.addTo(self.map);
           L.control.layers({ 'Map': osm, 'Satellite': satellite }).addTo(self.map);
@@ -590,7 +590,9 @@ panel.plugin('open-foundations/kirby-base', {
           var url = 'https://nominatim.openstreetmap.org/search' +
             '?q=' + encodeURIComponent(self.geocodeQuery) +
             '&format=json&limit=5&addressdetails=0';
-          fetch(url, { headers: { 'Accept': 'application/json' } })
+          // Nominatim's usage policy also wants a Referer, which the Panel's
+          // same-origin policy would otherwise strip.
+          fetch(url, { headers: { 'Accept': 'application/json' }, referrerPolicy: 'strict-origin-when-cross-origin' })
             .then(function (r) { return r.json(); })
             .then(function (data) {
               self.geocodeResults = (data || []).map(function (item) {
