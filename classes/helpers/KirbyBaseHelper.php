@@ -4088,7 +4088,8 @@ abstract class KirbyBaseHelper
         $logPath = $logDir . '/' . $logFile . '.log';
 
         $date = new DateTime();
-        $dateStr = $date->format("y:m:d h:i:s");
+        // 24-hour clock: "h" gave 02:55 for both 2:55am and 2:55pm (bsbi-web#855).
+        $dateStr = $date->format("y:m:d H:i:s");
 
         $flags = $overwrite ? 0 : FILE_APPEND;
         file_put_contents($logPath, $dateStr . ' ' . $message . PHP_EOL, $flags);

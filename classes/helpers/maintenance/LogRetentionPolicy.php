@@ -11,7 +11,7 @@ use DateTimeImmutable;
  *
  * kirby-base owns the log line format written by
  * {@see \BSBI\WebBase\helpers\KirbyBaseHelper::writeToLogFile()}:
- * `(new DateTime())->format("y:m:d h:i:s")` — e.g. `26:07:21 09:30:45` = `YY:MM:DD hh:ii:ss`.
+ * `(new DateTime())->format("y:m:d H:i:s")` — e.g. `26:07:21 21:30:45` = `YY:MM:DD HH:ii:ss`.
  * Only the leading `YY:MM:DD` is read; the time-of-day is ignored.
  *
  * Retention is **entry-aware**: the date sits only on the first line of each entry, and

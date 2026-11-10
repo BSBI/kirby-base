@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace BSBI\WebBase\helpers;
 
+use Closure;
 use DateTimeImmutable;
 use DateTimeZone;
 use Kirby\Cms\App;
@@ -62,15 +63,35 @@ final readonly class ScheduledPublishService
 
     private const int HISTORY_RETENTION_DAYS = 30;
 
+    /** Seconds a run may spend publishing before it stops and leaves the rest for the next run. */
+    private const int DEFAULT_TIME_BUDGET = 20;
+
+    private const string LOCK_FILE = 'scheduledPublish.lock';
+
     private EmailSender $emailService;
+
+    /** @var Closure(): float Current time in seconds */
+    private Closure $clock;
+
+    private int $timeBudget;
 
     /**
      * @param App $kirby The Kirby application (site, options, permissions)
      * @param EmailSender|null $emailService The mailer (defaults to a real one; injectable for tests)
+     * @param (Closure(): float)|null $clock Seconds now (defaults to microtime; injectable for tests)
+     * @param int|null $timeBudget Seconds per run (defaults to the `scheduledPublish.timeBudget`
+     *                             option, else 20)
      */
-    public function __construct(private App $kirby, ?EmailSender $emailService = null)
-    {
+    public function __construct(
+        private App $kirby,
+        ?EmailSender $emailService = null,
+        ?Closure $clock = null,
+        ?int $timeBudget = null
+    ) {
         $this->emailService = $emailService ?? new EmailService($kirby);
+        $this->clock = $clock ?? static fn (): float => microtime(true);
+        $option = $kirby->option('scheduledPublish.timeBudget');
+        $this->timeBudget = $timeBudget ?? (is_int($option) && $option > 0 ? $option : self::DEFAULT_TIME_BUDGET);
     }
 
     /**
@@ -101,9 +122,22 @@ final readonly class ScheduledPublishService
      */
     public function run(?DateTimeImmutable $now = null): string
     {
+        // One run at a time: an overlapping run (a slow one still going when
+        // the next cron fires, or a manual hit) would publish the same drafts
+        // twice and race the queue writes (bsbi-web#855).
+        $lock = $this->acquireLock();
+        if ($lock === null) {
+            $this->log('Another run is still going; this one did nothing');
+            return 'Scheduled publish already running.';
+        }
+        // Keep going if the cron's connection drops: a half-finished run is
+        // what loses work.
+        ignore_user_abort(true);
+
         try {
             $timezone = $this->timezone();
             $now ??= new DateTimeImmutable('now', $timezone);
+            $started = ($this->clock)();
 
             $entries = $this->queueEntries();
             if ($entries === null) {
@@ -111,9 +145,11 @@ final readonly class ScheduledPublishService
                 return '';
             }
 
-            $resolved = [];
-            $newHistoryRows = [];
             $publishedCount = 0;
+            $stillDue = 0;
+            $historyWritten = false;
+            /** @var list<array{0: Page, 1: string}> $emails */
+            $emails = [];
 
             foreach ($entries as $entry) {
                 try {
@@ -122,7 +158,7 @@ final readonly class ScheduledPublishService
                     $time = $this->fieldValue($entry->content(), self::TIME_FIELD);
                     $scheduledBy = $this->schedulerId($entry);
 
-                    if ($pages->count() === 0 || $date === '') {
+                    if ($date === '') {
                         // Half-filled row — an editor is still working on it.
                         continue;
                     }
@@ -132,10 +168,30 @@ final readonly class ScheduledPublishService
                         continue;
                     }
 
-                    $historyRows = $this->publishPages($pages, $now, $scheduledBy);
+                    if ($pages->count() === 0) {
+                        $this->log('Queue entry due ' . $date . ' ' . $time . ' points at no page (moved or deleted?); left in the queue');
+                        continue;
+                    }
+
+                    if ($this->outOfTime($started)) {
+                        $stillDue++;
+                        continue;
+                    }
+
+                    [$historyRows, $complete] = $this->publishPages($pages, $now, $scheduledBy, $started, $emails);
                     $publishedCount += count($historyRows);
-                    array_push($newHistoryRows, ...$historyRows);
-                    $resolved[] = $entry->content()->toArray();
+
+                    // Save progress entry by entry, so a run that is cut off
+                    // part-way loses nothing (bsbi-web#855).
+                    if ($historyRows !== []) {
+                        $this->recordHistory($historyRows, $now);
+                        $historyWritten = true;
+                    }
+                    if ($complete) {
+                        $this->removeResolved([$entry->content()->toArray()]);
+                    } else {
+                        $stillDue++;
+                    }
                 } catch (Throwable $e) {
                     // The entry stays queued for retry (only resolved rows are
                     // removed); a bad row must not strand the rest.
@@ -143,14 +199,66 @@ final readonly class ScheduledPublishService
                 }
             }
 
-            $this->removeResolved($resolved);
-            $this->recordHistory($newHistoryRows, $now);
+            if (!$historyWritten) {
+                // Still prune old history on a quiet run.
+                $this->recordHistory([], $now);
+            }
 
-            return 'Scheduled pages processed. Published ' . $publishedCount . ' pages.';
+            // Emails last: a slow mail server can't hold up publishing.
+            foreach ($emails as [$page, $scheduledBy]) {
+                $this->sendConfirmationEmail($page, $scheduledBy, $now);
+            }
+
+            $report = 'Scheduled pages processed. Published ' . $publishedCount . ' pages.';
+            if ($stillDue > 0) {
+                $report .= ' ' . $stillDue . ' still due: out of time, the next run carries on.';
+                $this->log('Out of time after ' . $this->timeBudget . 's; ' . $stillDue . ' entr' . ($stillDue === 1 ? 'y' : 'ies') . ' left for the next run');
+            }
+            return $report;
         } catch (Throwable $e) {
             $this->log('Error: ' . $e->getMessage() . ' - ' . $e->getTraceAsString());
             return 'Error - see ' . self::LOG_FILE . '.log';
+        } finally {
+            flock($lock, LOCK_UN);
+            fclose($lock);
         }
+    }
+
+    /**
+     * Whether this run has used up its time budget.
+     *
+     * @param float $started When the run started, from the clock
+     * @return bool
+     */
+    private function outOfTime(float $started): bool
+    {
+        return (($this->clock)() - $started) >= $this->timeBudget;
+    }
+
+    /**
+     * Takes the run lock (a file under the logs folder), or null if another
+     * run holds it.
+     *
+     * @return resource|null
+     */
+    private function acquireLock()
+    {
+        $dir = $this->kirby->root('logs');
+        if (!is_string($dir) || $dir === '') {
+            return null;
+        }
+        if (!is_dir($dir) && !@mkdir($dir, 0775, true) && !is_dir($dir)) {
+            return null;
+        }
+        $handle = @fopen($dir . '/' . self::LOCK_FILE, 'c');
+        if ($handle === false) {
+            return null;
+        }
+        if (!flock($handle, LOCK_EX | LOCK_NB)) {
+            fclose($handle);
+            return null;
+        }
+        return $handle;
     }
 
     /**
@@ -225,24 +333,32 @@ final readonly class ScheduledPublishService
     }
 
     /**
-     * Publishes every not-yet-listed page in a due entry's collection,
-     * sending a best-effort confirmation email to the entry's scheduler
-     * (when known) for each one actually published.
+     * Publishes every not-yet-listed page in a due entry's collection, until
+     * the time budget runs out. Confirmation emails are collected in $emails
+     * and sent after the run's publishing, not here.
      *
      * @param Pages $pages The entry's pages
      * @param DateTimeImmutable $now The current moment, for the log and history
      * @param string $scheduledBy The entry's scheduler user id ('' when unknown)
-     * @return array<int, array<string, mixed>> One history row per page actually published
+     * @param float $started When the run started, for the time budget
+     * @param list<array{0: Page, 1: string}> $emails Emails to send afterwards (appended to)
+     * @return array{0: array<int, array<string, mixed>>, 1: bool} History rows for the pages
+     *         published, and whether the whole entry is done
      * @throws Throwable When a page cannot be published (caller keeps the entry)
      */
-    private function publishPages(Pages $pages, DateTimeImmutable $now, string $scheduledBy): array
+    private function publishPages(Pages $pages, DateTimeImmutable $now, string $scheduledBy, float $started, array &$emails): array
     {
         $historyRows = [];
+        $first = true;
         foreach ($pages as $page) {
             if ($page->isListed()) {
                 $this->log('Page already published: ' . $page->title() . ' at ' . $now->format('Y-m-d H:i:s'));
                 continue;
             }
+            if (!$first && $this->outOfTime($started)) {
+                return [$historyRows, false];
+            }
+            $first = false;
             $listed = $this->kirby->impersonate('kirby', function () use ($page): Page {
                 $listed = $page->changeStatus('listed');
                 $this->clearPageScheduleFields($listed);
@@ -261,9 +377,9 @@ final readonly class ScheduledPublishService
                 self::SCHEDULED_BY_FIELD => $scheduledBy,
                 self::PUBLISHED_AT_FIELD => $now->format('Y-m-d H:i:s'),
             ];
-            $this->sendConfirmationEmail($listed, $scheduledBy, $now);
+            $emails[] = [$listed, $scheduledBy];
         }
-        return $historyRows;
+        return [$historyRows, true];
     }
 
     /**
