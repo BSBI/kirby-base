@@ -14,7 +14,7 @@ fields:
     label: Restricted until (optional)
     type: date
     display: DD/MM/YYYY
-    help: 'Leave empty to keep it restricted. Otherwise it stays restricted to the roles above up to and including this day, and everyone can see it from the next day.'
+    help: 'The last day it is restricted to the roles above: from the next day everyone can see it. Leave empty to keep it restricted indefinitely. A date in the past opens it straight away.'
   password:
     label: Password to protect this page
     type: text

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace BSBI\WebBase\helpers;
 
 use DateTimeImmutable;
-use Exception;
 use Kirby\Cms\Page;
 use Kirby\Content\Field;
 
@@ -15,8 +14,8 @@ use Kirby\Content\Field;
  * A page restricted with `requiredRoles` may also carry `requiredRolesUntil`:
  * restricted up to and including that day, open to everyone from the next
  * (bsbi-web#812). Worked out when the page is read, never by a scheduled job,
- * so nothing has to happen on the day. An empty or unreadable date keeps the
- * restriction (fails closed).
+ * so nothing has to happen on the day. An empty date, or anything that isn't a
+ * Y-m-d date, keeps the restriction (fails closed).
  *
  * Restrictions are inherited: the nearest page up the tree with a restriction
  * still in force applies, so a page whose own restriction has lapsed falls
@@ -37,12 +36,15 @@ final class RoleRestriction
         if ($roles === [] || trim($until) === '') {
             return $roles;
         }
-        try {
-            $lastDay = (new DateTimeImmutable(trim($until)))->format('Y-m-d');
-        } catch (Exception) {
+        // Only a Y-m-d date (what the Panel's date field stores, optionally with
+        // a time) ends a restriction. Anything else, including relative words
+        // such as "yesterday" that would move with the clock, keeps it.
+        $date = substr(trim($until), 0, 10);
+        $parsed = DateTimeImmutable::createFromFormat('!Y-m-d', $date);
+        if ($parsed === false || $parsed->format('Y-m-d') !== $date) {
             return $roles;
         }
-        return $today->format('Y-m-d') <= $lastDay ? $roles : [];
+        return $today->format('Y-m-d') <= $date ? $roles : [];
     }
 
     /**

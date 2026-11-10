@@ -44,6 +44,9 @@ final class RoleRestrictionTest extends TestCase
             'ended long ago'        => ['2020-01-01', false],
             'with a time part'      => ['2026-11-09 23:59:00', false],
             'unreadable: stays restricted' => ['next tuesday-ish', true],
+            // Only a real date counts: relative words would move with the clock.
+            'a relative word: stays restricted' => ['yesterday', true],
+            'another format: stays restricted'  => ['09/11/2026', true],
         ];
     }
 
