@@ -497,7 +497,11 @@ panel.plugin('open-foundations/kirby-base', {
           );
           var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-            maxZoom: 19
+            maxZoom: 19,
+            // The Panel sets <meta name="referrer" content="same-origin">, so
+            // tiles went without a Referer and OSM's tile policy blocked them
+            // ("Access blocked"). Send just our origin for the tiles.
+            referrerPolicy: 'strict-origin-when-cross-origin'
           });
           var satellite = L.tileLayer(
             'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
