@@ -97,4 +97,27 @@ final class ListBlockStyleTest extends TestCase
     {
         $this->assertSame(['1', 'a', 'A', 'i', 'I'], array_map('strval', array_keys(ListBlockStyle::OPTIONS)));
     }
+
+    /**
+     * Attributes are read with their quotes, so a quoted ">" or "type=" inside
+     * another attribute's value can't break or match (bsbi-web#786 review).
+     *
+     * @return array<string, array{string, string}>
+     */
+    public static function trickyOpeningTags(): array
+    {
+        return [
+            'a quoted > in another attribute' => ['<ol title="a>b"><li>x</li></ol>', '<ol title="a>b" type="a"><li>x</li></ol>'],
+            'a quoted type= in another attribute' => ['<ol title="x type=y"><li>x</li></ol>', '<ol title="x type=y" type="a"><li>x</li></ol>'],
+            'an upper-case TYPE is replaced' => ['<ol TYPE="I" class="c"><li>x</li></ol>', '<ol class="c" type="a"><li>x</li></ol>'],
+            'single-quoted values are kept' => ["<ol start='3' data-x='a\"b'><li>x</li></ol>", "<ol start='3' data-x='a\"b' type=\"a\"><li>x</li></ol>"],
+            'a self-closing slash is dropped' => ['<ol/><li>x</li>', '<ol type="a"><li>x</li>'],
+        ];
+    }
+
+    #[DataProvider('trickyOpeningTags')]
+    public function testTrickyOpeningTagsStayIntact(string $html, string $expected): void
+    {
+        $this->assertSame($expected, ListBlockStyle::apply($html, 'a'));
+    }
 }

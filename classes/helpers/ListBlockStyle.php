@@ -37,10 +37,18 @@ final class ListBlockStyle
         if ($style === '1' || !array_key_exists($style, self::OPTIONS)) {
             return $html;
         }
-        if (preg_match('/^(\s*)<ol\b([^>]*)>/', $html, $match) !== 1) {
+        // The opening tag, reading quoted values whole, so a ">" or "type="
+        // inside another attribute's value can't end or match it.
+        if (preg_match('/^(\s*)<ol\b((?:[^>"\']|"[^"]*"|\'[^\']*\')*)>/', $html, $match) !== 1) {
             return $html;
         }
-        $attributes = (string) preg_replace('/\s+type\s*=\s*("[^"]*"|\'[^\']*\'|\S+)/i', '', $match[2]);
+        preg_match_all('/\s+([^\s=\/>"\']+)(\s*=\s*(?:"[^"]*"|\'[^\']*\'|[^\s"\'>]+))?/', $match[2], $found, PREG_SET_ORDER);
+        $attributes = '';
+        foreach ($found as $attribute) {
+            if (strtolower($attribute[1]) !== 'type') {
+                $attributes .= ' ' . $attribute[1] . ($attribute[2] ?? '');
+            }
+        }
         $opening = $match[1] . '<ol' . $attributes . ' type="' . $style . '">';
         return $opening . substr($html, strlen($match[0]));
     }
