@@ -591,6 +591,81 @@ final class ScheduledPublishServiceTest extends TestCase
         $this->assertStringContainsString('Could not open the run lock', $log);
     }
 
+    public function testTheFirstDueEntryAlwaysPublishesEvenIfTheClockSaysOutOfTime(): void
+    {
+        $first = $this->createDraft('progress-first');
+        $second = $this->createDraft('progress-second');
+        $this->setQueue([
+            $this->entry($first, '2026-09-03', '11:00:00'),
+            $this->entry($second, '2026-09-03', '11:00:00'),
+        ]);
+
+        // Every look at the clock is a minute later than the last; budget 1s.
+        $this->service(null, $this->steppingClock(60.0), 1)->run(self::$now);
+
+        $this->assertTrue($this->refreshed($first)->isListed(), 'every run makes progress');
+        $this->assertFalse($this->refreshed($second)->isListed(), 'and then stops');
+        $this->assertCount(1, $this->queueRows());
+    }
+
+    public function testAMultiPageEntryCutOffPartWayCarriesOnWithoutDuplicates(): void
+    {
+        $pages = [];
+        for ($i = 1; $i <= 3; $i++) {
+            $pages[] = $this->createDraft('multi-' . $i);
+        }
+        $this->setQueue([[
+            'page' => array_map(fn (Page $page): string => $page->uuid()?->toString() ?? $page->id(), $pages),
+            'scheduledPublishDate' => '2026-09-03',
+            'scheduledPublishTime' => '11:00:00',
+            'scheduledBy' => '',
+        ]]);
+
+        // 12s per clock read, budget 20s: the second page fits, the third doesn't.
+        $result = $this->service(null, $this->steppingClock(12.0), 20)->run(self::$now);
+
+        $done = array_filter($pages, fn (Page $page): bool => $this->refreshed($page)->isListed());
+        $this->assertGreaterThan(0, count($done));
+        $this->assertLessThan(3, count($done));
+        $this->assertCount(1, $this->queueRows(), 'the entry stays until all its pages are out');
+        $this->assertCount(count($done), $this->historyRows());
+        $this->assertStringContainsString('still due', $result);
+
+        $this->service()->run(self::$now);
+
+        foreach ($pages as $page) {
+            $this->assertTrue($this->refreshed($page)->isListed());
+        }
+        $this->assertCount(0, $this->queueRows());
+        $this->assertCount(3, $this->historyRows(), 'one history row per page, no duplicates');
+    }
+
+    public function testAFailingEmailDoesNotStopTheOthersOrTheReport(): void
+    {
+        $pages = [];
+        $rows = [];
+        for ($i = 1; $i <= 3; $i++) {
+            $pages[] = $page = $this->createDraft('email-fail-' . $i);
+            $rows[] = $this->entry($page, '2026-09-03', '11:00:00', 'editor-a');
+        }
+        $this->setQueue($rows);
+
+        $calls = 0;
+        $emailService = $this->createStub(EmailSender::class);
+        $emailService->method('send')->willReturnCallback(function () use (&$calls): bool {
+            $calls++;
+            if ($calls === 1) {
+                throw new \RuntimeException('mail server down');
+            }
+            return true;
+        });
+
+        $result = $this->service($emailService)->run(self::$now);
+
+        $this->assertSame(3, $calls, 'every email is tried');
+        $this->assertStringContainsString('Published 3', $result);
+    }
+
     public function testADueEntryPointingAtNoPageIsLogged(): void
     {
         $this->setQueue([[

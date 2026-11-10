@@ -73,25 +73,26 @@ final readonly class ScheduledPublishService
     /** @var Closure(): float Current time in seconds */
     private Closure $clock;
 
-    private int $timeBudget;
+    private float $timeBudget;
 
     /**
      * @param App $kirby The Kirby application (site, options, permissions)
      * @param EmailSender|null $emailService The mailer (defaults to a real one; injectable for tests)
      * @param (Closure(): float)|null $clock Seconds now (defaults to microtime; injectable for tests)
-     * @param int|null $timeBudget Seconds per run (defaults to the `scheduledPublish.timeBudget`
-     *                             option, else 20)
+     * @param int|float|null $timeBudget Seconds per run (defaults to the
+     *                                   `scheduledPublish.timeBudget` option, else 20)
      */
     public function __construct(
         private App $kirby,
         ?EmailSender $emailService = null,
         ?Closure $clock = null,
-        ?int $timeBudget = null
+        int|float|null $timeBudget = null
     ) {
         $this->emailService = $emailService ?? new EmailService($kirby);
         $this->clock = $clock ?? static fn (): float => microtime(true);
         $option = $kirby->option('scheduledPublish.timeBudget');
-        $this->timeBudget = $timeBudget ?? (is_int($option) && $option > 0 ? $option : self::DEFAULT_TIME_BUDGET);
+        $this->timeBudget = (float)($timeBudget
+            ?? ((is_int($option) || is_float($option)) && $option > 0 ? $option : self::DEFAULT_TIME_BUDGET));
     }
 
     /**
@@ -153,6 +154,7 @@ final readonly class ScheduledPublishService
 
             $publishedCount = 0;
             $stillDue = 0;
+            $startedAnEntry = false;
             $historyWritten = false;
             /** @var list<array{0: Page, 1: string}> $emails */
             $emails = [];
@@ -175,14 +177,24 @@ final readonly class ScheduledPublishService
                     }
 
                     if ($pages->count() === 0) {
-                        $this->log('Queue entry due ' . $date . ' ' . $time . ' points at no page (moved or deleted?); left in the queue');
+                        // A half-filled row (no page picked yet) is an editor's
+                        // work in progress; only a page that can't be found is news.
+                        $pageRef = $entry->content()->get('page');
+                        $pageValue = $pageRef instanceof Field ? $pageRef->value() : null;
+                        $hasPageRef = is_array($pageValue) ? $pageValue !== [] : trim((string)(is_scalar($pageValue) ? $pageValue : '')) !== '';
+                        if ($hasPageRef) {
+                            $this->log('Queue entry due ' . $date . ' ' . $time . ' points at no page (moved or deleted?); left in the queue');
+                        }
                         continue;
                     }
 
-                    if ($this->outOfTime($started)) {
+                    // Every run makes progress: the first due entry always goes,
+                    // whatever the clock says.
+                    if ($startedAnEntry && $this->outOfTime($started)) {
                         $stillDue++;
                         continue;
                     }
+                    $startedAnEntry = true;
 
                     [$historyRows, $complete] = $this->publishPages($pages, $now, $scheduledBy, $started, $emails);
                     $publishedCount += count($historyRows);
@@ -210,15 +222,20 @@ final readonly class ScheduledPublishService
                 $this->recordHistory([], $now);
             }
 
-            // Emails last: a slow mail server can't hold up publishing.
+            // Emails last: a slow mail server can't hold up publishing, and
+            // one failure doesn't stop the others.
             foreach ($emails as [$page, $scheduledBy]) {
-                $this->sendConfirmationEmail($page, $scheduledBy, $now);
+                try {
+                    $this->sendConfirmationEmail($page, $scheduledBy, $now);
+                } catch (Throwable $e) {
+                    $this->log('Confirmation email failed for ' . $page->title() . ': ' . $e->getMessage());
+                }
             }
 
             $report = 'Scheduled pages processed. Published ' . $publishedCount . ' pages.';
             if ($stillDue > 0) {
                 $report .= ' ' . $stillDue . ' still due: out of time, the next run carries on.';
-                $this->log('Out of time after ' . $this->timeBudget . 's; ' . $stillDue . ' entr' . ($stillDue === 1 ? 'y' : 'ies') . ' left for the next run');
+                $this->log('Out of time after ' . rtrim(rtrim(number_format($this->timeBudget, 2, '.', ''), '0'), '.') . 's; ' . $stillDue . ' entr' . ($stillDue === 1 ? 'y' : 'ies') . ' left for the next run');
             }
             return $report;
         } catch (Throwable $e) {
@@ -265,9 +282,12 @@ final readonly class ScheduledPublishService
         if ($handle === false) {
             return null;
         }
-        if (!flock($handle, LOCK_EX | LOCK_NB)) {
+        $wouldBlock = 0;
+        if (!flock($handle, LOCK_EX | LOCK_NB, $wouldBlock)) {
             fclose($handle);
-            $busy = true;
+            // Only real contention means "already running"; a filesystem that
+            // can't lock at all runs unlocked rather than never.
+            $busy = $wouldBlock === 1;
             return null;
         }
         return $handle;
@@ -362,6 +382,7 @@ final readonly class ScheduledPublishService
     {
         $historyRows = [];
         $first = true;
+        try {
         foreach ($pages as $page) {
             if ($page->isListed()) {
                 $this->log('Page already published: ' . $page->title() . ' at ' . $now->format('Y-m-d H:i:s'));
@@ -390,6 +411,14 @@ final readonly class ScheduledPublishService
                 self::PUBLISHED_AT_FIELD => $now->format('Y-m-d H:i:s'),
             ];
             $emails[] = [$listed, $scheduledBy];
+        }
+        } catch (Throwable $e) {
+            // Keep the history of the pages that did publish before rethrowing,
+            // or they'd never get a row: next run sees them already listed.
+            if ($historyRows !== []) {
+                $this->recordHistory($historyRows, $now);
+            }
+            throw $e;
         }
         return [$historyRows, true];
     }
