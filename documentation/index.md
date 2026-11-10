@@ -89,6 +89,17 @@ and the optional Panel search.
     }
 ```
 
+## List blocks: lettered and roman numbering
+
+The list block has a **List style** select (1. 2. 3., a. b. c., A. B. C., i. ii. iii.,
+I. II. III.). `helpers\ListBlockStyle::apply()` sets the HTML `type` attribute on the
+outermost `<ol>` of the stored Writer HTML. Only the allow-listed values ever reach the
+attribute; bullet lists, nested lists and lists saved before the option existed are left
+as written. It's applied both in the `blocks/list` snippet override and in
+`KirbyFieldReader::getHTMLfromBlock()`, which renders text and list blocks with permalinks
+and glossary links resolved. The `type` attribute needs no CSS: browsers number by it
+unless a stylesheet overrides `list-style-type` on `ol`.
+
 ## Lists and Pagination
 
 - Use getSpecificModelList and pass into the parameter $modelListClass  the list class you want to create a 

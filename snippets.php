@@ -88,6 +88,7 @@ return [
     'blocks/gallery' => __DIR__ . '/snippets/blocks/gallery.php',
     'blocks/image' => __DIR__ . '/snippets/blocks/image.php',
     'blocks/links' => __DIR__ . '/snippets/blocks/links.php',
+    'blocks/list' => __DIR__ . '/snippets/blocks/list.php',
     'blocks/note' => __DIR__ . '/snippets/blocks/note.php',
     'blocks/quote' => __DIR__ . '/snippets/blocks/quote.php',
     'blocks/ready-made' => __DIR__ . '/snippets/blocks/ready-made.php',

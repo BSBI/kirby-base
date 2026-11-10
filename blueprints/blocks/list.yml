@@ -21,3 +21,18 @@ fields:
       - glossaryLink
       - "|"
       - clear
+  listStyle:
+    label: List style
+    type: select
+    width: 1/2
+    default: "1"
+    required: false
+    options:
+      "1": 1. 2. 3.
+      a: a. b. c.
+      A: A. B. C.
+      i: i. ii. iii.
+      I: I. II. III.
+    help: >
+      How a numbered list is numbered on the site (the Panel preview always shows 1. 2. 3.).
+      Bullet lists ignore it. Only the outermost list changes; lists inside it keep their own numbering.
