@@ -47,6 +47,7 @@ final class RoleRestrictionTest extends TestCase
             // Only a real date counts: relative words would move with the clock.
             'a relative word: stays restricted' => ['yesterday', true],
             'another format: stays restricted'  => ['09/11/2026', true],
+            'an impossible date: stays restricted' => ['2026-02-30', true],
         ];
     }
 
