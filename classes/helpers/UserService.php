@@ -160,16 +160,9 @@ final readonly class UserService
             }
         }
 
-        $applicableRoles = [];
-        $page = $currentPage;
-        while ($page) {
-            $currentRoles = $this->fieldReader->getPageFieldAsArray($page, 'requiredRoles');
-            if (!empty($currentRoles)) {
-                $applicableRoles = $currentRoles;
-                break;
-            }
-            $page = $page->parent();
-        }
+        // The nearest restriction still in force, honouring requiredRolesUntil
+        // (bsbi-web#812); shared with isPageCacheable() so they never disagree.
+        $applicableRoles = RoleRestriction::forPage($currentPage);
 
         if (empty($applicableRoles)) {
             return true;

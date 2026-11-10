@@ -5229,14 +5229,11 @@ abstract class KirbyBaseHelper
                 return false;
             }
 
-            // Don't cache if page or any ancestor has requiredRoles
-            $checkPage = $page;
-            while ($checkPage) {
-                $requiredRoles = $this->getPageFieldAsArray($checkPage, 'requiredRoles');
-                if (!empty($requiredRoles)) {
-                    return false;
-                }
-                $checkPage = $checkPage->parent();
+            // Don't cache if the page or an ancestor is restricted today. Uses the
+            // access check's own rule (RoleRestriction), so a page is cached only
+            // once its restriction has lapsed (requiredRolesUntil, bsbi-web#812).
+            if (RoleRestriction::forPage($page) !== []) {
+                return false;
             }
         } catch (KirbyRetrievalException) {
             // If we can't determine cacheability, err on the side of caution
