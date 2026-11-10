@@ -566,6 +566,31 @@ final class ScheduledPublishServiceTest extends TestCase
         $this->assertTrue($this->refreshed($page)->isListed());
     }
 
+    public function testALockThatCannotBeOpenedDoesNotStopPublishing(): void
+    {
+        // A lock file that can't be opened (permissions, a folder in its
+        // place) must not read as "already running": that would quietly stop
+        // scheduled publishing for good. It runs, unlocked, and says so.
+        $page = $this->createDraft('no-lock-page');
+        $this->setQueue([$this->entry($page, '2026-09-03', '11:00:00')]);
+        $lockPath = self::$kirby->root('logs') . '/scheduledPublish.lock';
+        if (!is_dir(dirname($lockPath))) {
+            mkdir(dirname($lockPath), 0777, true);
+        }
+        @unlink($lockPath);
+        mkdir($lockPath);
+        try {
+            $result = $this->service()->run(self::$now);
+        } finally {
+            rmdir($lockPath);
+        }
+
+        $this->assertStringContainsString('Published 1', $result);
+        $this->assertTrue($this->refreshed($page)->isListed());
+        $log = (string)file_get_contents(self::$kirby->root('logs') . '/scheduledPublish.log');
+        $this->assertStringContainsString('Could not open the run lock', $log);
+    }
+
     public function testADueEntryPointingAtNoPageIsLogged(): void
     {
         $this->setQueue([[

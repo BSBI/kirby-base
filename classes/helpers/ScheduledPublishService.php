@@ -125,10 +125,16 @@ final readonly class ScheduledPublishService
         // One run at a time: an overlapping run (a slow one still going when
         // the next cron fires, or a manual hit) would publish the same drafts
         // twice and race the queue writes (bsbi-web#855).
-        $lock = $this->acquireLock();
-        if ($lock === null) {
+        $busy = false;
+        $lock = $this->acquireLock($busy);
+        if ($busy) {
             $this->log('Another run is still going; this one did nothing');
             return 'Scheduled publish already running.';
+        }
+        if ($lock === null) {
+            // Can't open the lock file at all: run unlocked rather than never
+            // publishing again, and say so.
+            $this->log('Could not open the run lock (' . self::LOCK_FILE . ' in the logs folder); running without it');
         }
         // Keep going if the cron's connection drops: a half-finished run is
         // what loses work.
@@ -219,8 +225,10 @@ final readonly class ScheduledPublishService
             $this->log('Error: ' . $e->getMessage() . ' - ' . $e->getTraceAsString());
             return 'Error - see ' . self::LOG_FILE . '.log';
         } finally {
-            flock($lock, LOCK_UN);
-            fclose($lock);
+            if ($lock !== null) {
+                flock($lock, LOCK_UN);
+                fclose($lock);
+            }
         }
     }
 
@@ -236,13 +244,16 @@ final readonly class ScheduledPublishService
     }
 
     /**
-     * Takes the run lock (a file under the logs folder), or null if another
-     * run holds it.
+     * Takes the run lock (a file under the logs folder). Returns null with
+     * $busy set when another run holds it, and null with $busy unset when the
+     * lock file can't be opened at all (the caller then runs unlocked).
      *
+     * @param bool $busy Set to true when another run holds the lock
      * @return resource|null
      */
-    private function acquireLock()
+    private function acquireLock(bool &$busy)
     {
+        $busy = false;
         $dir = $this->kirby->root('logs');
         if (!is_string($dir) || $dir === '') {
             return null;
@@ -256,6 +267,7 @@ final readonly class ScheduledPublishService
         }
         if (!flock($handle, LOCK_EX | LOCK_NB)) {
             fclose($handle);
+            $busy = true;
             return null;
         }
         return $handle;
