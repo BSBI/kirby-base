@@ -666,6 +666,18 @@ final class ScheduledPublishServiceTest extends TestCase
         $this->assertStringContainsString('Published 3', $result);
     }
 
+    public function testATitleWithALineBreakCannotForgeALogLine(): void
+    {
+        $page = $this->createDraft('log-forge', ['title' => "Real title\n26:01:01 00:00:00 Forged line"]);
+        $this->setQueue([$this->entry($page, '2026-09-03', '11:00:00')]);
+
+        $this->service()->run(self::$now);
+
+        $log = (string)file_get_contents(self::$kirby->root('logs') . '/scheduledPublish.log');
+        $this->assertStringNotContainsString("\n26:01:01 00:00:00 Forged line", $log);
+        $this->assertStringContainsString('Real title 26:01:01 00:00:00 Forged line', $log);
+    }
+
     public function testADueEntryPointingAtNoPageIsLogged(): void
     {
         $this->setQueue([[

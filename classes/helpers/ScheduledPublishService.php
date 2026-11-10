@@ -758,6 +758,9 @@ final readonly class ScheduledPublishService
      */
     private function log(string $message): void
     {
-        KirbyBaseHelper::writeToLogFile(self::LOG_FILE, $message);
+        // One line per entry: a page title or error message with a line break
+        // could otherwise forge a log line (and its date, which log retention
+        // reads).
+        KirbyBaseHelper::writeToLogFile(self::LOG_FILE, (string)preg_replace('/[\r\n]+/', ' ', $message));
     }
 }
