@@ -824,12 +824,12 @@ final class KirbyFieldReaderTest extends TestCase
         $this->assertStringContainsString('Hello world', $html);
     }
 
-    public function testGetHTMLfromBlockAppliesAListBlocksStyle(): void
+    public function testGetHTMLfromBlockKeepsAListsNumberingStyle(): void
     {
-        // bsbi-web#786: list blocks render here (permalinks and glossary), so the
-        // "List style" must be applied here too, not only in the block snippet.
+        // bsbi-web#786: the writer stores a lettered or roman list as <ol type="…">;
+        // list blocks render here (permalinks and glossary), which must keep it.
         $blocks = [
-            ['type' => 'list', 'content' => ['text' => '<ol><li><p>One</p></li></ol>', 'listStyle' => 'i']],
+            ['type' => 'list', 'content' => ['text' => '<ol type="i"><li><p>One</p></li></ol>']],
             ['type' => 'list', 'content' => ['text' => '<ol><li><p>Two</p></li></ol>']],
         ];
         $page = $this->makePage(['content' => Json::encode($blocks)]);

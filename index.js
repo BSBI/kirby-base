@@ -125,6 +125,33 @@ function kbEscapeHtml(text) {
     .replace(/'/g, '&#39;');
 }
 
+/**
+ * The ordered-list numbering styles offered in the writer's list dropdown
+ * (bsbi-web#786). `type` is the HTML <ol type>; null is plain numbers.
+ */
+const KB_LIST_STYLES = [
+  { type: null, label: 'Ordered list' },
+  { type: 'a', css: 'lower-alpha', label: 'Ordered list (a, b, c)' },
+  { type: 'A', css: 'upper-alpha', label: 'Ordered list (A, B, C)' },
+  { type: 'i', css: 'lower-roman', label: 'Ordered list (i, ii, iii)' },
+  { type: 'I', css: 'upper-roman', label: 'Ordered list (I, II, III)' }
+];
+
+/**
+ * The list (bullet or ordered) closest around the selection, as
+ * { node, pos }, or null when the selection isn't in a list.
+ */
+function kbNearestList(state, schema) {
+  const $from = state.selection.$from;
+  for (let depth = $from.depth; depth > 0; depth--) {
+    const node = $from.node(depth);
+    if (node.type === schema.nodes.orderedList || node.type === schema.nodes.bulletList) {
+      return { node: node, pos: $from.before(depth) };
+    }
+  }
+  return null;
+}
+
 panel.plugin('open-foundations/kirby-base', {
   writerMarks: {
     /**
@@ -241,6 +268,120 @@ panel.plugin('open-foundations/kirby-base', {
             { href: node.attrs.href, "data-glossary": "true" },
             0
           ]
+        };
+      }
+    }
+  },
+  writerNodes: {
+    /**
+     * Ordered list with a numbering style (bsbi-web#786). Replaces Kirby's
+     * own orderedList node (plugin nodes are added after the built-ins, so the
+     * same name wins) and adds a `type` attribute, stored as <ol type="a">.
+     * The list dropdown gets one entry per style beside "Bullet list" and
+     * "Ordered list", the same way the heading node offers H1-H6.
+     *
+     * One node type with an attribute, not a node per style: Kirby's
+     * convert-between-lists code only recognises bulletList and orderedList,
+     * so a separate lettered node would nest a list instead of converting it.
+     */
+    orderedList: {
+      get button() {
+        const when = ['listItem', 'bulletList', 'orderedList', 'paragraph'];
+        const entries = KB_LIST_STYLES.map(function (style) {
+          return {
+            id: style.type ? 'orderedList-' + style.type : 'orderedList',
+            command: style.type ? 'orderedList_' + style.type : 'orderedList',
+            icon: 'list-numbers',
+            label: style.label,
+            // Matched against the list's own attrs for the dropdown's tick.
+            attrs: style.type ? { order: 1, type: style.type } : undefined,
+            name: 'orderedList',
+            when: when
+          };
+        });
+        entries[entries.length - 1].separator = true;
+        return entries;
+      },
+      commands: function (context) {
+        const type = context.type;
+        const schema = context.schema;
+        const utils = context.utils;
+        const commands = {
+          // Plain numbers: turns a lettered list back to 1. 2. 3., and
+          // otherwise toggles as Kirby's own button does.
+          orderedList: function () {
+            return function (state, dispatch, view) {
+              const list = kbNearestList(state, schema);
+              if (list && list.node.type === type && list.node.attrs.type) {
+                if (dispatch) {
+                  dispatch(state.tr.setNodeMarkup(list.pos, type, Object.assign({}, list.node.attrs, { type: null })));
+                }
+                return true;
+              }
+              return utils.toggleList(type, schema.nodes.listItem)(state, dispatch, view);
+            };
+          }
+        };
+        KB_LIST_STYLES.forEach(function (style) {
+          if (!style.type) {
+            return;
+          }
+          commands['orderedList_' + style.type] = function () {
+            return function (state, dispatch, view) {
+              const list = kbNearestList(state, schema);
+              if (list) {
+                // Already a list (bullet or numbered): restyle it in place.
+                if (dispatch) {
+                  dispatch(state.tr.setNodeMarkup(list.pos, type, Object.assign({ order: 1 }, list.node.type === type ? list.node.attrs : {}, { type: style.type })));
+                }
+                return true;
+              }
+              return utils.wrapInList(type, { order: 1, type: style.type })(state, dispatch, view);
+            };
+          };
+        });
+        return commands;
+      },
+      inputRules: function (context) {
+        return [context.utils.wrappingInputRule(/^(\d+)\.\s$/, context.type, function (match) {
+          return { order: +match[1] };
+        }, function (match, node) {
+          return node.childCount + node.attrs.order === +match[1];
+        })];
+      },
+      keys: function (context) {
+        return { 'Shift-Ctrl-9': context.utils.toggleList(context.type, context.schema.nodes.listItem) };
+      },
+      get schema() {
+        return {
+          attrs: { order: { default: 1 }, type: { default: null } },
+          content: 'listItem+',
+          group: 'block',
+          parseDOM: [{
+            tag: 'ol',
+            getAttrs: function (dom) {
+              const style = dom.getAttribute('type');
+              return {
+                order: dom.hasAttribute('start') ? +dom.getAttribute('start') : 1,
+                // Only the allow-listed styles; anything else is plain numbers.
+                type: KB_LIST_STYLES.some(function (s) { return s.type && s.type === style; }) ? style : null
+              };
+            }
+          }],
+          toDOM: function (node) {
+            const attrs = {};
+            if (node.attrs.order !== 1) {
+              attrs.start = node.attrs.order;
+            }
+            const style = KB_LIST_STYLES.find(function (s) { return s.type && s.type === node.attrs.type; });
+            if (style) {
+              attrs.type = style.type;
+              // For the Panel's own list CSS (index.css): HTML matches type
+              // values case-insensitively, so [type="a"] can't tell a from A.
+              attrs['data-list-style'] = style.css;
+            }
+            return ['ol', attrs, 0];
+          }
         };
       }
     }

@@ -1502,11 +1502,6 @@ final readonly class KirbyFieldReader
         if (in_array($block->type(), ['text', 'list'])) {
             /** @noinspection PhpUndefinedMethodInspection */
             $html = $block->text()->toHtml()->permalinksToUrls()->toString();
-            if ($block->type() === 'list') {
-                // Letters or roman numerals on the outermost <ol> (bsbi-web#786).
-                $style = $block->content()->get('listStyle');
-                $html = ListBlockStyle::apply($html, $style instanceof Field ? $style->toString() : '');
-            }
             return $this->glossaryService?->enrichHtml($html) ?? $html;
         }
         return $block->toHtml();
