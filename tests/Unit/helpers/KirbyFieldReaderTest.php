@@ -824,6 +824,24 @@ final class KirbyFieldReaderTest extends TestCase
         $this->assertStringContainsString('Hello world', $html);
     }
 
+    public function testGetHTMLfromBlockAppliesAListBlocksStyle(): void
+    {
+        // bsbi-web#786: list blocks render here (permalinks and glossary), so the
+        // "List style" must be applied here too, not only in the block snippet.
+        $blocks = [
+            ['type' => 'list', 'content' => ['text' => '<ol><li><p>One</p></li></ol>', 'listStyle' => 'i']],
+            ['type' => 'list', 'content' => ['text' => '<ol><li><p>Two</p></li></ol>']],
+        ];
+        $page = $this->makePage(['content' => Json::encode($blocks)]);
+        $rendered = array_map(
+            static fn ($block): string => self::$reader->getHTMLfromBlock($block),
+            iterator_to_array(self::$reader->getPageFieldAsBlocks($page, 'content'), false)
+        );
+
+        $this->assertStringStartsWith('<ol type="i">', trim($rendered[0]));
+        $this->assertStringStartsWith('<ol>', trim($rendered[1]));
+    }
+
     public function testGetHTMLfromBlockRendersNonTextBlockAsHtml(): void
     {
         $blocks = [['type' => 'heading', 'content' => ['text' => 'My Heading', 'level' => 'h2']]];
