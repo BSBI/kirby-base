@@ -91,14 +91,26 @@ and the optional Panel search.
 
 ## List blocks: lettered and roman numbering
 
-The list block has a **List style** select (1. 2. 3., a. b. c., A. B. C., i. ii. iii.,
-I. II. III.). `helpers\ListBlockStyle::apply()` sets the HTML `type` attribute on the
-outermost `<ol>` of the stored Writer HTML. Only the allow-listed values ever reach the
-attribute; bullet lists, nested lists and lists saved before the option existed are left
-as written. It's applied both in the `blocks/list` snippet override and in
-`KirbyFieldReader::getHTMLfromBlock()`, which renders text and list blocks with permalinks
-and glossary links resolved. The `type` attribute needs no CSS: browsers number by it
-unless a stylesheet overrides `list-style-type` on `ol`.
+The writer's list dropdown (list blocks and any writer with lists) offers **Ordered list
+(a, b, c)**, **(A, B, C)**, **(i, ii, iii)** and **(I, II, III)** beside Bullet list and
+Ordered list. Picking one turns the list under the cursor into that style, or starts one.
+Picking "Ordered list" turns it back to 1. 2. 3.
+
+- **How:** `index.js` replaces Kirby's own `orderedList` writer node (`writerNodes`, same
+  name, so it wins) with one that has a `type` attribute and one dropdown entry per style,
+  as the heading node does for H1–H6. It's one node type with an attribute rather than a
+  node per style, because Kirby's convert-between-lists code only knows `bulletList` and
+  `orderedList`: a separate node would nest a new list instead of converting.
+- **Stored as** `<ol type="a" data-list-style="lower-alpha">` in the list HTML. Only the
+  four allow-listed `type` values are read back when a list is loaded into the writer;
+  anything else loads as plain numbers.
+- **On the site:** nothing to do. The `type` attribute numbers the list in the browser
+  unless a stylesheet sets `list-style-type` on `ol` or `li`.
+- **In the Panel:** Kirby styles every writer `li` as decimal, so `index.css` restyles them
+  by `data-list-style`. Not by `type`: HTML matches `type` values ignoring case, so
+  `[type="a"]` can't tell a from A, and Chrome doesn't support the selector `s` flag.
+- Only the list the cursor is in changes; lists inside it keep their own style.
+- 3.68.0 had a separate "List style" select on the list block instead; 3.69.0 removes it.
 
 ## Lists and Pagination
 

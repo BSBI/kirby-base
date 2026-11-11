@@ -118,3 +118,11 @@
 .k-column:has(> .k-formadjust-field-hidden) {
   display: none;
 }
+
+/* Ordered list numbering styles in the writer (bsbi-web#786). The Panel sets
+   list-style on each <li> (.k-text ol > li), so the <ol type> hint alone shows
+   1. 2. 3. data-list-style, not type: HTML matches type values ignoring case. */
+.k-writer ol[data-list-style="lower-alpha"] > li { list-style-type: lower-alpha; }
+.k-writer ol[data-list-style="upper-alpha"] > li { list-style-type: upper-alpha; }
+.k-writer ol[data-list-style="lower-roman"] > li { list-style-type: lower-roman; }
+.k-writer ol[data-list-style="upper-roman"] > li { list-style-type: upper-roman; }
