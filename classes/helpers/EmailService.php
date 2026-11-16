@@ -70,22 +70,53 @@ final readonly class EmailService implements EmailSender
     }
 
     /**
-     * Whether this environment sends outbound email at all. See
-     * {@see KirbyBaseHelper::environmentSendsEmail()} for the full rationale
-     * (three-source lookup, fail-closed on localhost); identical behaviour.
+     * Whether this environment sends outbound email at all.
      *
      * @return bool True when email may be sent from here
      */
     private function sendsEmail(): bool
     {
-        foreach ([$this->kirby->option('environment.type'), $this->kirby->option('environment')] as $configured) {
-            if (is_string($configured) && $configured !== '') {
-                return $configured !== 'local';
+        $host = $_SERVER['HTTP_HOST'] ?? '';
+
+        return self::environmentAllowsEmail(
+            $this->kirby->option('environment.type'),
+            $this->kirby->option('environment'),
+            is_string($host) ? $host : '',
+        );
+    }
+
+    /**
+     * Whether email may be sent, given the configured environment and the request
+     * host. Shared with {@see KirbyBaseHelper::environmentSendsEmail()}.
+     *
+     * Two independent refusals, so neither can switch the other off:
+     *
+     * - A developer environment: `dev` or `local` (any case), from
+     *   `environment.type` or a flat `environment` string. A site may instead
+     *   resolve `environment` to an object (capsella does); then only the host
+     *   check applies.
+     * - A request to a loopback host (localhost, 127.0.0.1, [::1]), whatever the
+     *   environment says. Before, any configured environment skipped this check,
+     *   so a local copy set to `dev` sent real email.
+     *
+     * Anything else sends, including CLI and cron runs with no host.
+     *
+     * @param mixed $type The `environment.type` option
+     * @param mixed $environment The `environment` option
+     * @param string $host The request's HTTP host, or '' with none
+     * @return bool True when email may be sent
+     */
+    public static function environmentAllowsEmail(mixed $type, mixed $environment, string $host): bool
+    {
+        foreach ([$type, $environment] as $configured) {
+            if (is_string($configured) && in_array(strtolower($configured), ['dev', 'local'], true)) {
+                return false;
             }
         }
 
-        $host = $_SERVER['HTTP_HOST'] ?? '';
+        $hostName = strtolower(preg_replace('/:\d+$/', '', $host) ?? $host);
 
-        return !str_starts_with(is_string($host) ? $host : '', 'localhost');
+        return !in_array($hostName, ['localhost', '127.0.0.1', '[::1]', '::1'], true)
+            && !str_ends_with($hostName, '.localhost');
     }
 }
