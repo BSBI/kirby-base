@@ -3730,41 +3730,24 @@ abstract class KirbyBaseHelper
     }
 
     /**
-     * Whether this environment sends outbound email at all.
+     * Whether this environment sends outbound email at all: never from a `dev` or
+     * `local` environment, nor from a request to localhost, whatever the
+     * environment says. The rule is {@see EmailService::environmentAllowsEmail()}.
      *
-     * This is a backstop, not the gate a site should rely on. It exists so that
-     * a send from a context with no configured environment still refuses on a
-     * developer machine; a site that cares should decide before calling here.
-     *
-     * Three sources, in order:
-     *
-     * 1. `environment.type` as a plain string, the shape EnvironmentGuard
-     *    documents.
-     * 2. `environment` as a plain string, for sites that configure it flat.
-     * 3. The HTTP host, as this method always did.
-     *
-     * A site may instead resolve `environment` to an object — capsella sets it
-     * to a resolved Environment instance — in which case neither option matches
-     * and the host check applies. That is deliberate rather than an oversight:
-     * kirby-base does not know that class, and such a site is already deciding
-     * for itself before it calls this. What matters is that the fallback still
-     * refuses on localhost, which it does.
-     *
-     * The host check now tolerates a missing HTTP_HOST rather than warning about
-     * an undefined key and then sending anyway, which is what it did under CLI
-     * and cron.
+     * This is a backstop, not the gate a site should rely on; a site that cares
+     * should decide before calling here.
      *
      * @return bool True when email may be sent from here
      */
     protected static function environmentSendsEmail(): bool
     {
-        foreach ([option('environment.type'), option('environment')] as $configured) {
-            if (is_string($configured) && $configured !== '') {
-                return $configured !== 'local';
-            }
-        }
+        $host = $_SERVER['HTTP_HOST'] ?? '';
 
-        return !str_starts_with((string)($_SERVER['HTTP_HOST'] ?? ''), 'localhost');
+        return EmailService::environmentAllowsEmail(
+            option('environment.type'),
+            option('environment'),
+            is_string($host) ? $host : '',
+        );
     }
 
     #endregion
