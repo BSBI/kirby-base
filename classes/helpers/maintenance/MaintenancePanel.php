@@ -122,6 +122,7 @@ final class MaintenancePanel
             'reclaimedBytes' => $result->reclaimedBytes,
             'humanReclaimed' => MaintenanceFilesystem::humanBytes($result->reclaimedBytes),
             'nextOffset'     => $result->nextOffset,
+            'note'           => $result->note,
         ], 200);
     }
 
@@ -201,6 +202,7 @@ final class MaintenancePanel
             'sample'       => $preview !== null ? $preview->sample : [],
             'summary'      => $preview !== null ? $preview->summary : null,
             'emptySummary' => $emptySummary,
+            'confirm'      => $preview !== null ? $preview->confirm : null,
             'destructive'  => !$nonDestructive,
             'icon'         => $nonDestructive ? $task->icon() : 'trash',
             'error'        => $error,

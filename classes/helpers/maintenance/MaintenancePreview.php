@@ -18,6 +18,9 @@ final readonly class MaintenancePreview
      * @param array<int, string> $sample human-readable sample lines describing the biggest/first targets
      * @param string|null $summary the line shown instead of "Would free X · N item(s)" — for tasks that free nothing (bsbi-web#734)
      * @param string|null $emptySummary the line shown instead of "Nothing to reclaim" when $items is 0
+     * @param string|null $confirm the question asked before Run, instead of the default
+     *        "This will free …" / "Nothing is deleted" wording, for a task whose effect
+     *        is neither (e.g. a sync that creates and removes logins)
      */
     public function __construct(
         public int $items,
@@ -25,6 +28,7 @@ final readonly class MaintenancePreview
         public array $sample = [],
         public ?string $summary = null,
         public ?string $emptySummary = null,
+        public ?string $confirm = null,
     ) {
     }
 

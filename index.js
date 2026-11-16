@@ -3568,6 +3568,8 @@ panel.plugin('open-foundations/kirby-base', {
           progress: null,
           refreshing: false,
           lastResult: null,
+          // A chunked task's own account of how far it has got (MaintenanceRunResult::$note).
+          note: null,
           deferredLoading: {}
         };
       },
@@ -3636,6 +3638,7 @@ panel.plugin('open-foundations/kirby-base', {
                 // or a non-destructive task reads "Would free 0 B" after its preview.
                 summary: data.summary,
                 emptySummary: data.emptySummary,
+                confirm: data.confirm,
                 error: data.error,
                 deferred: false
               });
@@ -3664,7 +3667,7 @@ panel.plugin('open-foundations/kirby-base', {
           var self = this;
           // An empty preview never reaches the confirm, so the item-count fallback below is never "0 item(s)".
           if (task.items === 0) return;
-          var msg = task.destructive === false
+          var msg = task.confirm ? task.confirm : task.destructive === false
             ? ('Run "' + task.label + '"?\n\n' + (task.summary || (task.items + ' item(s)')) + '.\nNothing is deleted.')
             : ('Run the "' + task.label + '" cleanup?\n\n'
               + 'This will free about ' + task.humanBytes + ' (' + task.items + ' item(s)).\n'
@@ -3674,6 +3677,7 @@ panel.plugin('open-foundations/kirby-base', {
           self.running = task.key;
           self.progress = null;
           self.lastResult = null;
+          self.note = null;
 
           var offset = 0;
           var totalReclaimed = 0;
@@ -3693,11 +3697,16 @@ panel.plugin('open-foundations/kirby-base', {
               totalReclaimed += res.reclaimedBytes;
               offset = res.nextOffset;
               done = res.done;
-              if (task.items > 0) {
+              // A task that reports its own progress replaces the estimated percentage.
+              if (res.note) {
+                self.note = res.note;
+              } else if (task.items > 0) {
                 self.progress = Math.min(100, Math.round(totalProcessed / task.items * 100));
               }
             }
-            self.lastResult = task.destructive === false
+            self.lastResult = self.note
+              ? ('Done: "' + task.label + '". ' + self.note)
+              : task.destructive === false
               ? ('Done: "' + task.label + '" (' + totalProcessed + ' item(s)).')
               : ('Freed ' + self.humanBytes(totalReclaimed)
                 + ' from "' + task.label + '" (' + totalProcessed + ' item(s)).');
@@ -3709,6 +3718,7 @@ panel.plugin('open-foundations/kirby-base', {
           } finally {
             self.running = null;
             self.progress = null;
+            self.note = null;
           }
         }
       },
@@ -3769,7 +3779,7 @@ panel.plugin('open-foundations/kirby-base', {
               aria-atomic="true"
               style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;"
             >
-              {{ running !== null && progress !== null ? (runningLabel + ': ' + progress + ' percent complete') : '' }}
+              {{ running !== null && note ? (runningLabel + ': ' + note) : (running !== null && progress !== null ? (runningLabel + ': ' + progress + ' percent complete') : '') }}
             </div>
 
             <div class="k-maintenance-tasks">
@@ -3788,6 +3798,7 @@ panel.plugin('open-foundations/kirby-base', {
                     <strong v-else-if="task.items === 0">{{ task.emptySummary || 'Nothing to reclaim' }}</strong>
                     <strong v-else>{{ task.summary || ('Would free ' + task.humanBytes + ' · ' + task.items + ' item(s)') }}</strong>
                   </p>
+                  <p v-if="running === task.key && note" class="k-maintenance-task-desc">{{ note }}</p>
                   <ul v-if="task.sample && task.sample.length" class="k-maintenance-sample">
                     <li v-for="(line, i) in task.sample" :key="i">{{ line }}</li>
                   </ul>

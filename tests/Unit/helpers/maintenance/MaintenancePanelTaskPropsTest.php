@@ -45,6 +45,27 @@ final class MaintenancePanelTaskPropsTest extends TestCase
         };
     }
 
+    public function testATaskCanAskItsOwnConfirmQuestion(): void
+    {
+        $task = new class implements MaintenanceTask {
+            public function key(): string { return 'sync'; }
+            public function label(): string { return 'Sync'; }
+            public function description(): string { return 'Syncs.'; }
+            public function preview(MaintenanceOptions $options): MaintenancePreview
+            {
+                return new MaintenancePreview(5, 0, [], 'Would create 2', null, 'Create 2 logins?');
+            }
+            public function run(MaintenanceOptions $options, int $offset = 0, int $limit = 0): MaintenanceRunResult
+            {
+                return new MaintenanceRunResult(true, 5, 0, 0, 'Page 1 · 2 created');
+            }
+        };
+
+        self::assertSame('Create 2 logins?', MaintenancePanel::taskProps($task, new MaintenanceOptions())['confirm']);
+        self::assertNull(MaintenancePanel::taskProps($this->cleanupStub(), new MaintenanceOptions())['confirm'], 'the default wording otherwise');
+        self::assertSame('Page 1 · 2 created', $task->run(new MaintenanceOptions())->note);
+    }
+
     public function testCleanupTaskKeepsTheDefaultWording(): void
     {
         $props = MaintenancePanel::taskProps($this->cleanupStub(), new MaintenanceOptions());
