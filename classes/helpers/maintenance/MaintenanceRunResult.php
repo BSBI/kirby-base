@@ -20,12 +20,16 @@ final readonly class MaintenanceRunResult
      * @param int $processed number of items processed in this chunk
      * @param int $reclaimedBytes bytes reclaimed in this chunk
      * @param int $nextOffset offset to pass to the next chunk (0 when done)
+     * @param string|null $note where the whole run has got to, in the task's own words
+     *        (e.g. "Members page 4 · 800 people · 3 created"). The Panel shows it in
+     *        place of the percentage, for a task that can't count its items up front.
      */
     public function __construct(
         public bool $done,
         public int $processed,
         public int $reclaimedBytes,
         public int $nextOffset = 0,
+        public ?string $note = null,
     ) {
     }
 
