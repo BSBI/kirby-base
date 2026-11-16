@@ -21,10 +21,12 @@ final readonly class MaintenanceOptions
     /**
      * @param int $retentionDays remove eligible items only when older than this many days
      * @param int $logSizeCapBytes keep at most this many bytes of a log with no dated entries
+     * @param bool|null $toggle the state of the task's checkbox ({@see ToggleTask}), or null for a task without one
      */
     public function __construct(
         public int $retentionDays = self::DEFAULT_RETENTION_DAYS,
         public int $logSizeCapBytes = self::DEFAULT_LOG_SIZE_CAP_BYTES,
+        public ?bool $toggle = null,
     ) {
     }
 
@@ -32,15 +34,16 @@ final readonly class MaintenanceOptions
      * Build options from raw request input, clamping to safe bounds.
      *
      * @param int|null $retentionDays requested retention window, or null for the default
+     * @param bool|null $toggle the state of the task's checkbox, if it has one
      * @return self
      */
-    public static function fromRetentionDays(?int $retentionDays): self
+    public static function fromRetentionDays(?int $retentionDays, ?bool $toggle = null): self
     {
         if ($retentionDays === null) {
-            return new self();
+            return new self(toggle: $toggle);
         }
 
         // Never allow a zero/negative window (would delete everything) — floor at 1 day.
-        return new self(max(1, $retentionDays));
+        return new self(max(1, $retentionDays), toggle: $toggle);
     }
 }

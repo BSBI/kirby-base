@@ -95,6 +95,7 @@ final class MaintenancePanel
         $retentionDays = $request->get('retentionDays');
         $options = MaintenanceOptions::fromRetentionDays(
             is_numeric($retentionDays) ? (int) $retentionDays : null,
+            $task instanceof ToggleTask ? self::toggleFromRequest($request->get('toggle'), $task) : null,
         );
         $offset = (int) $request->get('offset', 0);
         $limit  = (int) $request->get('limit', 0);
@@ -203,12 +204,26 @@ final class MaintenancePanel
             'summary'      => $preview !== null ? $preview->summary : null,
             'emptySummary' => $emptySummary,
             'confirm'      => $preview !== null ? $preview->confirm : null,
+            'toggle'       => $task instanceof ToggleTask ? $task->toggle()->toArray() : null,
             'destructive'  => !$nonDestructive,
             'icon'         => $nonDestructive ? $task->icon() : 'trash',
             'error'        => $error,
             'deferred'     => $deferred,
             'onDemand'     => $task instanceof OnDemandPreviewTask,
         ];
+    }
+
+    /**
+     * The checkbox state sent with Run: "true"/"false" (or a JSON boolean); anything
+     * else takes the checkbox's default, so a run is never unticked by accident.
+     */
+    private static function toggleFromRequest(mixed $value, ToggleTask $task): bool
+    {
+        return match (true) {
+            $value === true, $value === 'true', $value === '1', $value === 1 => true,
+            $value === false, $value === 'false', $value === '0', $value === 0 => false,
+            default => $task->toggle()->default,
+        };
     }
 
     /**

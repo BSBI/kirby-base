@@ -3570,6 +3570,8 @@ panel.plugin('open-foundations/kirby-base', {
           lastResult: null,
           // A chunked task's own account of how far it has got (MaintenanceRunResult::$note).
           note: null,
+          // Each toggle task's checkbox (ToggleTask), by task key; unset means its default.
+          toggles: {},
           deferredLoading: {}
         };
       },
@@ -3604,6 +3606,8 @@ panel.plugin('open-foundations/kirby-base', {
             .then(function (data) {
               if (data && data.tasks) {
                 self.currentTasks = data.tasks;
+                // Back to each checkbox's default (e.g. "Dry run" ticked) after a run.
+                self.toggles = {};
                 self.currentDisk = data.disk;
                 self.loadDeferredPreviews();
               }
@@ -3660,6 +3664,20 @@ panel.plugin('open-foundations/kirby-base', {
           if (bytes < 1073741824) return (Math.round(bytes / 1048576 * 10) / 10) + ' MB';
           return (Math.round(bytes / 1073741824 * 100) / 100) + ' GB';
         },
+        // Whether a task's checkbox is ticked: the admin's choice, else its default.
+        toggleOn: function (task) {
+          if (!task.toggle) return false;
+          return Object.prototype.hasOwnProperty.call(this.toggles, task.key)
+            ? this.toggles[task.key]
+            : task.toggle.default;
+        },
+        setToggle: function (task, value) {
+          this.$set(this.toggles, task.key, value);
+        },
+        // Run is held back while the checkbox is unticked and the task says why.
+        toggleBlocked: function (task) {
+          return !!(task.toggle && !this.toggleOn(task) && task.toggle.blockedOffReason);
+        },
         // Run a task to completion. Blocking tasks (logs/cache/import) finish in one request
         // (done:true immediately); the chunked media task loops, feeding nextOffset back and
         // advancing a progress estimate against the previewed item count.
@@ -3667,7 +3685,10 @@ panel.plugin('open-foundations/kirby-base', {
           var self = this;
           // An empty preview never reaches the confirm, so the item-count fallback below is never "0 item(s)".
           if (task.items === 0) return;
-          var msg = task.confirm ? task.confirm : task.destructive === false
+          if (this.toggleBlocked(task)) return;
+          var msg = task.toggle
+            ? (this.toggleOn(task) ? task.toggle.confirmOn : task.toggle.confirmOff)
+            : task.confirm ? task.confirm : task.destructive === false
             ? ('Run "' + task.label + '"?\n\n' + (task.summary || (task.items + ' item(s)')) + '.\nNothing is deleted.')
             : ('Run the "' + task.label + '" cleanup?\n\n'
               + 'This will free about ' + task.humanBytes + ' (' + task.items + ' item(s)).\n'
@@ -3688,11 +3709,13 @@ panel.plugin('open-foundations/kirby-base', {
             var done = false;
             while (!done) {
               if (++guard > 100000) throw new Error('Too many chunks; aborting to avoid a loop.');
-              var res = await self.$api.post('maintenance/run', {
+              var payload = {
                 key: task.key,
                 retentionDays: self.retentionDays,
                 offset: offset
-              });
+              };
+              if (task.toggle) payload.toggle = self.toggleOn(task);
+              var res = await self.$api.post('maintenance/run', payload);
               totalProcessed += res.processed;
               totalReclaimed += res.reclaimedBytes;
               offset = res.nextOffset;
@@ -3798,6 +3821,23 @@ panel.plugin('open-foundations/kirby-base', {
                     <strong v-else-if="task.items === 0">{{ task.emptySummary || 'Nothing to reclaim' }}</strong>
                     <strong v-else>{{ task.summary || ('Would free ' + task.humanBytes + ' · ' + task.items + ' item(s)') }}</strong>
                   </p>
+                  <div v-if="task.toggle" class="k-maintenance-task-toggle" style="margin-top: var(--spacing-2);">
+                    <label :for="'k-maintenance-toggle-' + task.key" style="display: inline-flex; gap: var(--spacing-2); align-items: center; font-weight: var(--font-bold);">
+                      <input
+                        type="checkbox"
+                        :id="'k-maintenance-toggle-' + task.key"
+                        :checked="toggleOn(task)"
+                        :disabled="running !== null"
+                        :aria-describedby="'k-maintenance-toggle-help-' + task.key"
+                        @change="setToggle(task, $event.target.checked)"
+                      />
+                      {{ task.toggle.label }}
+                    </label>
+                    <p :id="'k-maintenance-toggle-help-' + task.key" class="k-maintenance-task-desc" style="white-space: pre-line;">{{ task.toggle.help }}</p>
+                    <p role="status" aria-live="polite" aria-atomic="true">
+                      <strong v-if="toggleBlocked(task)">{{ task.toggle.blockedOffReason }}</strong>
+                    </p>
+                  </div>
                   <p v-if="running === task.key && note" class="k-maintenance-task-desc">{{ note }}</p>
                   <ul v-if="task.sample && task.sample.length" class="k-maintenance-sample">
                     <li v-for="(line, i) in task.sample" :key="i">{{ line }}</li>
@@ -3827,7 +3867,7 @@ panel.plugin('open-foundations/kirby-base', {
                           ? ('Preview ' + task.label + ' before running it')
                           : ('Calculating ' + task.label + ' preview, please wait'))
                         : (task.items === 0 ? ((task.emptySummary || 'Nothing to reclaim') + ' for ' + task.label) : ('Run ' + task.label + (task.destructive === false ? ' (nothing is deleted)' : ' cleanup'))))"
-                    :disabled="task.deferred || deferredLoading[task.key] || task.items === 0 || task.error || running !== null"
+                    :disabled="task.deferred || deferredLoading[task.key] || task.items === 0 || task.error || running !== null || toggleBlocked(task)"
                     @click="runTask(task)"
                   />
                 </div>
