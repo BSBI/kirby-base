@@ -10,6 +10,8 @@ use BSBI\WebBase\helpers\maintenance\MaintenancePanel;
 use BSBI\WebBase\helpers\maintenance\MaintenancePreview;
 use BSBI\WebBase\helpers\maintenance\MaintenanceRunResult;
 use BSBI\WebBase\helpers\maintenance\MaintenanceTask;
+use BSBI\WebBase\helpers\maintenance\MaintenanceToggle;
+use BSBI\WebBase\helpers\maintenance\ToggleTask;
 use BSBI\WebBase\helpers\maintenance\NonDestructiveTask;
 use BSBI\WebBase\helpers\maintenance\OnDemandPreviewTask;
 use BSBI\WebBase\helpers\maintenance\UuidCachePopulateTask;
@@ -64,6 +66,39 @@ final class MaintenancePanelTaskPropsTest extends TestCase
         self::assertSame('Create 2 logins?', MaintenancePanel::taskProps($task, new MaintenanceOptions())['confirm']);
         self::assertNull(MaintenancePanel::taskProps($this->cleanupStub(), new MaintenanceOptions())['confirm'], 'the default wording otherwise');
         self::assertSame('Page 1 · 2 created', $task->run(new MaintenanceOptions())->note);
+    }
+
+    public function testATaskCanHaveACheckboxThatReachesItsRun(): void
+    {
+        $task = new class implements MaintenanceTask, ToggleTask {
+            public function key(): string { return 'sync'; }
+            public function label(): string { return 'Sync'; }
+            public function description(): string { return 'Syncs.'; }
+            public function toggle(): MaintenanceToggle
+            {
+                return new MaintenanceToggle('Dry run', 'Ticked: changes nothing.', true, 'Dry run?', 'Real run?', 'Run a dry run first.');
+            }
+            public function preview(MaintenanceOptions $options): MaintenancePreview { return new MaintenancePreview(1, 0); }
+            public function run(MaintenanceOptions $options, int $offset = 0, int $limit = 0): MaintenanceRunResult
+            {
+                return new MaintenanceRunResult(true, 1, 0, 0, $options->toggle === false ? 'real' : 'dry');
+            }
+        };
+
+        $props = MaintenancePanel::taskProps($task, new MaintenanceOptions());
+        self::assertSame([
+            'label' => 'Dry run',
+            'help' => 'Ticked: changes nothing.',
+            'default' => true,
+            'confirmOn' => 'Dry run?',
+            'confirmOff' => 'Real run?',
+            'blockedOffReason' => 'Run a dry run first.',
+        ], $props['toggle']);
+        self::assertNull(MaintenancePanel::taskProps($this->cleanupStub(), new MaintenanceOptions())['toggle'], 'no checkbox otherwise');
+
+        self::assertSame('real', $task->run(MaintenanceOptions::fromRetentionDays(null, false))->note);
+        self::assertSame('dry', $task->run(MaintenanceOptions::fromRetentionDays(30, true))->note);
+        self::assertSame(30, MaintenanceOptions::fromRetentionDays(30, true)->retentionDays);
     }
 
     public function testCleanupTaskKeepsTheDefaultWording(): void
