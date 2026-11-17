@@ -154,6 +154,26 @@ trait FormProperties {
     }
 
     /**
+     * Shows what was posted in every field, for a form shown again after a refused
+     * submission, so nothing has to be answered twice.
+     *
+     * @param array<mixed> $postData
+     * @return static
+     */
+    public function keepSubmittedValues(array $postData): static
+    {
+        $this->formFields = array_map(
+            static fn (ResolvedFormField $field): ResolvedFormField => $field->withSubmitted($postData),
+            $this->formFields
+        );
+        $this->formFieldGroups = array_map(
+            static fn (ResolvedFormField|ResolvedFormSection $item): ResolvedFormField|ResolvedFormSection => $item->withSubmitted($postData),
+            $this->formFieldGroups
+        );
+        return $this;
+    }
+
+    /**
      * Returns the custom form element blocks added by panel editors.
      *
      * @return Blocks|null

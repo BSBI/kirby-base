@@ -66,6 +66,24 @@ Radio and checkbox groups render as a `<fieldset>` whose `<legend>` is the label
 screen readers announce the question alongside each option. Help text set with `.help()`
 is linked to the fieldset by `aria-describedby` (`<name>-help`).
 
+### Filling fields in, and keeping answers
+
+`.value()` fills a field in before the person answers: a textbox's or textarea's
+text, the chosen option of a radio group, select or likert scale, or a list of the
+ticked options of a checkbox group.
+
+```php
+FormFieldSpec::textarea('instructions_77', 'Instructions')->value($currentWording),
+FormFieldSpec::checkboxGroup('help', 'Help wanted', $options)->value(['Training']),
+```
+
+When a submission is refused (the handler returns an error), call
+`$formPage->keepSubmittedValues($postData)` before rendering, so the form shows what
+was posted instead of starting again. It replaces filled-in values too: a question
+left unanswered comes back empty. Info fields, site blocks and rating matrices are
+left as they are. `ResolvedFormField::withSubmitted()` and
+`ResolvedFormSection::withSubmitted()` do the same for one field or section.
+
 ### Overridable properties
 
 Calling `.overridable('label')` (or `'options'`, `'leftLabel'`, etc.) on a spec:

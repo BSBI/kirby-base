@@ -53,6 +53,8 @@ class FormFieldSpec
     private string $defaultRightLabel  = 'Strongly agree';
     private int $defaultScaleMin    = 1;
     private int $defaultScaleMax    = 5;
+    /** @var string|list<string> the answer the field starts with; see value() */
+    private string|array $value = '';
     /** @var string[] */
     private array $defaultRows    = [];
     /** @var string[] */
@@ -255,6 +257,20 @@ class FormFieldSpec
     }
 
     /**
+     * Fills the field in: a textbox's or textarea's text, the chosen option of a
+     * radio group, select or likert scale, or the ticked options of a checkbox group
+     * (a list). Shown until the person changes it; after a refused submission the
+     * form shows what they posted instead.
+     *
+     * @param string|list<string> $value
+     */
+    public function value(string|array $value): static
+    {
+        $this->value = $value;
+        return $this;
+    }
+
+    /**
      * Marks this field as required.
      */
     public function required(): static
@@ -352,6 +368,7 @@ class FormFieldSpec
                 required:  $this->required,
                 inputType: $this->inputType,
                 help:      $this->defaultHelp,
+                value:     $this->value,
             ),
             self::TYPE_TEXTAREA => new ResolvedFormField(
                 type:     $this->type,
@@ -359,6 +376,7 @@ class FormFieldSpec
                 label:    $label,
                 required: $this->required,
                 help:     $this->defaultHelp,
+                value:    $this->value,
             ),
             self::TYPE_CHECKBOX_GROUP, self::TYPE_RADIO_GROUP, self::TYPE_SELECT => new ResolvedFormField(
                 type:     $this->type,
@@ -367,6 +385,7 @@ class FormFieldSpec
                 required: $this->required,
                 help:     $this->defaultHelp,
                 options:  $this->resolveOptions($panelValues),
+                value:    $this->value,
             ),
             self::TYPE_LIKERT => new ResolvedFormField(
                 type:        $this->type,
@@ -379,6 +398,7 @@ class FormFieldSpec
                 rightLabel:  $this->resolveProperty('rightLabel', $this->defaultRightLabel, $panelValues),
                 scaleMin:    $this->defaultScaleMin,
                 scaleMax:    $this->defaultScaleMax,
+                value:       $this->value,
             ),
             self::TYPE_INFO => new ResolvedFormField(
                 type:         $this->type,
