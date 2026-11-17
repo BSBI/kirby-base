@@ -18,6 +18,7 @@ use BSBI\WebBase\forms\ResolvedFormField;
         'name'            => $field->name . '[]',
         'checkboxOrRadio' => 'checkbox',
         'value'           => $option,
+        'checked'         => $field->isSelected($option),
         'labelLayout'     => 'small',
         'required'        => $field->required && $index === 0,
     ]);

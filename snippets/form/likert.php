@@ -28,6 +28,7 @@ $required     = $required ?? false;
                             name="<?= $name ?>"
                             id="<?= $inputId ?>"
                             value="<?= $i ?>"
+                            <?php if (isset($value) && $value === (string) $i) : ?>checked<?php endif; ?>
                             <?php if (!empty($required) && $i === $scaleMin) : ?>required<?php endif; ?>
                     >
                 </label>

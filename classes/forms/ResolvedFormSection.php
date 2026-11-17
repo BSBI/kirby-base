@@ -35,4 +35,20 @@ readonly class ResolvedFormSection
     {
         return $this->conditionField !== null;
     }
+
+    /**
+     * A copy whose fields show what was posted ({@see ResolvedFormField::withSubmitted()}).
+     *
+     * @param array<mixed> $postData
+     */
+    public function withSubmitted(array $postData): self
+    {
+        return new self(
+            $this->id,
+            $this->title,
+            array_map(static fn (ResolvedFormField $field): ResolvedFormField => $field->withSubmitted($postData), $this->fields),
+            $this->conditionField,
+            $this->conditionValue,
+        );
+    }
 }
