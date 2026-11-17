@@ -80,8 +80,8 @@ FormFieldSpec::checkboxGroup('help', 'Help wanted', $options)->value(['Training'
 When a submission is refused (the handler returns an error), call
 `$formPage->keepSubmittedValues($postData)` before rendering, so the form shows what
 was posted instead of starting again. It replaces filled-in values too: a question
-left unanswered comes back empty. Info fields, site blocks and rating matrices are
-left as they are. `ResolvedFormField::withSubmitted()` and
+left unanswered comes back empty. Info fields and site blocks are left as they are,
+and a **rating matrix's answers are not kept**: the person answers it again. `ResolvedFormField::withSubmitted()` and
 `ResolvedFormSection::withSubmitted()` do the same for one field or section.
 
 ### Overridable properties

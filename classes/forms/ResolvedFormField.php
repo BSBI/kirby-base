@@ -114,8 +114,10 @@ readonly class ResolvedFormField
      * Whether an option of a radio group, checkbox group, select or likert scale is
      * the field's answer (or one of them).
      */
-    public function isSelected(string $option): bool
+    public function isSelected(string|int $option): bool
     {
+        // A definition may give options as numbers; answers are always strings.
+        $option = (string) $option;
         return is_array($this->value)
             ? in_array($option, $this->value, true)
             : $this->value !== '' && $this->value === $option;

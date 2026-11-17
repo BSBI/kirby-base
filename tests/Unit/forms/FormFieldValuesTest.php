@@ -74,6 +74,14 @@ final class FormFieldValuesTest extends TestCase
         $this->assertFalse($checks->isSelected('A'));
     }
 
+    public function testNumericOptionsFromADefinitionWork(): void
+    {
+        $radio = FormFieldSpec::radioGroup('n', 'How many?', [1, 2, 3])->resolve([])->withSubmitted(['n' => '2']);
+
+        $this->assertTrue($radio->isSelected(2));
+        $this->assertFalse($radio->isSelected(3));
+    }
+
     public function testNonAnswerFieldsAreLeftAlone(): void
     {
         $info = FormFieldSpec::info('intro', 'Some **text**')->resolve([]);
