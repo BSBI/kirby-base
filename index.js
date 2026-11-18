@@ -990,7 +990,7 @@ panel.plugin('open-foundations/kirby-base', {
       template: `
         <section class="k-section k-myshortcuts-section">
           <header class="k-section-header">
-            <h2 class="k-headline" ref="heading" tabindex="-1">{{ headline }}</h2>
+            <h2 class="k-label k-section-label" ref="heading" tabindex="-1"><span class="k-label-text">{{ headline }}</span></h2>
           </header>
           <p v-if="shortcuts.length === 0" class="k-myshortcuts-empty">
             {{ $t('kirby-base.shortcuts.empty', null, 'Use “Add to my shortcuts” at the top of any page to add it here.') }}
