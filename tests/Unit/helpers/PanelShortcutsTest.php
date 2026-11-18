@@ -102,6 +102,14 @@ final class PanelShortcutsTest extends TestCase
         $this->assertStringEndsWith('/pages/alpha', $this->service()->list($this->editor())[0]['url']);
     }
 
+    public function testAPageWithNoTitleIsListedBySlug(): void
+    {
+        $this->kirby->impersonate('kirby', fn() => $this->page('alpha')->update(['title' => '']));
+        $this->service()->add($this->editor(), $this->page('alpha'));
+
+        $this->assertSame(['alpha'], $this->titles());
+    }
+
     public function testHasReportsWhetherThePageIsSaved(): void
     {
         $this->assertFalse($this->service()->has($this->editor(), $this->page('alpha')));

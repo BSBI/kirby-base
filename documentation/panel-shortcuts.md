@@ -25,7 +25,14 @@ appears only once. A user can keep up to 50 shortcuts.
    ```
 
    A page blueprint that sets its own `buttons:` overrides this, so add
-   `myshortcut` there too.
+   `myshortcut` there too:
+
+   ```yaml
+   buttons:
+     - open
+     - myshortcut
+     - settings
+   ```
 
 2. **Place the section** on the site blueprint, usually the dashboard:
 
@@ -77,6 +84,10 @@ No user blueprint changes are needed.
   so a site can translate them.
 
 ## Limits
+
+- **Two changes at the same moment** by one user (say, in two browser tabs) can
+  lose one of them: each request reads the list, changes it and saves it whole.
+  Within one view, a second click waits for the first to finish.
 
 - **Pages only:** not files, users or external links.
 - **Editing a user while they change their shortcuts:** if an admin has that
