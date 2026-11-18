@@ -333,11 +333,14 @@ abstract class KirbyBaseHelper
                 : $page->title()->toString();
             $webPage->setOpenGraphTitle($openGraphTitle);
 
-            $openGraphDescription = $this->isPageFieldNotEmpty($page, 'og_description')
-                ? $this->getPageFieldAsString($page, 'og_description')
-                : $this->getSiteFieldAsString('og_description');
-
-            $webPage->setOpenGraphDescription($openGraphDescription);
+            // The page's own share text, else its description, else the site's
+            // share text: BaseWebPage::getOpenGraphDescription() picks.
+            $webPage->setOpenGraphDescription(
+                $this->isPageFieldNotEmpty($page, 'og_description')
+                    ? $this->getPageFieldAsString($page, 'og_description')
+                    : ''
+            );
+            $webPage->setDefaultOpenGraphDescription($this->getSiteFieldAsString('og_description'));
 
             if ($this->isPageFieldNotEmpty($page, 'og_image')) {
                 $ogImage = $this->getPageFieldAsFile($page, 'og_image');
