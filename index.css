@@ -126,3 +126,87 @@
 .k-writer ol[data-list-style="upper-alpha"] > li { list-style-type: upper-alpha; }
 .k-writer ol[data-list-style="lower-roman"] > li { list-style-type: lower-roman; }
 .k-writer ol[data-list-style="upper-roman"] > li { list-style-type: upper-roman; }
+
+/* My shortcuts section (kirby-base#75). Rows look like bsbi-web's dashboard
+   Quick links, which follow the Panel's page lists: white cards 2px apart, a
+   38px dark icon tile, small text, and as wide as the longest title rather
+   than the whole column. */
+.k-myshortcuts-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+  inline-size: fit-content;
+  max-inline-size: 100%;
+}
+
+.k-myshortcuts-item {
+  display: flex;
+  align-items: center;
+  /* Kirby's list-item background: white, and dark in the dark theme */
+  background: var(--item-color-back, var(--color-white));
+  border-radius: var(--rounded);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  padding-inline-end: var(--spacing-1);
+}
+
+.k-myshortcuts-link {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  flex: 1;
+  min-width: 0;
+  padding-inline-end: var(--spacing-3);
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.k-myshortcuts-link:hover {
+  color: var(--color-focus);
+}
+
+.k-myshortcuts-link:focus-visible {
+  outline: var(--outline);
+  outline-offset: -2px;
+}
+
+.k-myshortcuts-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 38px;
+  block-size: 38px;
+  flex-shrink: 0;
+  background: var(--color-gray-900);
+  color: var(--color-white);
+}
+
+.k-myshortcuts-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.k-myshortcuts-actions {
+  display: flex;
+  flex-shrink: 0;
+}
+
+.k-myshortcuts-empty {
+  padding: 0.75rem;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--rounded);
+  color: var(--color-text-dimmed);
+  font-size: var(--text-sm);
+}
+
+.k-myshortcuts-section .k-section-label:focus {
+  outline: none;
+}
+
+.k-myshortcuts-section .k-section-label:focus-visible {
+  outline: var(--outline);
+}

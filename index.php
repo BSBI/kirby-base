@@ -15,6 +15,7 @@ use BSBI\WebBase\helpers\GlossaryService;
 use BSBI\WebBase\helpers\KirbyBaseHelper;
 use BSBI\WebBase\helpers\KirbyInternalHelper;
 use BSBI\WebBase\helpers\PanelPasswordResetService;
+use BSBI\WebBase\helpers\PanelShortcuts;
 use BSBI\WebBase\helpers\SearchIndexHelper;
 use BSBI\WebBase\helpers\SearchService;
 use BSBI\WebBase\helpers\StyleGuideService;
@@ -76,6 +77,33 @@ if (!function_exists('decodeFilteredSectionParam')) {
 }
 
 $pluginConfig = [
+    'areas' => [
+        // Extends Kirby's own site area with the "Add to my shortcuts" page
+        // view button (kirby-base#75). Sites list `myshortcut` in their
+        // panel.viewButtons.page option to show it; see
+        // documentation/panel-shortcuts.md.
+        'site' => function (): array {
+            return ['buttons' => ['page.myshortcut' => PanelShortcuts::viewButton(...)]];
+        },
+    ],
+    'translations' => [
+        'en' => [
+            'kirby-base.shortcuts.headline' => 'My shortcuts',
+            'kirby-base.shortcuts.add' => 'Add to my shortcuts',
+            'kirby-base.shortcuts.remove' => 'Remove from my shortcuts',
+            'kirby-base.shortcuts.empty' => 'Use “Add to my shortcuts” at the top of any page to add it here.',
+            'kirby-base.shortcuts.added' => '{title} added to your shortcuts',
+            'kirby-base.shortcuts.removed' => '{title} removed from your shortcuts',
+            'kirby-base.shortcuts.movedUp' => '{title} moved up',
+            'kirby-base.shortcuts.movedDown' => '{title} moved down',
+            'kirby-base.shortcuts.moveUp' => 'Move {title} up',
+            'kirby-base.shortcuts.moveDown' => 'Move {title} down',
+            'kirby-base.shortcuts.removeOne' => 'Remove {title} from your shortcuts',
+            'kirby-base.shortcuts.full' => 'You already have {max} shortcuts. Remove one to add another.',
+            'kirby-base.shortcuts.notFound' => 'That page could not be found.',
+            'kirby-base.shortcuts.failed' => 'Your shortcuts could not be changed. Please try again.',
+        ],
+    ],
     'components' => [
         // File Archive files report their permanent URL from $file->url(), so writer
         // links, file blocks, feeds and the Panel all emit /files/<slug> without each
@@ -216,6 +244,7 @@ $pluginConfig = [
         'formanalysis' => require __DIR__ . '/sections/formanalysis.php',
         'formaboutlinks' => require __DIR__ . '/sections/formaboutlinks.php',
         'quicklinks' => require __DIR__ . '/sections/quicklinks.php',
+        'myshortcuts' => require __DIR__ . '/sections/myshortcuts.php',
         'searchanalytics' => require __DIR__ . '/sections/searchanalytics.php',
         'searchindexstats' => require __DIR__ . '/sections/searchindexstats.php',
         'contentindexstats'   => require __DIR__ . '/sections/contentindexstats.php',
@@ -230,6 +259,67 @@ $pluginConfig = [
     ],
     'api' => [
         'routes' => [
+            [
+                // The logged-in user's Panel shortcuts (kirby-base#75). Every
+                // shortcuts route acts on kirby()->user() only, never on a
+                // user named in the request.
+                'pattern' => 'kirby-base/shortcuts',
+                'method'  => 'GET',
+                'action'  => function (): array {
+                    return ['shortcuts' => (new PanelShortcuts(kirby()))->list(PanelShortcuts::currentUser(kirby()))];
+                },
+            ],
+            [
+                // Body { page: page id, tab: Panel tab name or "" }.
+                'pattern' => 'kirby-base/shortcuts/add',
+                'method'  => 'POST',
+                'action'  => function (): array {
+                    $kirby = kirby();
+                    $user = PanelShortcuts::currentUser($kirby);
+                    $data = $kirby->request()->data();
+                    $id = is_string($data['page'] ?? null) ? $data['page'] : '';
+                    $page = $id === '' ? null : $kirby->site()->findPageOrDraft($id);
+                    if (!$page instanceof \Kirby\Cms\Page || !$page->isAccessible()) {
+                        throw new \Kirby\Exception\NotFoundException(
+                            message: PanelShortcuts::text('notFound', 'That page could not be found.')
+                        );
+                    }
+                    $shortcuts = new PanelShortcuts($kirby);
+                    $shortcuts->add($user, $page, is_string($data['tab'] ?? null) ? $data['tab'] : '');
+                    return ['saved' => true];
+                },
+            ],
+            [
+                // Body { uuid: page://… }.
+                'pattern' => 'kirby-base/shortcuts/remove',
+                'method'  => 'POST',
+                'action'  => function (): array {
+                    $kirby = kirby();
+                    $uuid = $kirby->request()->data()['uuid'] ?? null;
+                    $shortcuts = new PanelShortcuts($kirby);
+                    $user = PanelShortcuts::currentUser($kirby);
+                    if (is_string($uuid)) {
+                        $shortcuts->remove($user, $uuid);
+                    }
+                    return ['saved' => false, 'shortcuts' => $shortcuts->list($user)];
+                },
+            ],
+            [
+                // Body { uuid: page://…, direction: -1 (up) or 1 (down) }.
+                'pattern' => 'kirby-base/shortcuts/step',
+                'method'  => 'POST',
+                'action'  => function (): array {
+                    $kirby = kirby();
+                    $data = $kirby->request()->data();
+                    $shortcuts = new PanelShortcuts($kirby);
+                    $user = PanelShortcuts::currentUser($kirby);
+                    $direction = ($data['direction'] ?? null) === -1 ? -1 : 1;
+                    if (is_string($data['uuid'] ?? null)) {
+                        $shortcuts->step($user, $data['uuid'], $direction);
+                    }
+                    return ['shortcuts' => $shortcuts->list($user)];
+                },
+            ],
             [
                 // An admin resets a user's password from the memberpassword
                 // field (bsbi-web#869); body { notify: bool } emails it to them.
@@ -759,9 +849,9 @@ $pluginConfig = [
 
 // Override panel page search with fast SQLite-backed search when enabled
 if (option('search.panelSearch', false)) {
-    $pluginConfig['areas'] = [
-        'site' => function () {
-            return [
+    $siteArea = $pluginConfig['areas']['site'];
+    $pluginConfig['areas']['site'] = function () use ($siteArea): array {
+            return $siteArea() + [
                 'searches' => [
                     'pages' => [
                         'label' => I18n::translate('pages'),
@@ -810,8 +900,7 @@ if (option('search.panelSearch', false)) {
                     ]
                 ]
             ];
-        }
-    ];
+    };
 }
 
 // Index stats panel area — opt-in via contentIndex.showIndexStatsPanel config

@@ -273,6 +273,9 @@ You need to do this to update the plugin in your project
 ## Custom fields
 - See [custom-fields.md](custom-fields.md) (incl. `memberpassword`: stored passwords with Show and admin Reset)
 
+## Personal Panel shortcuts
+- See [panel-shortcuts.md](panel-shortcuts.md): "Add to my shortcuts" on every page, and a My shortcuts dashboard section
+
 ## Requirements
 
 The following need to be in place for any site using KirbyBase
