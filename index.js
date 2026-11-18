@@ -919,6 +919,123 @@ panel.plugin('open-foundations/kirby-base', {
         </section>
       `
     },
+    /**
+     * The logged-in user's own shortcuts (kirby-base#75; sections/myshortcuts.php).
+     * Move up / Move down / Remove are real buttons, so it all works from the
+     * keyboard; focus stays with the row after a move and goes to the next row
+     * (or the heading) after a remove. One persistent live region announces
+     * each change.
+     */
+    myshortcuts: {
+      data: function () {
+        return { headline: null, shortcuts: [], busy: false, status: '' };
+      },
+      created: async function () {
+        try {
+          const response = await this.load();
+          this.headline = response.headline;
+          this.shortcuts = response.shortcuts || [];
+        } catch (error) {
+          console.error('Failed to load shortcuts:', error);
+        }
+      },
+      methods: {
+        label: function (key, shortcut, fallback) {
+          return this.$t('kirby-base.shortcuts.' + key, { title: shortcut.title }, fallback.replace('{title}', shortcut.title));
+        },
+        focusControl: function (uuid, action) {
+          this.$nextTick(function () {
+            // k-button doesn't pass data-* attributes on, so the row carries
+            // the uuid and each button a class naming its action.
+            const row = uuid ? this.$el.querySelector('li[data-shortcut="' + CSS.escape(uuid) + '"]') : null;
+            let target = row ? row.querySelector('.k-myshortcuts-' + action) : null;
+            if (target && (target.disabled || target.getAttribute('aria-disabled') === 'true')) {
+              target = row.querySelector('.k-myshortcuts-remove');
+            }
+            (target || this.$refs.heading).focus();
+          }.bind(this));
+        },
+        step: async function (shortcut, direction) {
+          if (this.busy) { return; }
+          this.busy = true;
+          try {
+            const response = await this.$api.post('kirby-base/shortcuts/step', { uuid: shortcut.uuid, direction: direction });
+            this.shortcuts = response.shortcuts || [];
+            this.status = direction < 0
+              ? this.label('movedUp', shortcut, '{title} moved up')
+              : this.label('movedDown', shortcut, '{title} moved down');
+          } catch (error) {
+            this.$panel.notification.error(error);
+          } finally {
+            this.busy = false;
+            this.focusControl(shortcut.uuid, direction < 0 ? 'up' : 'down');
+          }
+        },
+        remove: async function (shortcut, index) {
+          if (this.busy) { return; }
+          this.busy = true;
+          try {
+            const response = await this.$api.post('kirby-base/shortcuts/remove', { uuid: shortcut.uuid });
+            this.shortcuts = response.shortcuts || [];
+            this.status = this.label('removed', shortcut, '{title} removed from your shortcuts');
+            const next = this.shortcuts[index] || this.shortcuts[index - 1] || null;
+            this.focusControl(next ? next.uuid : null, 'remove');
+          } catch (error) {
+            this.$panel.notification.error(error);
+          } finally {
+            this.busy = false;
+          }
+        }
+      },
+      template: `
+        <section class="k-section k-myshortcuts-section">
+          <header class="k-section-header">
+            <h2 class="k-headline" ref="heading" tabindex="-1">{{ headline }}</h2>
+          </header>
+          <p v-if="shortcuts.length === 0" class="k-myshortcuts-empty">
+            {{ $t('kirby-base.shortcuts.empty', null, 'Use “Add to my shortcuts” at the top of any page to add it here.') }}
+          </p>
+          <ul v-else role="list" class="k-myshortcuts-list">
+            <li v-for="(shortcut, index) in shortcuts" :key="shortcut.uuid" :data-shortcut="shortcut.uuid" class="k-myshortcuts-item">
+              <k-link :to="shortcut.url" class="k-myshortcuts-link">
+                <span class="k-myshortcuts-icon" aria-hidden="true"><k-icon :type="shortcut.icon" /></span>
+                <span class="k-myshortcuts-title">{{ shortcut.title }}</span>
+              </k-link>
+              <span class="k-myshortcuts-actions">
+                <k-button
+                  icon="angle-up"
+                  size="xs"
+                  :disabled="busy || index === 0"
+                  :title="label('moveUp', shortcut, 'Move {title} up')"
+                  :aria-label="label('moveUp', shortcut, 'Move {title} up')"
+                  class="k-myshortcuts-up"
+                  @click="step(shortcut, -1)"
+                />
+                <k-button
+                  icon="angle-down"
+                  size="xs"
+                  :disabled="busy || index === shortcuts.length - 1"
+                  :title="label('moveDown', shortcut, 'Move {title} down')"
+                  :aria-label="label('moveDown', shortcut, 'Move {title} down')"
+                  class="k-myshortcuts-down"
+                  @click="step(shortcut, 1)"
+                />
+                <k-button
+                  icon="trash"
+                  size="xs"
+                  :disabled="busy"
+                  :title="label('removeOne', shortcut, 'Remove {title} from your shortcuts')"
+                  :aria-label="label('removeOne', shortcut, 'Remove {title} from your shortcuts')"
+                  class="k-myshortcuts-remove"
+                  @click="remove(shortcut, index)"
+                />
+              </span>
+            </li>
+          </ul>
+          <p class="sr-only" aria-live="polite">{{ status }}</p>
+        </section>
+      `
+    },
     quicklinks: {
       data: function () {
         return {
@@ -3553,6 +3670,69 @@ panel.plugin('open-foundations/kirby-base', {
 
           <style>@keyframes sgc-spin { to { transform: rotate(360deg); } }</style>
         </section>
+      `
+    }
+  },
+
+  viewButtons: {
+    /**
+     * "Add to my shortcuts" / "Remove from my shortcuts" on a page view
+     * (kirby-base#75; PanelShortcuts::viewButton). Saves the tab being viewed,
+     * so the shortcut opens on it. The label change is the visible feedback;
+     * the persistent live region announces it to screen readers.
+     */
+    myshortcut: {
+      props: {
+        saved: Boolean,
+        pageId: String,
+        uuid: String,
+        pageTitle: String,
+        addText: String,
+        removeText: String
+      },
+      data: function () {
+        return { isSaved: this.saved, busy: false, status: '' };
+      },
+      watch: {
+        saved: function (value) { this.isSaved = value; }
+      },
+      methods: {
+        toggle: async function () {
+          if (this.busy) { return; }
+          this.busy = true;
+          this.status = '';
+          const title = this.pageTitle;
+          try {
+            if (this.isSaved) {
+              await this.$api.post('kirby-base/shortcuts/remove', { uuid: this.uuid });
+              this.isSaved = false;
+              this.status = this.$t('kirby-base.shortcuts.removed', { title: title }, title + ' removed from your shortcuts');
+            } else {
+              const tab = new URLSearchParams(window.location.search).get('tab') || '';
+              await this.$api.post('kirby-base/shortcuts/add', { page: this.pageId, tab: tab });
+              this.isSaved = true;
+              this.status = this.$t('kirby-base.shortcuts.added', { title: title }, title + ' added to your shortcuts');
+            }
+          } catch (error) {
+            this.$panel.notification.error(error);
+          } finally {
+            this.busy = false;
+          }
+        }
+      },
+      template: `
+        <div class="k-view-button k-myshortcut-view-button">
+          <k-button
+            variant="filled"
+            size="sm"
+            :icon="isSaved ? 'star-filled' : 'star'"
+            :text="isSaved ? removeText : addText"
+            :disabled="busy"
+            :responsive="true"
+            @click="toggle"
+          />
+          <span class="sr-only" aria-live="polite">{{ status }}</span>
+        </div>
       `
     }
   },

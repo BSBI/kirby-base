@@ -126,3 +126,79 @@
 .k-writer ol[data-list-style="upper-alpha"] > li { list-style-type: upper-alpha; }
 .k-writer ol[data-list-style="lower-roman"] > li { list-style-type: lower-roman; }
 .k-writer ol[data-list-style="upper-roman"] > li { list-style-type: upper-roman; }
+
+/* My shortcuts section and view button (kirby-base#75) */
+.k-myshortcuts-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.k-myshortcuts-item {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: var(--item-color-back, var(--color-white));
+  border-radius: var(--rounded);
+  box-shadow: var(--shadow);
+  padding-inline-end: 0.25rem;
+}
+
+.k-myshortcuts-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+  min-width: 0;
+  min-height: 2.5rem;
+  padding-inline-end: 0.5rem;
+  color: var(--color-text);
+}
+
+.k-myshortcuts-link:focus-visible {
+  outline: var(--outline);
+  outline-offset: -2px;
+  border-radius: var(--rounded);
+}
+
+.k-myshortcuts-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  align-self: stretch;
+  background: var(--color-gray-200);
+  border-start-start-radius: var(--rounded);
+  border-end-start-radius: var(--rounded);
+  color: var(--color-gray-800);
+}
+
+.k-myshortcuts-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.k-myshortcuts-actions {
+  display: flex;
+  flex-shrink: 0;
+}
+
+.k-myshortcuts-empty {
+  padding: 0.75rem;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--rounded);
+  color: var(--color-text-dimmed);
+  font-size: var(--text-sm);
+}
+
+.k-myshortcuts-section .k-headline:focus {
+  outline: none;
+}
+
+.k-myshortcuts-section .k-headline:focus-visible {
+  outline: var(--outline);
+}
