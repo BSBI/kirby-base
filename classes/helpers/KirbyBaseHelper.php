@@ -379,10 +379,9 @@ abstract class KirbyBaseHelper
                     $webPage->setStatus($actionStatus->getStatus());
                     $webPage->addFriendlyMessage($actionStatus->getFirstFriendlyMessage());
                 }
-            } elseif ($actionStatus = get('actionStatus')) {
-                $webPage->setStatus($actionStatus);
-                $webPage->addFriendlyMessage(get('friendlyMessage', 'Unknown status'));
             }
+            // Status messages come only from the session flash above, never from the
+            // query string: page text must not be settable by a link.
 
             $query = $this->getSearchQuery();
 

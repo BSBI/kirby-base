@@ -16,7 +16,7 @@ if ($currentPage->hasFriendlyMessages()) :
 <div class="alert alert-<?=$messageStatus?> alert-dismissible fade show m-0" role="alert" id="statusAlert">
     <h3>
         <?php foreach ($currentPage->getFriendlyMessages() as $message) : ?>
-            <?=$message?> <br>
+            <?= esc($message) ?> <br>
         <?php endforeach ?>
     </h3>
 </div>
@@ -32,7 +32,7 @@ if (!$currentPage->getStatus()) : ?>
     <div class="p-2">
         <h3>Error details</h3>
             <?php foreach ($currentPage->getErrorMessages() as $message) : ?>
-        <p><?=$message?></p>
+        <p><?= esc($message) ?></p>
             <?php endforeach ?>
     </div>
     <?php else :
