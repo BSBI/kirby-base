@@ -52,6 +52,7 @@ if ($feedbackForm->hasFriendlyMessages()) :
           'alert' => $feedbackForm->getFeedbackAlert(),
           'required' => true]) ?>
   <?php snippet('form/turnstile', ['siteKey' => $feedbackForm->getTurnstileSiteKey()]) ?>
-    <input type="hidden" id="page" name="page" value="<?=get('page')?>">
+    <?php $aboutPage = get('page'); /* from the address: escaped, never markup */ ?>
+    <input type="hidden" id="page" name="page" value="<?= esc(is_string($aboutPage) ? $aboutPage : '', 'attr') ?>">
     <input type="submit" name="submit" value="Send us your feedback" class="btn btn-outline-success">
 </form>
