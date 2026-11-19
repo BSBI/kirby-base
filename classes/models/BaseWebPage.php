@@ -46,6 +46,7 @@ class BaseWebPage extends BaseModel
      * @var string
      */
     protected string $openGraphDescription = '';
+    protected string $defaultOpenGraphDescription = '';
 
     /**
      * @var string
@@ -275,11 +276,33 @@ class BaseWebPage extends BaseModel
     }
 
     /**
-     * @return string
+     * The description shown when the page is shared: the page's own share text,
+     * else its description, else the site default. Never empty while any of
+     * those has text.
      */
     public function getOpenGraphDescription(): string
     {
-        return $this->openGraphDescription;
+        $candidates = [
+            $this->openGraphDescription,
+            $this->hasDescription() ? $this->getDescription() : '',
+            $this->defaultOpenGraphDescription,
+        ];
+        foreach ($candidates as $candidate) {
+            if (trim($candidate) !== '') {
+                return $candidate;
+            }
+        }
+        return '';
+    }
+
+    /**
+     * The site-wide share text, used when the page has neither its own
+     * share text nor a description.
+     */
+    public function setDefaultOpenGraphDescription(string $description): self
+    {
+        $this->defaultOpenGraphDescription = $description;
+        return $this;
     }
 
     /**

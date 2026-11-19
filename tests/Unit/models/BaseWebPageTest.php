@@ -253,6 +253,51 @@ final class BaseWebPageTest extends TestCase
         $this->assertSame('https://example.com/img.jpg', $page->getOpenGraphImage());
     }
 
+    public function testOpenGraphDescriptionPrefersThePagesOwn(): void
+    {
+        $page = $this->createPage();
+        $page->setOpenGraphDescription('Own share text');
+        $page->setDescription('Page description');
+        $page->setDefaultOpenGraphDescription('Site default');
+
+        $this->assertSame('Own share text', $page->getOpenGraphDescription());
+    }
+
+    public function testOpenGraphDescriptionFallsBackToThePageDescription(): void
+    {
+        $page = $this->createPage();
+        $page->setOpenGraphDescription('');
+        $page->setDescription('Page description');
+        $page->setDefaultOpenGraphDescription('Site default');
+
+        $this->assertSame('Page description', $page->getOpenGraphDescription());
+    }
+
+    public function testOpenGraphDescriptionFallsBackToTheSiteDefault(): void
+    {
+        $page = $this->createPage();
+        $page->setDescription('');
+        $page->setDefaultOpenGraphDescription('Site default');
+
+        $this->assertSame('Site default', $page->getOpenGraphDescription());
+    }
+
+    public function testOpenGraphDescriptionUsesTheSiteDefaultWhenNoDescriptionWasSet(): void
+    {
+        $page = $this->createPage();
+        $page->setDefaultOpenGraphDescription('Site default');
+
+        $this->assertSame('Site default', $page->getOpenGraphDescription());
+    }
+
+    public function testOpenGraphDescriptionIsEmptyOnlyWhenEverythingIs(): void
+    {
+        $page = $this->createPage();
+        $page->setDescription('   ');
+
+        $this->assertSame('', $page->getOpenGraphDescription());
+    }
+
     // --- Cookie consent ---
 
     public function testCookieConsentDefaults(): void

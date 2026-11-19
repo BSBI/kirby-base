@@ -153,6 +153,19 @@ sitemapExclude
 There is a route set up for robots.txt excluding the kirby folders and search/login folder, plus AI bots.  To add 
 additional elements to the robots.txt, create a snippet called robots-txt-additional
 
+## Share previews (Open Graph)
+
+The header's `og:description`, the text social media and chat apps show under a shared
+link, is never left empty while the site has any text to give it. It is the first of:
+
+1. the page's own `og_description` field;
+2. the page's `description` (which itself falls back to the site's `description`);
+3. the site's `og_description` field.
+
+`BaseWebPage::getOpenGraphDescription()` makes the choice; `KirbyBaseHelper` sets the page's
+own share text with `setOpenGraphDescription()` and the site's with
+`setDefaultOpenGraphDescription()`.
+
 ## Login and password protection
 
 There is a tab blueprint called permissions.yml which can be added to any page.
