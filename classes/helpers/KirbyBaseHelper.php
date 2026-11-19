@@ -107,7 +107,6 @@ abstract class KirbyBaseHelper
     protected ?Page $page;
 
     const string COOKIE_CONSENT_NAME = 'cookieConsent';
-    const string LEGACY_COOKIE_CONSENT_NAME = 'cookieConsentGiven';
 
     /**
      *
@@ -3883,12 +3882,9 @@ abstract class KirbyBaseHelper
      * default a fresh visitor (with no cookies) sees.
      *
      * Filter cookies are namespaced with {@see FilterCookiePolicy::PREFIX} so
-     * that {@see self::isPageCacheable()} can spot a filtered request. A legacy
-     * un-prefixed cookie (set before the prefix was introduced) is adopted once
-     * on read — re-persisted under the prefixed name and the orphan expired — so
-     * existing visitors keep their saved filters. That transition fallback can
-     * be removed once legacy cookies have aged out (~90 days). See
-     * documentation/caching.md.
+     * that {@see self::isPageCacheable()} can spot a filtered request. Only the
+     * prefixed name is read: an un-prefixed cookie is ignored, because the cache
+     * can't tell it apart from an unfiltered request.
      *
      * @param string $key The filter key (unprefixed)
      * @param string $fallback Default value the filter reverts to
@@ -3897,15 +3893,6 @@ abstract class KirbyBaseHelper
     protected function getFilterCookieAsString(string $key, string $fallback = ''): string
     {
         $prefixedKey = $this->getFilterCookiePolicy()->prefixedName($key);
-
-        // Transition fallback: migrate a legacy un-prefixed filter cookie to the
-        // prefixed name once, then expire the orphan. setCookie()/deleteCookie()
-        // update $_COOKIE in place, so the migrated value is readable via the
-        // prefixed key immediately below within this same request.
-        if (!$this->hasCookie($prefixedKey) && $this->hasCookie($key)) {
-            $this->setFilterCookie($key, $this->getCookieAsString($key, $fallback));
-            $this->deleteCookie($key);
-        }
 
         return $this->getFilterResetService()->resolve(
             $this->getCookieAsString($prefixedKey, $fallback),
@@ -3952,8 +3939,7 @@ abstract class KirbyBaseHelper
 
     /**
      * Processes cookie consent form submission (accept or reject).
-     * Sets the cookie consent value to 'accepted' or 'rejected' and deletes
-     * any legacy cookie. Redirects to the referring page or the home page.
+     * Sets the cookie consent value to 'accepted' or 'rejected'. Redirects to the referring page or the home page.
      *
      * @return void
      */
@@ -3966,7 +3952,6 @@ abstract class KirbyBaseHelper
             $consent = $this->getRequestAsString('consent');
             $cookieValue = ($consent === 'accepted') ? 'accepted' : 'rejected';
             $this->setCookie(self::COOKIE_CONSENT_NAME, $cookieValue, 365);
-            $this->deleteCookie(self::LEGACY_COOKIE_CONSENT_NAME);
             $referringPage = $this->getRequestAsString('referringPage');
             if (!empty($referringPage)) {
                 go($referringPage);
@@ -3984,9 +3969,7 @@ abstract class KirbyBaseHelper
     }
 
     /**
-     * Checks if cookie consent has been given.
-     * Recognises current value ('accepted') and legacy values ('yes', 'true', '1')
-     * from earlier cookie name ('cookieConsentGiven') and value formats.
+     * Checks if cookie consent has been given (the cookie is 'accepted').
      * Uses cache-safe cookie reading since the consent state only affects
      * client-side JS behavior, not the page HTML content.
      *
@@ -3994,16 +3977,11 @@ abstract class KirbyBaseHelper
      */
     public function hasCookieConsent(): bool
     {
-        $value = $this->getCookieCacheSafe(self::COOKIE_CONSENT_NAME);
-        if ($value === '') {
-            $value = $this->getCookieCacheSafe(self::LEGACY_COOKIE_CONSENT_NAME);
-        }
-        return in_array($value, ['accepted', 'yes', 'true', '1'], true);
+        return $this->getCookieCacheSafe(self::COOKIE_CONSENT_NAME) === 'accepted';
     }
 
     /**
-     * Checks if cookie consent has been explicitly rejected.
-     * Recognises current value ('rejected') and legacy value ('no').
+     * Checks if cookie consent has been explicitly rejected (the cookie is 'rejected').
      * Uses cache-safe cookie reading since the consent state only affects
      * client-side JS behavior, not the page HTML content.
      *
@@ -4011,11 +3989,7 @@ abstract class KirbyBaseHelper
      */
     public function hasCookieConsentRejected(): bool
     {
-        $value = $this->getCookieCacheSafe(self::COOKIE_CONSENT_NAME);
-        if ($value === '') {
-            $value = $this->getCookieCacheSafe(self::LEGACY_COOKIE_CONSENT_NAME);
-        }
-        return in_array($value, ['rejected', 'no'], true);
+        return $this->getCookieCacheSafe(self::COOKIE_CONSENT_NAME) === 'rejected';
     }
 
     #endregion

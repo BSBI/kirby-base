@@ -1,6 +1,5 @@
 ;(function() {
   const COOKIE_NAME = 'cookieConsent'
-  const LEGACY_COOKIE_NAME = 'cookieConsentGiven'
   const COOKIE_DAYS = 365
 
   /**
@@ -27,32 +26,13 @@
   }
 
   /**
-   * Delete a cookie by name
-   * @param {string} name
-   */
-  function deleteCookie(name) {
-    document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;SameSite=Lax'
-  }
-
-  /**
-   * Get consent status from cookie, including legacy cookie name and values.
-   * Recognises legacy cookie 'cookieConsentGiven' with values 'true', 'yes', '1'
-   * (mapped to 'accepted') and 'no' (mapped to 'rejected').
+   * Get consent status from the cookie: 'accepted', 'rejected', or null when no
+   * choice has been recorded (any other value counts as no choice).
    * @returns {'accepted'|'rejected'|null}
    */
   function getConsentStatus() {
     var value = getCookie(COOKIE_NAME)
-    if (!value) {
-      var legacy = getCookie(LEGACY_COOKIE_NAME)
-      if (legacy) {
-        if (['true', 'yes', '1'].indexOf(legacy) !== -1) {
-          value = 'accepted'
-        } else if (legacy === 'no') {
-          value = 'rejected'
-        }
-      }
-    }
-    return value
+    return value === 'accepted' || value === 'rejected' ? value : null
   }
 
   /**
@@ -61,7 +41,6 @@
    */
   function setConsentStatus(status) {
     setCookie(COOKIE_NAME, status, COOKIE_DAYS)
-    deleteCookie(LEGACY_COOKIE_NAME)
     applyConsentState(status)
   }
 

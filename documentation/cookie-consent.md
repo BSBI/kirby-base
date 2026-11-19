@@ -6,7 +6,7 @@ Kirby-base provides a cookie consent system with a dismissable banner, consent-g
 
 `cookie-consent.js` is loaded as an external file at the end of `<body>`. On each page it:
 
-1. Reads the `cookieConsent` cookie (`accepted` or `rejected`; falls back to the legacy `cookieConsentGiven` cookie)
+1. Reads the `cookieConsent` cookie (`accepted` or `rejected`; any other value counts as no choice)
 2. Hides the banner if a choice has already been recorded
 3. Shows placeholders and hides consent-gated content blocks if consent has not been accepted
 4. Hides the "Reject" button in placeholders if the user has already rejected
@@ -102,7 +102,7 @@ window.cookieConsent.setStatus('accepted') // programmatically accept
 | Path | `/` |
 | SameSite | `Lax` |
 
-Legacy cookie `cookieConsentGiven` (values `true`/`yes`/`1`/`no`) is read for backwards compatibility and deleted once a new choice is recorded.
+The old `cookieConsentGiven` cookie (values `true`/`yes`/`1`/`no`) is no longer read (bsbi-web #445): a visitor who only has it is asked again.
 
 ---
 
