@@ -17,7 +17,7 @@ if ($feedbackForm->hasFriendlyMessages()) :
     <div class="alert alert-<?=$alertType?> alert-dismissible fade show" role="alert" id="statusAlert">
         <p>
             <?php foreach ($feedbackForm->getFriendlyMessages() as $message) : ?>
-                <?=$message?> <br>
+                <?= esc($message) ?> <br>
             <?php endforeach ?>
         </p>
     </div>
