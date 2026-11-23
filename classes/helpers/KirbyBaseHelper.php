@@ -4867,7 +4867,24 @@ abstract class KirbyBaseHelper
             return 'Already syncing, skipping re-entry.';
         }
 
-        $isSyncing = true; // Set the flag
+        $isSyncing = true;
+        try {
+            return $this->syncTwoWayTags($taggingPage, $oldTaggingPage, $singlePage);
+        } finally {
+            // Cleared on every way out, early returns and exceptions included: a flag
+            // left set makes every later call in the request skip as "already syncing".
+            $isSyncing = false;
+        }
+    }
+
+    /**
+     * The body of handleTwoWayTagging(), run while its re-entry flag is set.
+     *
+     * @throws InvalidArgumentException
+     * @throws KirbyRetrievalException
+     */
+    private function syncTwoWayTags(Page $taggingPage, ?Page $oldTaggingPage, bool $singlePage): string
+    {
 
         $log = '';
 
@@ -4892,14 +4909,12 @@ abstract class KirbyBaseHelper
             $tagMapping = option('tagMapping');
         }
         catch (Throwable) {
-            $isSyncing = false;
             throw new KirbyRetrievalException('Tag mapping config not set up');
         }
 
         try {
             $taggedByField = $tagMapping[$taggingPage->template()->name()];
         } catch (Throwable) {
-            $isSyncing = false;
             throw new KirbyRetrievalException('Tag mapping config not set up for ' . $taggingPage->template()->name());
         }
 
@@ -4946,14 +4961,12 @@ abstract class KirbyBaseHelper
                                 ]);
                                 $log .= "$taggingPageId added to $taggedByField on $linkedPageId";
                             } catch (Throwable $e) {
-                                $isSyncing = false;
                                 throw new KirbyRetrievalException(
                                     "Error adding $taggingPageId to $taggedByField on $linkedPageId: "
                                     . $e->getMessage()
                                 );
                             }
                         } else {
-                            $isSyncing = false;
                             throw new KirbyRetrievalException(
                                 'Tag field '.$taggedByField
                                 .' has not been set up in the '.$linkedPage->template()->name()
@@ -5000,14 +5013,12 @@ abstract class KirbyBaseHelper
                                 ]);
                                 $log .= "$taggingPageId removed from $taggedByField on $linkedPageId";
                             } catch (Throwable $e) {
-                                $isSyncing = false;
                                 throw new KirbyRetrievalException(
                                     "Error removing $taggingPageId from $taggedByField on $linkedPageId: "
                                     . $e->getMessage()
                                 );
                             }
                         } else {
-                            $isSyncing = false;
                             throw new KirbyRetrievalException(
                                 'Tag field '.$taggedByField.' has not been set up on linked page '
                                 . $linkedPage->title()
@@ -5028,13 +5039,11 @@ abstract class KirbyBaseHelper
                     'lastTagSync' => date('Y-m-d H:i:s') // Use a format suitable for the datetime field
                 ]);
             } catch (Throwable $e) {
-                $isSyncing = false;
                 throw new KirbyRetrievalException(
                     'Error updating lastTagSync on ' . $taggingPage->title() . ': ' . $e->getMessage()
                 );
             }
         }
-        $isSyncing = false;
         return $log;
     }
 
