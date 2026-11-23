@@ -9,6 +9,7 @@ declare(strict_types=1);
  * @var Block $block
  */
 
+use BSBI\WebBase\helpers\UuidResolver;
 use Kirby\Cms\Html;
 use Kirby\Cms\Page;
 use Kirby\Cms\App;
@@ -67,7 +68,7 @@ $renderImage = function (Kirby\Cms\File $image, string $ratio, bool $crop, Block
     if ($src) : ?>
         <figure<?= Html::attr(['data-ratio' => $ratio, 'data-crop' => $crop], null, ' ') ?>>
             <?php if ($link->isNotEmpty()): ?>
-                <a href="<?= Str::esc($link->toUrl()) ?>">
+                <a href="<?= Str::esc(UuidResolver::instance()->linkUrl($link)) ?>">
                     <img class="<?= $imgClass ?>" src="<?= $src ?>" alt="<?= $alt->esc() ?>" title="<?=$title?>">
                 </a>
             <?php else: ?>

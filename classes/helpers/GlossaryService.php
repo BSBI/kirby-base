@@ -271,8 +271,7 @@ final class GlossaryService
     {
         try {
             $definitionField = $fieldReader->getPageField($itemPage, 'definition');
-            /** @noinspection PhpUndefinedMethodInspection */
-            return $definitionField->permalinksToUrls()->toString();
+            return UuidResolver::instance()->permalinksToUrls($definitionField->toString());
         } catch (KirbyRetrievalException) {
             return '';
         }

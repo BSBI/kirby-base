@@ -301,16 +301,15 @@ final readonly class KirbyFieldReader
     }
 
     /**
-     * Returns the field value as a URL string.
+     * Returns the field value as a URL string; empty when the field is empty or links
+     * to a page or file that doesn't exist.
      *
      * @throws KirbyRetrievalException
      */
     public function getPageFieldAsUrl(Page $page, string $fieldName, bool $required = false): string
     {
         try {
-            $pageField = $this->getPageField($page, $fieldName);
-            /** @noinspection PhpUndefinedMethodInspection */
-            return $pageField->toUrl() ?? '';
+            return UuidResolver::instance()->linkUrl($this->getPageField($page, $fieldName));
         } catch (KirbyRetrievalException $e) {
             if ($required) {
                 throw $e;
@@ -575,7 +574,8 @@ final readonly class KirbyFieldReader
 
     /**
      * Returns 'page' or 'url' depending on what the link field resolves to.
-     * Returns an empty string when neither applies.
+     * Returns an empty string when neither applies, including a link to a page or
+     * file that doesn't exist.
      *
      * @throws KirbyRetrievalException
      */
@@ -585,12 +585,8 @@ final readonly class KirbyFieldReader
         if (UuidResolver::instance()->pageFromField($linkField)) {
             return 'page';
         }
-        /** @noinspection PhpUndefinedMethodInspection */
-        if ($linkField->toUrl()) {
-            return 'url';
-        }
         //TODO: cope with other link types
-        return '';
+        return UuidResolver::instance()->linkUrl($linkField) !== '' ? 'url' : '';
     }
 
     /**
@@ -1169,8 +1165,7 @@ final readonly class KirbyFieldReader
         try {
             $structureField = $this->getStructureField($structure, $fieldName);
             if ($structureField->isNotEmpty()) {
-                /** @noinspection PhpUndefinedMethodInspection */
-                return $structureField->toUrl();
+                return UuidResolver::instance()->linkUrl($structureField);
             }
         } finally {
             return '';
@@ -1501,7 +1496,7 @@ final readonly class KirbyFieldReader
     {
         if (in_array($block->type(), ['text', 'list'])) {
             /** @noinspection PhpUndefinedMethodInspection */
-            $html = $block->text()->toHtml()->permalinksToUrls()->toString();
+            $html = UuidResolver::instance()->permalinksToUrls($block->text()->toHtml()->toString());
             return $this->glossaryService?->enrichHtml($html) ?? $html;
         }
         return $block->toHtml();

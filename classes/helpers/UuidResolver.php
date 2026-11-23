@@ -11,7 +11,10 @@ use Kirby\Cms\Files;
 use Kirby\Cms\Page;
 use Kirby\Cms\Pages;
 use Kirby\Content\Field;
+use Kirby\Toolkit\Dom;
+use Kirby\Toolkit\Str;
 use Kirby\Uuid\Uuid;
+use DOMElement;
 use Throwable;
 
 /**
@@ -212,6 +215,80 @@ final class UuidResolver
     }
 
     /**
+     * Kirby's `toUrl()` field method for a link field, resolved through this class:
+     * the URL, or '' when the field is empty or links to a page or file that doesn't
+     * exist.
+     *
+     * Use this instead of `$field->toUrl()` wherever a field can hold a `page://` or
+     * `file://` link: for one that resolves to nothing, core walks the whole site index
+     * on every call (bsbi-web#941). Anything else (a URL, `mailto:`, `tel:`, an
+     * anchor) goes through `toUrl()` as before.
+     *
+     * @param Field $field A link field, or a pages/files field (its first item).
+     */
+    public function linkUrl(Field $field): string
+    {
+        $raw = $field->value();
+        $value = is_string($raw) ? trim($raw) : '';
+        // A pages field stores its value as a YAML list; a link field as a plain string.
+        if (str_starts_with($value, '- ')) {
+            $value = trim(substr(explode("\n", $value)[0], 2));
+        }
+        $target = explode('#', $value, 2)[0];
+        $fragment = substr($value, strlen($target) + 1);
+
+        if (!Uuid::is($target, ['page', 'file'])) {
+            /** @noinspection PhpUndefinedMethodInspection */
+            $url = $field->toUrl();
+            return is_string($url) ? $url : '';
+        }
+
+        $model = Uuid::is($target, 'page') ? $this->page($target) : $this->file($target);
+        if ($model === null) {
+            return '';
+        }
+
+        return $model->url() . ($fragment !== '' ? '#' . $fragment : '');
+    }
+
+    /**
+     * Kirby's `permalinksToUrls()` field method, resolved through this class.
+     *
+     * Every `href` and `src` holding a permalink (`/@/page/…`, `/@/file/…`) or a UUID
+     * (`page://…`) becomes the model's URL; anything else, and any link whose model
+     * doesn't exist, is left as it was. Core does the same but looks each one up
+     * directly, so a broken link walks the whole site index on every render
+     * (bsbi-web#941).
+     *
+     * @param string $html HTML, typically a writer or text block's value.
+     */
+    public function permalinksToUrls(string $html): string
+    {
+        if ($html === '') {
+            return $html;
+        }
+
+        $dom = new Dom($html);
+        $elements = $dom->query('//*[@href | @src]');
+        if ($elements === false) {
+            return $dom->toString();
+        }
+        foreach ($elements as $element) {
+            if (!$element instanceof DOMElement) {
+                continue;
+            }
+            foreach (['href', 'src'] as $attribute) {
+                $value = $element->getAttribute($attribute);
+                if ($value !== '' && ($url = $this->permalinkUrl($value)) !== null) {
+                    $element->setAttribute($attribute, $url);
+                }
+            }
+        }
+
+        return $dom->toString();
+    }
+
+    /**
      * True while the UUID is on the miss list and its entry has not expired.
      *
      * @param string $uuid The full reference, e.g. `file://abc123`.
@@ -321,6 +398,37 @@ final class UuidResolver
     {
         try {
             return $lookup();
+        } catch (Throwable) {
+            return null;
+        }
+    }
+
+    /**
+     * The URL for one `href`/`src` value, or null to leave it alone. Reads the value
+     * the way `Uuid::for()` does: a scheme first, then a `/@/` permalink.
+     */
+    private function permalinkUrl(string $value): ?string
+    {
+        if (str_contains($value, '://')) {
+            $uuid = $value;
+        } elseif (($permalink = Str::after($value, '/@/')) !== '') {
+            $parts = explode('/', $permalink);
+            $uuid = $parts[0] . '://' . ($parts[1] ?? '');
+        } else {
+            return null;
+        }
+
+        if (Uuid::is($uuid, 'page')) {
+            return $this->page($uuid)?->url();
+        }
+        if (Uuid::is($uuid, 'file')) {
+            return $this->file($uuid)?->url();
+        }
+
+        // site:// and user:// are cheap for core; anything else (https://…) isn't a UUID.
+        try {
+            $model = Uuid::for($uuid)?->model();
+            return $model !== null && method_exists($model, 'url') ? $model->url() : null;
         } catch (Throwable) {
             return null;
         }
