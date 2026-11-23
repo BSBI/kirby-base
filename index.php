@@ -14,6 +14,7 @@ use BSBI\WebBase\helpers\GlossaryPanelService;
 use BSBI\WebBase\helpers\GlossaryService;
 use BSBI\WebBase\helpers\KirbyBaseHelper;
 use BSBI\WebBase\helpers\KirbyInternalHelper;
+use BSBI\WebBase\helpers\ListStyleSanitizing;
 use BSBI\WebBase\helpers\PanelPasswordResetService;
 use BSBI\WebBase\helpers\PanelShortcuts;
 use BSBI\WebBase\helpers\SearchIndexHelper;
@@ -1034,6 +1035,10 @@ if (option('maintenance.showPanel', false)) {
 array_push($pluginConfig['api']['routes'], ...IndexRebuilds::apiRoutes());
 
 Kirby::plugin('open-foundations/kirby-base', $pluginConfig);
+
+// The list styles are stored as <ol type="a">; since Kirby 5.6 the list field's
+// sanitizer would strip the attribute on save (bsbi-web#786, bsbi-web#937).
+ListStyleSanitizing::allow();
 
 // Register the generic maintenance tasks (site-specific ones register themselves).
 if (option('maintenance.showPanel', false)) {
