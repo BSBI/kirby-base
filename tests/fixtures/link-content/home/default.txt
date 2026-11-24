@@ -34,4 +34,21 @@ Maillink: mailto:someone@example.org
 
 ----
 
+Structurelinks:
+
+- 
+  url: page://pagebbbbbbbbbbbb
+  title: A page
+- 
+  url: https://example.org/elsewhere
+  title: A web address
+- 
+  url: page://nosuchpage000000
+  title: A broken page link
+- 
+  url: ""
+  title: No link
+
+----
+
 Uuid: pageaaaaaaaaaaaa

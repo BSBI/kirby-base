@@ -73,6 +73,25 @@ final class KirbyFieldReaderLinkTest extends TestCase
     }
 
     /**
+     * Link-list items (an error page's suggested links, a home page's hero links) use the
+     * structure's link field (bsbi-web#942). It always returned '' before: a `return`
+     * in `finally` replaced the one in `try`.
+     */
+    public function testStructureLinkUrls(): void
+    {
+        $items = self::$reader->getPageFieldAsStructure(self::home(), 'structurelinks');
+        $urls = [];
+        foreach ($items as $item) {
+            $urls[] = self::$reader->getStructureFieldAsLinkUrl($item, 'url');
+        }
+
+        self::assertSame('/other', self::path($urls[0]));
+        self::assertSame('https://example.org/elsewhere', $urls[1]);
+        self::assertSame('', $urls[2], 'a broken page link');
+        self::assertSame('', $urls[3], 'an empty link');
+    }
+
+    /**
      * A walk reads every page's content (page UUIDs) or files (file UUIDs); "other" is
      * read for nothing else here, so any read of it means the index was walked.
      */
