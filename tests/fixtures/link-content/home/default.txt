@@ -1,0 +1,37 @@
+Title: Home
+
+----
+
+Pagelink: page://pagebbbbbbbbbbbb
+
+----
+
+Anchorlink: page://pagebbbbbbbbbbbb#section
+
+----
+
+Badpagelink: page://nosuchpage000000
+
+----
+
+Badpagelinklist: - page://nosuchpage000000
+
+----
+
+Filelink: file://fileaaaaaaaaaaaa
+
+----
+
+Badfilelink: file://nosuchfile000000
+
+----
+
+Urllink: https://example.org/somewhere
+
+----
+
+Maillink: mailto:someone@example.org
+
+----
+
+Uuid: pageaaaaaaaaaaaa

@@ -3,6 +3,7 @@
 
 declare(strict_types=1);
 
+use BSBI\WebBase\helpers\UuidResolver;
 use Kirby\Cms\Block;
 use Kirby\Toolkit\Str;
 
@@ -46,7 +47,7 @@ snippet('base/full-width-block-starts', ['fullWidth' => $fullWidth]);
 ?>
 <figure>
     <?php if ($link->isNotEmpty()) : ?>
-    <a href="<?= Str::esc($link->toUrl()) ?>"
+    <a href="<?= Str::esc(UuidResolver::instance()->linkUrl($link)) ?>"
         <?php if ($caption->isNotEmpty()) : ?>
             aria-label="<?= $caption ?>"
         <?php endif ?>
