@@ -38,6 +38,18 @@ final class UuidResolverScanTest extends TestCase
                 ],
             ]
         );
+        // A page folder that is a symlink, as core follows them.
+        $elsewhere = dirname(self::$kirby->root('content')) . '/elsewhere/linked';
+        mkdir($elsewhere, 0777, true);
+        file_put_contents($elsewhere . '/default.txt', "Title: Linked\n\n----\n\nUuid: pagelinked000000\n");
+        symlink($elsewhere, self::$kirby->root('content') . '/6_linked');
+    }
+
+    public static function tearDownAfterClass(): void
+    {
+        // The temp-folder cleanup can't remove a symlinked folder.
+        @unlink(self::$kirby->root('content') . '/6_linked');
+        parent::tearDownAfterClass();
     }
 
     protected function setUp(): void
@@ -62,6 +74,8 @@ final class UuidResolverScanTest extends TestCase
             'nested page'               => ['page://pagechild0000000', 'section/child'],
             'unlisted page'             => ['page://pageunlisted0000', 'section/unlisted'],
             'draft'                     => ['page://pagedraft0000000', 'section/draft'],
+            'sort number with dashes'   => ['page://pagedated0000000', 'dated'],
+            'symlinked folder'          => ['page://pagelinked000000', 'linked'],
         ];
     }
 
@@ -109,6 +123,7 @@ final class UuidResolverScanTest extends TestCase
             'file' => ['file://nosuchfile000000'],
             // Unsaved Panel changes repeat a UUID; they aren't a page of their own.
             'only in a _changes folder' => ['page://pagechangesonly0'],
+            'only in a folder core ignores' => ['page://pageignored00000'],
         ];
     }
 

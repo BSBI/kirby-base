@@ -28,8 +28,10 @@ use UnexpectedValueException;
  * (users' files), so memory stays flat whatever the size of the site. Once found, only
  * that one page or file is loaded.
  *
- * `_changes` folders (unsaved Panel edits) are skipped: they repeat the UUID of the
- * page or file they belong to, whose own content file is always there too.
+ * Folders are read as core's inventory reads them: symlinks followed, folders starting
+ * with "." or "_" skipped except `_drafts`, and anything before a folder's first "_"
+ * taken as its sort number. So `_changes` (unsaved Panel edits, which repeat the UUID
+ * of the page or file they belong to) is skipped.
  */
 final readonly class UuidContentScanner
 {
@@ -99,7 +101,7 @@ final readonly class UuidContentScanner
     }
 
     /**
-     * The content files under `$root`, `_changes` folders left out.
+     * The content files under `$root`, in the folders core's inventory reads.
      *
      * @return iterable<string>
      */
@@ -108,8 +110,15 @@ final readonly class UuidContentScanner
         try {
             $iterator = new RecursiveIteratorIterator(
                 new RecursiveCallbackFilterIterator(
-                    new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS),
-                    static fn (SplFileInfo $item): bool => !($item->isDir() && $item->getFilename() === '_changes')
+                    new RecursiveDirectoryIterator(
+                        $root,
+                        FilesystemIterator::SKIP_DOTS | FilesystemIterator::FOLLOW_SYMLINKS
+                    ),
+                    // As core's inventory: folders starting with "." or "_" aren't pages,
+                    // except drafts. That leaves out `_changes` too.
+                    static fn (SplFileInfo $item): bool => !$item->isDir()
+                        || $item->getFilename() === '_drafts'
+                        || !preg_match('/^[._]/', $item->getFilename())
                 ),
                 RecursiveIteratorIterator::LEAVES_ONLY,
                 RecursiveIteratorIterator::CATCH_GET_CHILD
@@ -183,7 +192,9 @@ final readonly class UuidContentScanner
             if ($folder === '_drafts') {
                 continue;
             }
-            $slugs[] = preg_match('/^\d+_(.+)$/', $folder, $match) === 1 ? $match[1] : $folder;
+            // As core's inventory: anything before the first "_" is the sort number.
+            $separator = strpos($folder, '_');
+            $slugs[] = $separator === false || $separator === 0 ? $folder : substr($folder, $separator + 1);
         }
 
         return $this->kirby->page(implode('/', $slugs));
