@@ -29,6 +29,7 @@ final class UuidResolverScanMultilangTest extends TestCase
                     'cacheName' => 'bsbi',
                     'cache' => ['bsbi' => true, 'uuid' => true],
                     'languages' => true,
+                    UuidResolver::SCAN_OPTION => true,
                 ],
                 'languages' => [
                     ['code' => 'en', 'name' => 'English', 'default' => true],

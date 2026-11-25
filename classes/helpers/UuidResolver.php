@@ -30,11 +30,11 @@ use Throwable;
  * This resolver keeps a short-lived list of misses in the site cache
  * (`option('cacheName')`, one entry; TTL one hour, or `uuidResolver.missTtlSeconds`).
  * A UUID already in Kirby's cache resolves exactly as core does; a recorded miss
- * returns null without touching the index. Anything else is looked for by scanning
- * the content files one at a time (`UuidContentScanner`, bsbi-web#945) rather than by
- * core's walk, which loads every page and can run out of memory on a large site; what
- * it finds is cached as core would cache it, and if it finds nothing the miss is
- * recorded and logged once per TTL window to `logs/uuid-misses.log`.
+ * returns null without touching the index. Anything else goes through core's walk
+ * once or, with the `uuidResolver.scanContent` option on, a scan of the content files
+ * one at a time (`UuidContentScanner`, bsbi-web#945), which keeps memory flat on a
+ * large site. If that finds nothing, the miss is recorded and logged once per TTL
+ * window to `logs/uuid-misses.log`.
  *
  * Plain ids and paths (`home/pic.svg`, `about/team`) are passed straight to
  * core; they are cheap and never recorded.
@@ -48,8 +48,10 @@ final class UuidResolver
     public const string MISS_TTL_OPTION = 'uuidResolver.missTtlSeconds';
 
     /**
-     * Config option: false makes an uncached UUID go through core's walk of the site
-     * index, as before bsbi-web#945, instead of a scan of the content files.
+     * Config option: true makes an uncached UUID be found by scanning the content files
+     * (`UuidContentScanner`) instead of core's walk of the site index (bsbi-web#945).
+     * Off by default: the scan only sees pages stored as content folders, so a site with
+     * virtual pages (built in code) that carry UUIDs must leave it off.
      */
     public const string SCAN_OPTION = 'uuidResolver.scanContent';
 
@@ -392,18 +394,18 @@ final class UuidResolver
     }
 
     /**
-     * A UUID that isn't in Kirby's cache: found by scanning the content files
-     * (`UuidContentScanner`) rather than core's walk of the whole site index, which can
-     * need more memory than a request has (bsbi-web#945). The model found is added to
-     * Kirby's cache, as core would. Core's walk is used only when the scan finds a
-     * content file it can't turn into a model, or when the `uuidResolver.scanContent`
-     * option is false.
+     * A UUID that isn't in Kirby's cache. With the `uuidResolver.scanContent` option on,
+     * found by scanning the content files (`UuidContentScanner`) rather than core's walk
+     * of the whole site index, which can need more memory than a request has
+     * (bsbi-web#945); the model found is added to Kirby's cache, as core would, and core
+     * still walks if the scan finds a content file it can't turn into a model. With the
+     * option off (the default), core's walk.
      *
      * @param callable(): (File|Page|null) $lookup The core lookup, which may walk the index.
      */
     private function findUncached(string $uuid, callable $lookup): File|Page|null
     {
-        if ($this->kirby->option(self::SCAN_OPTION, true) === false
+        if ($this->kirby->option(self::SCAN_OPTION, false) !== true
             || $this->kirby->option('content.uuid.index') === false) {
             return $this->core($lookup);
         }

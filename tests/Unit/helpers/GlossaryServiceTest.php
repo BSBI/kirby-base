@@ -7,6 +7,7 @@ namespace BSBI\WebBase\Tests\Unit\helpers;
 use BSBI\WebBase\helpers\GlossaryService;
 use BSBI\WebBase\helpers\KirbyFieldReader;
 use Kirby\Cms\App;
+use Kirby\Filesystem\Dir;
 use Kirby\Cms\Block;
 use PHPUnit\Framework\TestCase;
 
@@ -30,9 +31,9 @@ final class GlossaryServiceTest extends TestCase
     public static function setUpBeforeClass(): void
     {
         self::$tmpDir = sys_get_temp_dir() . '/kirby-glossary-service-test';
-        if (!is_dir(self::$tmpDir)) {
-            mkdir(self::$tmpDir, 0777, true);
-        }
+        // Start clean: a UUID cache left by an earlier run hid a lookup bug (bsbi-web#945).
+        Dir::remove(self::$tmpDir);
+        mkdir(self::$tmpDir, 0777, true);
     }
 
     protected function tearDown(): void

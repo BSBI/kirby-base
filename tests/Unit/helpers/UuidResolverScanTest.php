@@ -31,7 +31,11 @@ final class UuidResolverScanTest extends TestCase
             dirname(__DIR__, 2) . '/fixtures/uuid-scan-content',
             'kirby-base-uuid-scan',
             [
-                'options' => ['cacheName' => 'bsbi', 'cache' => ['bsbi' => true, 'uuid' => true]],
+                'options' => [
+                    'cacheName' => 'bsbi',
+                    'cache' => ['bsbi' => true, 'uuid' => true],
+                    UuidResolver::SCAN_OPTION => true,
+                ],
                 'pageModels' => [
                     'default' => ScanCountingPage::class,
                     'article' => ScanCountingPage::class,
