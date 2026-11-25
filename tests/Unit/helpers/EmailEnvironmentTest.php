@@ -32,7 +32,39 @@ final class EmailEnvironmentTest extends TestCase
             'IPv6 loopback refuses'                      => [null, null, '[::1]:8092', false],
             'a resolved environment object falls to the host check' => [new \stdClass(), null, 'bsbi.org', true],
             'case-insensitive environment'               => ['DEV', null, 'example.org', false],
+            // #87: capsella's Environment object, under PHPUnit or a CLI script
+            'an environment object that refuses, with no host' => [null, self::environmentObject(false), '', false],
+            'an environment object that refuses, on a real host' => [null, self::environmentObject(false), 'bsbi.org', false],
+            'an environment object that allows, cron with no host' => [null, self::environmentObject(true), '', true],
+            'an environment object that allows, still refused on localhost' => [null, self::environmentObject(true), 'localhost:8095', false],
+            'an object without sendsEmail(), with no host'  => [null, new \stdClass(), '', true],
         ];
+    }
+
+    /**
+     * A stand-in for a site's resolved environment object, such as capsella's.
+     *
+     * @param bool $sends What its sendsEmail() answers
+     * @return object
+     */
+    private static function environmentObject(bool $sends): object
+    {
+        return new class ($sends) {
+            /**
+             * @param bool $sends What sendsEmail() answers
+             */
+            public function __construct(private readonly bool $sends)
+            {
+            }
+
+            /**
+             * @return bool
+             */
+            public function sendsEmail(): bool
+            {
+                return $this->sends;
+            }
+        };
     }
 
     #[DataProvider('environments')]
