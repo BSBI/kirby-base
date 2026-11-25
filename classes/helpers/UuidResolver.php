@@ -30,9 +30,11 @@ use Throwable;
  * This resolver keeps a short-lived list of misses in the site cache
  * (`option('cacheName')`, one entry; TTL one hour, or `uuidResolver.missTtlSeconds`).
  * A UUID already in Kirby's cache resolves exactly as core does; a recorded miss
- * returns null without touching the index; anything else goes through core once
- * and, if that finds nothing, is recorded and logged once per TTL window to
- * `logs/uuid-misses.log`.
+ * returns null without touching the index. Anything else is looked for by scanning
+ * the content files one at a time (`UuidContentScanner`, bsbi-web#945) rather than by
+ * core's walk, which loads every page and can run out of memory on a large site; what
+ * it finds is cached as core would cache it, and if it finds nothing the miss is
+ * recorded and logged once per TTL window to `logs/uuid-misses.log`.
  *
  * Plain ids and paths (`home/pic.svg`, `about/team`) are passed straight to
  * core; they are cheap and never recorded.
@@ -44,6 +46,12 @@ final class UuidResolver
 
     /** Config option overriding the miss TTL, in seconds (a positive integer). */
     public const string MISS_TTL_OPTION = 'uuidResolver.missTtlSeconds';
+
+    /**
+     * Config option: false makes an uncached UUID go through core's walk of the site
+     * index, as before bsbi-web#945, instead of a scan of the content files.
+     */
+    public const string SCAN_OPTION = 'uuidResolver.scanContent';
 
     /** The single cache key holding the miss list (`uuid => expiresAt`). */
     public const string MISS_CACHE_KEY = 'uuid-misses';
@@ -371,7 +379,7 @@ final class UuidResolver
             return null;
         }
 
-        $model = $this->core($lookup);
+        $model = $this->findUncached($uuid, $lookup);
         if ($model === null) {
             $this->recordMiss($uuid);
             KirbyBaseHelper::writeToLogFile(
@@ -381,6 +389,45 @@ final class UuidResolver
         }
 
         return $model;
+    }
+
+    /**
+     * A UUID that isn't in Kirby's cache: found by scanning the content files
+     * (`UuidContentScanner`) rather than core's walk of the whole site index, which can
+     * need more memory than a request has (bsbi-web#945). The model found is added to
+     * Kirby's cache, as core would. Core's walk is used only when the scan finds a
+     * content file it can't turn into a model, or when the `uuidResolver.scanContent`
+     * option is false.
+     *
+     * @param callable(): (File|Page|null) $lookup The core lookup, which may walk the index.
+     */
+    private function findUncached(string $uuid, callable $lookup): File|Page|null
+    {
+        if ($this->kirby->option(self::SCAN_OPTION, true) === false
+            || $this->kirby->option('content.uuid.index') === false) {
+            return $this->core($lookup);
+        }
+
+        $id = (string) parse_url($uuid, PHP_URL_HOST);
+        $expected = Uuid::is($uuid, 'page') ? Page::class : File::class;
+        $scanner = new UuidContentScanner($this->kirby);
+        $unresolved = false;
+        foreach ($scanner->candidates($id) as $path) {
+            $model = $scanner->modelFor($path);
+            if ($model instanceof $expected && $model->uuid()->id() === $id) {
+                try {
+                    $model->uuid()->populate();
+                } catch (Throwable) {
+                    // an unwritable uuid cache only means the next lookup scans again
+                }
+
+                return $model;
+            }
+            // Kirby couldn't load the model this file belongs to: let core decide.
+            $unresolved = $unresolved || $model === null;
+        }
+
+        return $unresolved ? $this->core($lookup) : null;
     }
 
     /**
