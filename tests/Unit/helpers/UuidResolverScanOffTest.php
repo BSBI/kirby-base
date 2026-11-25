@@ -10,8 +10,9 @@ use Kirby\Cms\App;
 use PHPUnit\Framework\TestCase;
 
 /**
- * `uuidResolver.scanContent: false` puts an uncached UUID back through core's walk of
- * the site index, as before bsbi-web#945.
+ * Without `uuidResolver.scanContent` (off by default) an uncached UUID goes through
+ * core's walk of the site index, as before bsbi-web#945: virtual pages, built in code,
+ * have no content files for the scan to find.
  */
 final class UuidResolverScanOffTest extends TestCase
 {
@@ -26,7 +27,6 @@ final class UuidResolverScanOffTest extends TestCase
                 'options' => [
                     'cacheName' => 'bsbi',
                     'cache' => ['bsbi' => true, 'uuid' => true],
-                    UuidResolver::SCAN_OPTION => false,
                 ],
                 'pageModels' => ['default' => ScanCountingPage::class, 'article' => ScanCountingPage::class],
             ]
