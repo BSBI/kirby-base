@@ -93,13 +93,17 @@ final readonly class EmailService implements EmailSender
      *
      * - A developer environment: `dev` or `local` (any case), from
      *   `environment.type` or a flat `environment` string. A site may instead
-     *   resolve `environment` to an object (capsella does); then only the host
-     *   check applies.
+     *   resolve `environment` to an object (capsella does). If that object has
+     *   a public `sendsEmail(): bool`, a false from it refuses (#87); an
+     *   object without one leaves only the host check.
      * - A request to a loopback host (localhost, 127.0.0.1, [::1]), whatever the
      *   environment says. Before, any configured environment skipped this check,
      *   so a local copy set to `dev` sent real email.
      *
-     * Anything else sends, including CLI and cron runs with no host.
+     * Anything else sends, including CLI and cron runs with no host. That is
+     * why the object's own answer matters: under PHPUnit or a CLI script there
+     * is no host to refuse on, so before #87 a site whose environment was an
+     * object sent real email from a developer's machine.
      *
      * @param mixed $type The `environment.type` option
      * @param mixed $environment The `environment` option
@@ -112,6 +116,11 @@ final readonly class EmailService implements EmailSender
             if (is_string($configured) && in_array(strtolower($configured), ['dev', 'local'], true)) {
                 return false;
             }
+        }
+
+        if (is_object($environment) && is_callable([$environment, 'sendsEmail'])
+            && $environment->sendsEmail() === false) {
+            return false;
         }
 
         $hostName = strtolower(preg_replace('/:\d+$/', '', $host) ?? $host);
