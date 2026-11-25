@@ -1156,18 +1156,14 @@ final readonly class KirbyFieldReader
     }
 
     /**
-     * Returns a structure field as a resolved URL string.
-     *
-     * @throws KirbyRetrievalException
+     * Returns a structure's link field as a URL, or '' when it is empty or its page or
+     * file can't be found.
      */
     public function getStructureFieldAsLinkUrl(StructureObject $structure, string $fieldName): string
     {
         try {
-            $structureField = $this->getStructureField($structure, $fieldName);
-            if ($structureField->isNotEmpty()) {
-                return UuidResolver::instance()->linkUrl($structureField);
-            }
-        } finally {
+            return UuidResolver::instance()->linkUrl($this->getStructureField($structure, $fieldName));
+        } catch (KirbyRetrievalException) {
             return '';
         }
     }
